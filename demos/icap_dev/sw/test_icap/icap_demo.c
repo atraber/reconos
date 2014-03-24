@@ -31,6 +31,98 @@ struct mbox mb_out[NUM_SLOTS];
 
 unsigned int configured = ADD;
 
+struct pr_bitstream {
+  uint32_t* block;
+  unsigned int length; // in 32 bit words
+};
+
+struct pr_bitstream pr_bit[2];
+
+// preload bitstream and save it in memory
+// Returns 1 if successfull, 0 otherwise
+int cache_bitstream(int thread_id, const char* path)
+{
+  int retval = 1;
+
+  FILE* fp = fopen(path, "r");
+  if(fp == NULL) {
+    printf("Could not open file %s\n", path);
+
+    retval = 0;
+    goto FAIL;
+  }
+
+  // determine file size
+  fseek(fp, 0L, SEEK_END);
+  pr_bit[thread_id].length = ftell(fp);
+
+  fseek(fp, 0L, SEEK_SET);
+
+  if((pr_bit[thread_id].length & 0x3) != 0) {
+    printf("File size is not a multiple of 4 bytes\n");
+
+    retval = 0;
+    goto FAIL;
+  }
+
+  // convert file size from bytes to 32 bit words
+  pr_bit[thread_id].length = pr_bit[thread_id].length / 4;
+
+  // allocate memory for file
+  pr_bit[thread_id].block = (uint32_t*)malloc(pr_bit[thread_id].length * sizeof(uint32_t));
+  if(pr_bit[thread_id].block == NULL) {
+    printf("Could not allocate memory\n");
+
+    retval = 0;
+    goto FAIL;
+  }
+
+  // read whole file in one command
+  if( fread(pr_bit[thread_id].block, sizeof(uint32_t), pr_bit[thread_id].length, fp) != pr_bit[thread_id].length) {
+    printf("Something went wrong while reading from file\n");
+
+    free(pr_bit[thread_id].block);
+
+    retval = 0;
+    goto FAIL;
+  }
+
+FAIL:
+  fclose(fp);
+
+  return retval;
+}
+
+// loads bitstream into ICAP
+// Returns 1 if successfull, 0 otherwise
+int sw_icap_load(int thread_id)
+{
+  int retval = 1;
+
+  FILE* fp = fopen("/dev/icap0", "w");
+  if(fp == NULL) {
+    printf("Could not open icap\n");
+
+    retval = 0;
+    goto FAIL;
+  }
+
+  // write whole file in one command
+  int len = fwrite(pr_bit[thread_id].block, sizeof(uint32_t), pr_bit[thread_id].length, fp);
+  if( len != pr_bit[thread_id].length) {
+    printf("Something went wrong while writing to ICAP, len is %d\n", len);
+    printf("ferror is %X, feof is %X, errno is %X\n", ferror(fp), feof(fp), errno);
+
+    retval = 0;
+    goto FAIL;
+  }
+
+FAIL:
+  fclose(fp);
+
+  return retval;
+}
+
 int test_prblock(int thread_id)
 {
 	unsigned int ret, val=0x60003;
@@ -52,6 +144,8 @@ int test_icapblock(void)
 	return 0;
 }
 
+int g_debug_hw_sw = 1;
+
 int reconfigure_prblock(int thread_id)
 {
 	int ret = -2;
@@ -62,8 +156,23 @@ int reconfigure_prblock(int thread_id)
 	mbox_put(&mb_in[HWT_DPR],THREAD_EXIT_CMD);
 	
 	// reconfigure hardware slot
-	if (thread_id==ADD)      {ret = system("cat partial_bitstreams/partial_add.bit > /dev/icap0"); printf("  cmd: cat partial_bitstreams/partial_add.bit > /dev/icap0\n"); configured = thread_id;}
-	else if (thread_id==SUB) {ret = system("cat partial_bitstreams/partial_sub.bit > /dev/icap0"); printf("  cmd: cat partial_bitstreams/partial_sub.bit > /dev/icap0\n"); configured = thread_id;}
+	if (thread_id==ADD) {
+    if(g_debug_hw_sw == 0)
+      ret = system("cat partial_bitstreams/partial_add.bit > /dev/icap0");
+    else
+      ret = sw_icap_load(ADD);
+
+    printf("  cmd: cat partial_bitstreams/partial_add.bit > /dev/icap0\n");
+    configured = thread_id;
+  } else if (thread_id==SUB) {
+    if(g_debug_hw_sw == 0)
+      ret = system("cat partial_bitstreams/partial_sub.bit > /dev/icap0");
+    else
+      ret = sw_icap_load(SUB);
+
+    printf("  cmd: cat partial_bitstreams/partial_sub.bit > /dev/icap0\n");
+    configured = thread_id;
+  }
 
 	// reset hardware thread and start new delegate
 	reconos_hwt_setresources(&hwt[HWT_DPR],res[HWT_DPR],2);
@@ -100,7 +209,18 @@ int main(int argc, char *argv[])
 		reconos_hwt_create(&hwt[i],i,NULL);
 	}
 
-	while(1){
+
+  // cache partial bitstreams in memory
+  cache_bitstream(ADD, "partial_bitstreams/partial_add.bit");
+  cache_bitstream(SUB, "partial_bitstreams/partial_sub.bit");
+
+  // parse command line arguments
+  if(argc >= 2) {
+    if(strcmp(argv[1], "-h") == 0)
+      g_debug_hw_sw = 0;
+  }
+
+	while(1) {
 		// reconfigure partial hw slot and check thread
 		printf("[icap] Test no. %03d\n",cnt);
 
