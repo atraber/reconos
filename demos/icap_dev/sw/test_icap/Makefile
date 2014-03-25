@@ -1,13 +1,17 @@
-CFLAGS=-O3 -g -Wall
+CFLAGS=-O3 -g -Wall -I ../../../../linux/reconos/libreconos-us
 CC=microblaze-unknown-linux-gnu-gcc
 
 TARGET=icap_demo
-APPLICATION_SRC=icap_demo.c
+APP_OBJS = icap_demo.o timing.o
 
 all: $(TARGET) 
 
-$(TARGET): $(TARGET).c
-	$(CC) $(CFLAGS) -L ../../../../linux/reconos/libreconos-us -I ../../../../linux/reconos/libreconos-us $(APPLICATION_SRC) -o $(TARGET) -static -lreconos -lpthread -lrt -lm
+$(TARGET): $(APP_OBJS)
+	$(CC) $(CFLAGS) -L ../../../../linux/reconos/libreconos-us $(APP_OBJS) -o $(TARGET) -static -lreconos -lpthread -lrt -lm
+
+%.o: %.c
+	$(CC) -c $(CFLAGS) -o $@ $<
+
 
 clean:
 	rm -f *.o $(TARGET) 

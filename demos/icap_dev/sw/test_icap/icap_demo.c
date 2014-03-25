@@ -14,6 +14,8 @@
 #include "reconos.h"
 #include "mbox.h"
 
+#include "timing.h"
+
 // hw threads
 #define NUM_SLOTS 2
 #define HWT_ICAP  0
@@ -23,6 +25,12 @@
 #define SUB 1
 
 #define THREAD_EXIT_CMD 0xFFFFFFFF
+
+#define RECONF_LINUX 0
+#define RECONF_SW    1
+#define RECONF_HW    2
+
+unsigned int g_reconf_mode = RECONF_LINUX;
 
 struct reconos_resource res[NUM_SLOTS][2];
 struct reconos_hwt hwt[NUM_SLOTS];
@@ -108,10 +116,8 @@ int sw_icap_load(int thread_id)
   }
 
   // write whole file in one command
-  int len = fwrite(pr_bit[thread_id].block, sizeof(uint32_t), pr_bit[thread_id].length, fp);
-  if( len != pr_bit[thread_id].length) {
-    printf("Something went wrong while writing to ICAP, len is %d\n", len);
-    printf("ferror is %X, feof is %X, errno is %X\n", ferror(fp), feof(fp), errno);
+  if( fwrite(pr_bit[thread_id].block, sizeof(uint32_t), pr_bit[thread_id].length, fp) != pr_bit[thread_id].length) {
+    printf("Something went wrong while writing to ICAP\n");
 
     retval = 0;
     goto FAIL;
@@ -148,31 +154,57 @@ int g_debug_hw_sw = 1;
 
 int reconfigure_prblock(int thread_id)
 {
+	timing_t t_start, t_stop;
+  ms_t t_check;
+
 	int ret = -2;
 
 	if (thread_id==configured) return 0;
 
 	// send thread exit command
 	mbox_put(&mb_in[HWT_DPR],THREAD_EXIT_CMD);
+
+  sleep(1);
+
+  printf("Starting reconfiguration\n");
+
+	t_start = gettime();
 	
 	// reconfigure hardware slot
-	if (thread_id==ADD) {
-    if(g_debug_hw_sw == 0)
-      ret = system("cat partial_bitstreams/partial_add.bit > /dev/icap0");
-    else
-      ret = sw_icap_load(ADD);
+	if (thread_id == ADD) {
+    switch(g_reconf_mode) {
+      case RECONF_LINUX:
+        ret = system("cat partial_bitstreams/partial_add.bit > /dev/icap0");
+        break;
+      case RECONF_SW:
+        ret = sw_icap_load(thread_id);
+        break;
+      case RECONF_HW:
+          printf("NOT YET IMPLEMENTED\n");
+        break;
+    }
 
-    printf("  cmd: cat partial_bitstreams/partial_add.bit > /dev/icap0\n");
     configured = thread_id;
   } else if (thread_id==SUB) {
-    if(g_debug_hw_sw == 0)
-      ret = system("cat partial_bitstreams/partial_sub.bit > /dev/icap0");
-    else
-      ret = sw_icap_load(SUB);
+    switch(g_reconf_mode) {
+      case RECONF_LINUX:
+        ret = system("cat partial_bitstreams/partial_sub.bit > /dev/icap0");
+        break;
+      case RECONF_SW:
+        ret = sw_icap_load(thread_id);
+        break;
+      case RECONF_HW:
+          printf("NOT YET IMPLEMENTED\n");
+        break;
+    }
 
-    printf("  cmd: cat partial_bitstreams/partial_sub.bit > /dev/icap0\n");
     configured = thread_id;
   }
+
+	t_stop = gettime();
+	t_check = calc_timediff_ms(t_start, t_stop);
+
+  printf("Reconfiguration done in %lu, reseting hardware thread\n", t_check);
 
 	// reset hardware thread and start new delegate
 	reconos_hwt_setresources(&hwt[HWT_DPR],res[HWT_DPR],2);
@@ -216,8 +248,12 @@ int main(int argc, char *argv[])
 
   // parse command line arguments
   if(argc >= 2) {
-    if(strcmp(argv[1], "-h") == 0)
-      g_debug_hw_sw = 0;
+    if(strcmp(argv[1], "-sw") == 0)
+      g_reconf_mode = RECONF_SW;
+    else if(strcmp(argv[1], "-hw") == 0)
+      g_reconf_mode = RECONF_HW;
+    else if(strcmp(argv[1], "-linux") == 0)
+      g_reconf_mode = RECONF_LINUX;
   }
 
 	while(1) {
