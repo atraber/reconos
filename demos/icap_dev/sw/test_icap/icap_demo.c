@@ -204,7 +204,7 @@ int reconfigure_prblock(int thread_id)
 	t_stop = gettime();
 	t_check = calc_timediff_ms(t_start, t_stop);
 
-  printf("Reconfiguration done in %lu, reseting hardware thread\n", t_check);
+  printf("Reconfiguration done in %lu ms, reseting hardware thread\n", t_check);
 
 	// reset hardware thread and start new delegate
 	reconos_hwt_setresources(&hwt[HWT_DPR],res[HWT_DPR],2);
@@ -256,6 +256,19 @@ int main(int argc, char *argv[])
       g_reconf_mode = RECONF_LINUX;
   }
 
+  // what configuration mode are we using?
+  switch(g_reconf_mode) {
+    case RECONF_LINUX:
+      printf("Using linux reconfiguration mode\n");
+      break;
+    case RECONF_SW:
+      printf("Using software reconfiguration mode\n");
+      break;
+    case RECONF_HW:
+      printf("Using hw reconfiguration mode\n");
+      break;
+  }
+
 	while(1) {
 		// reconfigure partial hw slot and check thread
 		printf("[icap] Test no. %03d\n",cnt);
@@ -271,6 +284,11 @@ int main(int argc, char *argv[])
 		if (ret) printf("  # SUB: passed\n"); else printf("  # SUB: failed\n");
 		sleep(1); 
 		cnt++;
+
+
+    // stop after 10 reconfigurations
+    if(cnt == 10)
+      break;
 	}
 	return 0;
 }
