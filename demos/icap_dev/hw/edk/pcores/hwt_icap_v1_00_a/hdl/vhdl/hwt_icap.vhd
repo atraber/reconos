@@ -358,6 +358,5 @@ begin
     end generate bitSwapGen;
   end generate swapGen;
 
-
 end architecture;
 
