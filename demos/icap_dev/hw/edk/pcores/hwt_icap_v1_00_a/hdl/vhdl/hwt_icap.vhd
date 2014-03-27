@@ -40,13 +40,37 @@ entity hwt_icap is
 end entity;
 
 architecture implementation of hwt_icap is
-  type STATE_TYPE is (STATE_GET_BITSTREAM_ADDR, STATE_GET_BITSTREAM_SIZE, STATE_SEND_RESULT, STATE_THREAD_EXIT, STATE_FOO_TEST);
+  -----------------------------------------------------------------------------
+  -- components
+  -----------------------------------------------------------------------------
+  component ICAPFsm
+    generic (
+      ADDR_WIDTH : natural);
+    port (
+      ClkxCI        : in  std_logic;
+      ResetxRI      : in  std_logic;
+      StartxSI      : in  std_logic;
+      DonexSO       : out std_logic;
+      ErrorxSO      : out std_logic;
+      LenxDI        : in  std_logic_vector(ADDR_WIDTH-1 downto 0);
+      RamAddrxDO    : out std_logic_vector(ADDR_WIDTH-1 downto 0);
+      ICAPCExSI     : in  std_logic;
+      ICAPStatusxDI : in  std_logic_vector(0 to 31));
+  end component;
+
+  -----------------------------------------------------------------------------
+  -- signals
+  -----------------------------------------------------------------------------
+  type STATE_TYPE is (STATE_GET_BITSTREAM_ADDR, STATE_GET_BITSTREAM_SIZE, STATE_THREAD_EXIT,
+                      STATE_FINISHED, STATE_ERROR, STATE_CMPLEN, STATE_FETCH_MEM,
+                      STATE_ICAP_TRANSFER, STATE_MEM_CALC);
 
   constant MBOX_RECV   : std_logic_vector(C_FSL_WIDTH-1 downto 0) := x"00000000";
   constant MBOX_SEND   : std_logic_vector(C_FSL_WIDTH-1 downto 0) := x"00000001";
   constant ICAP_DWIDTH : integer                                  := 32;
+  constant ICAP_WIDTH  : string                                   := "X32";
 
-  constant C_LOCAL_RAM_SIZE          : integer := 2048;
+  constant C_LOCAL_RAM_SIZE          : integer := 2048;  -- in words
   constant C_LOCAL_RAM_ADDRESS_WIDTH : integer := clog2(C_LOCAL_RAM_SIZE);
   constant C_LOCAL_RAM_SIZE_IN_BYTES : integer := 4*C_LOCAL_RAM_SIZE;
 
@@ -60,11 +84,13 @@ architecture implementation of hwt_icap is
   signal i_ram   : i_ram_t;
   signal o_ram   : o_ram_t;
 
-  signal o_RAMAddr_icap : std_logic_vector(0 to C_LOCAL_RAM_ADDRESS_WIDTH-1);
-  signal o_RAMData_icap : std_logic_vector(0 to 31);
-  signal o_RAMWE_icap   : std_logic;
-  signal i_RAMData_icap : std_logic_vector(0 to 31);
+  -- local FSM RAM signals
+  signal ICAPRamAddrxD : std_logic_vector(0 to C_LOCAL_RAM_ADDRESS_WIDTH-1);
+  signal ICAPRamOutxD  : std_logic_vector(0 to 31);
+  signal ICAPRamWExD   : std_logic;
+  signal ICAPRamInxD   : std_logic_vector(0 to 31);
 
+  -- reconos RAM signals
   signal o_RAMAddr_reconos   : std_logic_vector(0 to C_LOCAL_RAM_ADDRESS_WIDTH-1);
   signal o_RAMAddr_reconos_2 : std_logic_vector(0 to 31);
   signal o_RAMData_reconos   : std_logic_vector(0 to 31);
@@ -77,16 +103,24 @@ architecture implementation of hwt_icap is
 
   signal ignore : std_logic_vector(C_FSL_WIDTH-1 downto 0);
 
-  signal addr   : std_logic_vector(31 downto 0);
-  signal len    : std_logic_vector(31 downto 0);
+  -- registers
+  signal AddrxD : std_logic_vector(31 downto 0);
+  signal LenxD  : std_logic_vector(31 downto 0);
+  signal LastxD : std_logic;
+
   signal result : std_logic_vector(31 downto 0);
 
-  -- icap commands
-  signal icap_busy    : std_logic;
-  signal icap_ce      : std_logic;
-  signal icap_we      : std_logic;
-  signal icap_datain  : std_logic_vector(0 to ICAP_DWIDTH-1);
-  signal icap_dataout : std_logic_vector(0 to ICAP_DWIDTH-1);
+  -- icap signals
+  signal ICAPBusyxS    : std_logic;
+  signal ICAPCExS      : std_logic;
+  signal ICAPWExS      : std_logic;
+  signal ICAPDataInxD  : std_logic_vector(0 to ICAP_DWIDTH-1);
+  signal ICAPDataOutxD : std_logic_vector(0 to ICAP_DWIDTH-1);
+
+  signal ICAPFsmDonexS  : std_logic;
+  signal ICAPFsmStartxS : std_logic;
+  signal ICAPFsmErrorxS : std_logic;
+  signal ICAPFsmLenxD   : std_logic_vector(31 downto 0);
 
 begin
 
@@ -95,7 +129,11 @@ begin
   memif_setup(i_memif, o_memif, FIFO32_S_Data, FIFO32_S_Fill, FIFO32_S_Rd, FIFO32_M_Data, FIFO32_M_Rem, FIFO32_M_Wr);
   ram_setup(i_ram, o_ram, o_RAMAddr_reconos_2, o_RAMData_reconos, i_RAMData_reconos, o_RAMWE_reconos);
 
+  -----------------------------------------------------------------------------
   -- local dual-port ram
+  -----------------------------------------------------------------------------
+
+  -- reconos port
   local_ram_ctrl_1 : process (clk) is
   begin
     if (rising_edge(clk)) then
@@ -107,20 +145,24 @@ begin
     end if;
   end process;
 
+  o_RAMAddr_reconos(0 to C_LOCAL_RAM_ADDRESS_WIDTH-1) <= o_RAMAddr_reconos_2((32-C_LOCAL_RAM_ADDRESS_WIDTH) to 31);
+
+  -- local FSM port
   local_ram_ctrl_2 : process (clk) is
   begin
     if (rising_edge(clk)) then
-      if (o_RAMWE_icap = '1') then
-        local_ram(conv_integer(unsigned(o_RAMAddr_icap))) := o_RAMData_icap;
+      if (ICAPRamWExD = '1') then
+        local_ram(conv_integer(unsigned(ICAPRamAddrxD))) := ICAPRamInxD;
       else
-        i_RAMData_icap <= local_ram(conv_integer(unsigned(o_RAMAddr_icap)));
+        ICAPRamOutxD <= local_ram(conv_integer(unsigned(ICAPRamAddrxD)));
       end if;
     end if;
   end process;
 
-  o_RAMAddr_reconos(0 to C_LOCAL_RAM_ADDRESS_WIDTH-1) <= o_RAMAddr_reconos_2((32-C_LOCAL_RAM_ADDRESS_WIDTH) to 31);
-
+  -----------------------------------------------------------------------------
+  -- Reconos FSM
   -- os and memory synchronisation state machine
+  -----------------------------------------------------------------------------
   reconos_fsm : process (clk, rst, o_osif) is
     variable done : boolean;
   begin
@@ -131,64 +173,185 @@ begin
       result <= (others => '0');
       state  <= STATE_GET_BITSTREAM_ADDR;
       done   := false;
-    elsif rising_edge(clk) then
-      -- TODO: delete those lines
-      icap_ce     <= '0';
-      icap_we     <= '0';
-      icap_datain <= (others => '0');
 
+      AddrxD <= (others => '0');
+      LenxD  <= (others => '0');
+      LastxD <= '0';
+    elsif rising_edge(clk) then
+      -- default assignments
+      ICAPFsmLenxD   <= (others => '1');
+      ICAPFsmStartxS <= '0';
 
       case state is
+        -----------------------------------------------------------------------
         -- get mem address
+        -----------------------------------------------------------------------
         when STATE_GET_BITSTREAM_ADDR =>
-          osif_mbox_get(i_osif, o_osif, MBOX_RECV, addr, done);
+          osif_mbox_get(i_osif, o_osif, MBOX_RECV, AddrxD, done);
+
           if done then
-            if (addr = X"FFFFFFFF") then
+            if (AddrxD = X"FFFFFFFF") then
               state <= STATE_THREAD_EXIT;
             else
               state <= STATE_GET_BITSTREAM_SIZE;
             end if;
           end if;
+
+          ---------------------------------------------------------------------
           -- get bitstream len
+          ---------------------------------------------------------------------
         when STATE_GET_BITSTREAM_SIZE =>
-          osif_mbox_get(i_osif, o_osif, MBOX_RECV, len, done);
+          osif_mbox_get(i_osif, o_osif, MBOX_RECV, LenxD, done);
+
           if done then
-            if (len = X"FFFFFFFF") then
+            if (LenxD = X"FFFFFFFF") then
               state <= STATE_THREAD_EXIT;
             else
-              state <= STATE_FOO_TEST;  -- STATE_SEND_RESULT;
+              state <= STATE_CMPLEN;
             end if;
           end if;
-          -- TODO configure partial bitstream using ICAP    
-        when STATE_FOO_TEST =>
-          icap_ce              <= '1';
-          icap_we              <= '1';
-          icap_datain(0 to 31) <= result(31 downto 0);
 
-          state <= STATE_SEND_RESULT;
+          ---------------------------------------------------------------------
+          -- Compare the remaining length of the bitstream with the size of our
+          -- memory
+          ---------------------------------------------------------------------
+        when STATE_CMPLEN =>
+          if LenxD <= C_LOCAL_RAM_SIZE then
+            LastxD <= '1';
+          else
+            LastxD <= '0';
+          end if;
 
+          state <= STATE_FETCH_MEM;
 
-          -- send result
-        when STATE_SEND_RESULT =>
+          ---------------------------------------------------------------------
+          -- Copy data from main memory to our local memory
+          ---------------------------------------------------------------------
+        when STATE_FETCH_MEM =>
+          if LastxD = '1' then
+            memif_read(i_ram, o_ram, i_memif, o_memif, AddrxD, X"00000000", LenxD, done);
+          else
+            memif_read(i_ram, o_ram, i_memif, o_memif, AddrxD, X"00000000", C_LOCAL_RAM_SIZE_IN_BYTES, done);
+          end if;
+
+          if done then
+            state <= STATE_ICAP_TRANSFER;
+          end if;
+
+          ---------------------------------------------------------------------
+          -- Send the data in our local memory to the ICAP port
+          ---------------------------------------------------------------------
+        when STATE_ICAP_TRANSFER =>
+          ICAPFsmStartxS <= '1';
+
+          if LastxDP = '1' then
+            -- the remaining size is less than our local memory size
+            ICAPFsmLenxD <= LenxDP(C_LOCAL_RAM_ADDRESS_WIDTH-1 downto 0);
+          else
+            -- transfer the content of the full memory to ICAP
+            ICAPFsmLenxD <= (others => '1');
+          end if;
+
+          if ICAPFsmErrorxS = '1' then
+            state <= STATE_ERROR;
+          else
+            if ICAPFsmDonexS = '1' then
+              if LastxDP = '1' then
+                state <= STATE_FINISHED;
+              else
+                state <= STATE_MEM_CALC;
+              end if;
+            end if;
+          end if;
+
+          ---------------------------------------------------------------------
+          -- Calculate the remaining length of the bitfile and the new address
+          ---------------------------------------------------------------------
+        when STATE_MEM_CALC =>
+          AddrxDN <= AddrxDP + C_LOCAL_RAM_SIZE;
+          LenxDN  <= LenxDP + C_LOCAL_RAM_SIZE;
+
+          state <= STATE_CMPLEN;
+
+          ---------------------------------------------------------------------
+          -- Oops, an error occurred! Tell the software that we are in trouble
+          ---------------------------------------------------------------------
+        when STATE_ERROR =>
+          -- TODO: set result to something meaningful
           osif_mbox_put(i_osif, o_osif, MBOX_SEND, result, ignore, done);
-          if done then state <= STATE_GET_BITSTREAM_ADDR; end if;
+
+          if done then
+            state <= STATE_GET_BITSTREAM_ADDR;
+          end if;
+
+          ---------------------------------------------------------------------
+          -- We are finished, send message
+          ---------------------------------------------------------------------
+        when STATE_FINISHED =>
+          -- TODO: set result to something meaningful
+          osif_mbox_put(i_osif, o_osif, MBOX_SEND, result, ignore, done);
+
+          if done then
+            state <= STATE_GET_BITSTREAM_ADDR;
+          end if;
+
+          ---------------------------------------------------------------------
           -- thread exit
+          ---------------------------------------------------------------------
         when STATE_THREAD_EXIT =>
           osif_thread_exit(i_osif, o_osif);
       end case;
     end if;
   end process;
 
+  -----------------------------------------------------------------------------
+  -- ICAP primitive of virtex 6
+  -----------------------------------------------------------------------------
   ICAP_VERTEX6_I : ICAP_VIRTEX6
     generic map (
-      ICAP_WIDTH => "X32")
+      ICAP_WIDTH => ICAP_WIDTH)
     port map (
       clk   => clk,
-      csb   => icap_ce,
-      rdwrb => icap_we,
-      i     => icap_datain,
-      busy  => icap_busy,
-      o     => icap_dataout);
+      csb   => not ICAPCExS,
+      rdwrb => ICAPWExS,
+      i     => ICAPDataInxD,
+      busy  => ICAPBusyxS,
+      o     => ICAPDataOutxD);
+
+
+  -----------------------------------------------------------------------------
+  -- ICAPFsm
+  -----------------------------------------------------------------------------
+  ICAPFsmInst : ICAPFsm
+    generic map (
+      ADDR_WIDTH => C_LOCAL_RAM_ADDRESS_WIDTH)
+    port map (
+      ClkxCI        => clk,
+      ResetxRI      => rst,
+      StartxSI      => ICAPFsmStartxS,
+      DonexSO       => ICAPFsmDonexS,
+      ErrorxSO      => ICAPFsmErrorxS,
+      LenxDI        => ICAPFsmLenxD,
+      RamAddrxDO    => ICAPRamAddrxD,
+      ICAPCExSI     => ICAPCExS,
+      ICAPStatusxDI => ICAPDataOutxD);
+
+
+  -----------------------------------------------------------------------------
+  -- concurrent signal assignments
+  -----------------------------------------------------------------------------
+
+  ICAPWExS    <= '1';
+  ICAPRamInxD <= (others => '0');
+  ICAPRamWExD <= '0';
+
+  -- bit swapping of RAM output so that it matches the input format of the ICAP
+  -- interface, see pg 43 of UG360 (v3.7)
+  bitSwapGen : for i in 0 to 3 generate
+    -- TODO: check if this is correct!
+    ICAPDataInxD(i * 8 to (i + 1) * 8 - 1) <= ICAPRamOutxD((i + 1) * 8 - 1 downto i * 8);
+  end generate bitSwapGen;
+
 
 end architecture;
 
