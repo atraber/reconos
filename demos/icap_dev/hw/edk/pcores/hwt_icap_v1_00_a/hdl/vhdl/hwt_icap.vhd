@@ -67,6 +67,8 @@ architecture implementation of hwt_icap is
 
   constant MBOX_RECV   : std_logic_vector(C_FSL_WIDTH-1 downto 0) := x"00000000";
   constant MBOX_SEND   : std_logic_vector(C_FSL_WIDTH-1 downto 0) := x"00000001";
+  constant RESULT_OK   : std_logic_vector(31 downto 0)            := x"13371337";
+  constant RESULT_FAIL : std_logic_vector(31 downto 0)            := x"FA17FA17";
   constant ICAP_DWIDTH : integer                                  := 32;
   constant ICAP_WIDTH  : string                                   := "X32";
 
@@ -85,7 +87,7 @@ architecture implementation of hwt_icap is
   signal o_ram   : o_ram_t;
 
   -- local FSM RAM signals
-  signal ICAPRamAddrxD : std_logic_vector(0 to C_LOCAL_RAM_ADDRESS_WIDTH-1);
+  signal ICAPRamAddrxD : std_logic_vector(0 to C_LOCAL_RAM_ADDRESS_WIDTH-1);  -- in words
   signal ICAPRamOutxD  : std_logic_vector(0 to 31);
   signal ICAPRamWExD   : std_logic;
   signal ICAPRamInxD   : std_logic_vector(0 to 31);
@@ -104,11 +106,9 @@ architecture implementation of hwt_icap is
   signal ignore : std_logic_vector(C_FSL_WIDTH-1 downto 0);
 
   -- registers
-  signal AddrxD : std_logic_vector(31 downto 0);
-  signal LenxD  : std_logic_vector(31 downto 0);
+  signal AddrxD : std_logic_vector(31 downto 0);  -- in bytes
+  signal LenxD  : std_logic_vector(31 downto 0);  -- in bytes
   signal LastxD : std_logic;
-
-  signal result : std_logic_vector(31 downto 0);
 
   -- icap signals
   signal ICAPBusyxS    : std_logic;
@@ -120,7 +120,7 @@ architecture implementation of hwt_icap is
   signal ICAPFsmDonexS  : std_logic;
   signal ICAPFsmStartxS : std_logic;
   signal ICAPFsmErrorxS : std_logic;
-  signal ICAPFsmLenxD   : std_logic_vector(31 downto 0);
+  signal ICAPFsmLenxD   : std_logic_vector(C_LOCAL_RAM_ADDRESS_WIDTH-1 downto 0);  -- in words
 
 begin
 
@@ -170,14 +170,14 @@ begin
       osif_reset(o_osif);
       memif_reset(o_memif);
       ram_reset(o_ram);
-      result <= (others => '0');
-      state  <= STATE_GET_BITSTREAM_ADDR;
-      done   := false;
+      state <= STATE_GET_BITSTREAM_ADDR;
+      done  := false;
 
       AddrxD <= (others => '0');
       LenxD  <= (others => '0');
       LastxD <= '0';
     elsif rising_edge(clk) then
+
       -- default assignments
       ICAPFsmLenxD   <= (others => '1');
       ICAPFsmStartxS <= '0';
@@ -229,9 +229,14 @@ begin
           ---------------------------------------------------------------------
         when STATE_FETCH_MEM =>
           if LastxD = '1' then
-            memif_read(i_ram, o_ram, i_memif, o_memif, AddrxD, X"00000000", LenxD, done);
+            -- LenxD is smaller than the size of local memory, so we only fill
+            -- it partially
+            memif_read(i_ram, o_ram, i_memif, o_memif, AddrxD, X"00000000",
+                       LenxD(23 downto 0), done);
           else
-            memif_read(i_ram, o_ram, i_memif, o_memif, AddrxD, X"00000000", C_LOCAL_RAM_SIZE_IN_BYTES, done);
+            -- completely fill our local memory
+            memif_read(i_ram, o_ram, i_memif, o_memif, AddrxD, X"00000000",
+                       conv_std_logic_vector(C_LOCAL_RAM_SIZE_IN_BYTES, 24), done);
           end if;
 
           if done then
@@ -244,9 +249,10 @@ begin
         when STATE_ICAP_TRANSFER =>
           ICAPFsmStartxS <= '1';
 
-          if LastxDP = '1' then
+          if LastxD = '1' then
             -- the remaining size is less than our local memory size
-            ICAPFsmLenxD <= LenxDP(C_LOCAL_RAM_ADDRESS_WIDTH-1 downto 0);
+            -- convert length from bytes to words here
+            ICAPFsmLenxD <= LenxD(C_LOCAL_RAM_ADDRESS_WIDTH-1+2 downto 2);
           else
             -- transfer the content of the full memory to ICAP
             ICAPFsmLenxD <= (others => '1');
@@ -256,7 +262,7 @@ begin
             state <= STATE_ERROR;
           else
             if ICAPFsmDonexS = '1' then
-              if LastxDP = '1' then
+              if LastxD = '1' then
                 state <= STATE_FINISHED;
               else
                 state <= STATE_MEM_CALC;
@@ -268,8 +274,8 @@ begin
           -- Calculate the remaining length of the bitfile and the new address
           ---------------------------------------------------------------------
         when STATE_MEM_CALC =>
-          AddrxDN <= AddrxDP + C_LOCAL_RAM_SIZE;
-          LenxDN  <= LenxDP + C_LOCAL_RAM_SIZE;
+          AddrxD <= AddrxD + C_LOCAL_RAM_SIZE_IN_BYTES;
+          LenxD  <= LenxD + C_LOCAL_RAM_SIZE_IN_BYTES;
 
           state <= STATE_CMPLEN;
 
@@ -277,8 +283,7 @@ begin
           -- Oops, an error occurred! Tell the software that we are in trouble
           ---------------------------------------------------------------------
         when STATE_ERROR =>
-          -- TODO: set result to something meaningful
-          osif_mbox_put(i_osif, o_osif, MBOX_SEND, result, ignore, done);
+          osif_mbox_put(i_osif, o_osif, MBOX_SEND, RESULT_FAIL, ignore, done);
 
           if done then
             state <= STATE_GET_BITSTREAM_ADDR;
@@ -288,8 +293,7 @@ begin
           -- We are finished, send message
           ---------------------------------------------------------------------
         when STATE_FINISHED =>
-          -- TODO: set result to something meaningful
-          osif_mbox_put(i_osif, o_osif, MBOX_SEND, result, ignore, done);
+          osif_mbox_put(i_osif, o_osif, MBOX_SEND, RESULT_OK, ignore, done);
 
           if done then
             state <= STATE_GET_BITSTREAM_ADDR;
@@ -347,10 +351,12 @@ begin
 
   -- bit swapping of RAM output so that it matches the input format of the ICAP
   -- interface, see pg 43 of UG360 (v3.7)
-  bitSwapGen : for i in 0 to 3 generate
-    -- TODO: check if this is correct!
-    ICAPDataInxD(i * 8 to (i + 1) * 8 - 1) <= ICAPRamOutxD((i + 1) * 8 - 1 downto i * 8);
-  end generate bitSwapGen;
+  -- TODO: check if this is correct!
+  swapGen : for i in 0 to 3 generate
+    bitSwapGen : for j in 0 to 7 generate
+      ICAPDataInxD(i * 8 + j) <= ICAPRamOutxD((i + 1) * 8 - 1 - j);
+    end generate bitSwapGen;
+  end generate swapGen;
 
 
 end architecture;

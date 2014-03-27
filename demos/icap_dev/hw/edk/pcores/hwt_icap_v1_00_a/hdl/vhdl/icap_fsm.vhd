@@ -1,6 +1,7 @@
 library ieee;
 use ieee.std_logic_1164.all;
-use ieee.numeric_std.all;
+use ieee.std_logic_arith.all;
+use ieee.std_logic_unsigned.all;
 
 entity ICAPFsm is
 
@@ -46,7 +47,7 @@ begin  -- implementation
   begin  -- process regFF
     if ResetxRI = '1' then              -- asynchronous reset (active high)
       StatexDP <= STATE_IDLE;
-      AddrxDP  <= to_unsigned(0, AddrxDP'length);
+      AddrxDP  <= unsigned(conv_std_logic_vector(0, AddrxDP'length));
     elsif ClkxCI'event and ClkxCI = '1' then  -- rising clock edge
       StatexDP <= StatexDN;
       AddrxDP  <= AddrxDN;
@@ -71,7 +72,7 @@ begin  -- implementation
       -- idle state, wait for start signal
       -------------------------------------------------------------------------
       when STATE_IDLE =>
-        AddrxDN <= to_unsigned(0, AddrxDP'length);
+        AddrxDN <= unsigned(conv_std_logic_vector(0, AddrxDP'length));
 
         if StartxSI = '1' then
           StatexDN <= STATE_WRITE;
