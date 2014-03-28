@@ -71,7 +71,7 @@ architecture implementation of hwt_icap is
       ErrorxSO      : out std_logic;
       LenxDI        : in  std_logic_vector(0 to ADDR_WIDTH-1);
       RamAddrxDO    : out std_logic_vector(0 to ADDR_WIDTH-1);
-      ICAPCExSO     : out std_logic;
+      ICAPCExSBO    : out std_logic;
       ICAPStatusxDI : in  std_logic_vector(0 to 31));
   end component;
 
@@ -132,8 +132,8 @@ architecture implementation of hwt_icap is
 
   -- icap signals
   signal ICAPBusyxS    : std_logic;
-  signal ICAPCExS      : std_logic;
-  signal ICAPWExS      : std_logic;
+  signal ICAPCExSB     : std_logic;
+  signal ICAPWExSB     : std_logic;
   signal ICAPDataInxD  : std_logic_vector(0 to ICAP_DWIDTH-1);
   signal ICAPDataOutxD : std_logic_vector(0 to ICAP_DWIDTH-1);
 
@@ -272,7 +272,7 @@ begin
           if LastxD = '1' then
             -- the remaining size is less than our local memory size
             -- convert length from bytes to words here
-            ICAPFsmLenxD <= LenSwapxD(2 to C_LOCAL_RAM_ADDRESS_WIDTH-1+2);
+            ICAPFsmLenxD <= LenxD(C_LOCAL_RAM_ADDRESS_WIDTH-1+2 downto 2);
           else
             -- transfer the content of the full memory to ICAP
             ICAPFsmLenxD <= (others => '1');
@@ -336,8 +336,8 @@ begin
       ICAP_WIDTH => ICAP_WIDTH)
     port map (
       clk   => clk,
-      csb   => not ICAPCExS,            -- active low
-      rdwrb => not ICAPWExS,            -- active low
+      csb   => ICAPCExSB,               -- active low
+      rdwrb => ICAPWExSB,               -- active low
       i     => ICAPDataInxD,
       busy  => ICAPBusyxS,
       o     => ICAPDataOutxD);
@@ -357,7 +357,7 @@ begin
       ErrorxSO      => ICAPFsmErrorxS,
       LenxDI        => ICAPFsmLenxD,
       RamAddrxDO    => ICAPRamAddrxD,
-      ICAPCExSO     => ICAPCExS,
+      ICAPCExSBO    => ICAPCExSB,
       ICAPStatusxDI => ICAPDataOutxD);
 
 
@@ -365,7 +365,7 @@ begin
   -- concurrent signal assignments
   -----------------------------------------------------------------------------
 
-  ICAPWExS    <= '1';
+  ICAPWExSB   <= '0';
   ICAPRamInxD <= (others => '0');
   ICAPRamWExD <= '0';
 
@@ -386,7 +386,7 @@ begin
   DebugICAPDataIn       <= ICAPDataInxD;
   DebugICAPRamOut       <= ICAPRamOutxD;
   DebugICAPOut          <= ICAPDataOutxD;
-  DebugICAPCE           <= ICAPCExS;
+  DebugICAPCE           <= ICAPCExSB;
   DebugICAPFsmStart     <= ICAPFsmStartxS;
   DebugICAPFsmDone      <= ICAPFsmDonexS;
   DebugICAPFsmError     <= ICAPFsmErrorxS;

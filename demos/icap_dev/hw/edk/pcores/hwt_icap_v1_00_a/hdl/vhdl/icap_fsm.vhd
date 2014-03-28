@@ -17,7 +17,7 @@ entity ICAPFsm is
     ErrorxSO      : out std_logic;
     LenxDI        : in  std_logic_vector(0 to ADDR_WIDTH-1);
     RamAddrxDO    : out std_logic_vector(0 to ADDR_WIDTH-1);
-    ICAPCExSO     : out std_logic;
+    ICAPCExSBO    : out std_logic;
     ICAPStatusxDI : in  std_logic_vector(0 to 31)
     );
 
@@ -31,7 +31,7 @@ architecture implementation of ICAPFsm is
   signal AddrxDP, AddrxDN   : unsigned(ADDR_WIDTH-1 downto 0);
   signal StatexDP, StatexDN : state_t;
 
-  signal ICAPCExS    : std_logic;
+  signal ICAPCExSB   : std_logic;
   signal DonexS      : std_logic;
   signal ErrorxS     : std_logic;
   signal ICAPErrorxS : std_logic;       -- is set to 1 if ICAPStatus indicates
@@ -60,11 +60,11 @@ begin  -- implementation
 
   icapFSM : process (AddrxDP, ICAPErrorxS, LenxDI, StartxSI, StatexDP)
   begin  -- process icapFSM
-    StatexDN <= StatexDP;
-    AddrxDN  <= AddrxDP;
-    ICAPCExS <= '0';
-    DonexS   <= '0';
-    ErrorxS  <= '0';
+    StatexDN  <= StatexDP;
+    AddrxDN   <= AddrxDP;
+    ICAPCExSB <= '1';
+    DonexS    <= '0';
+    ErrorxS   <= '0';
 
 
     case StatexDP is
@@ -90,8 +90,8 @@ begin  -- implementation
         -- Write to ICAP
         -------------------------------------------------------------------------
       when STATE_WRITE =>
-        ICAPCExS <= '1';
-        AddrxDN  <= AddrxDP + 1;
+        ICAPCExSB <= '0';               -- active low
+        AddrxDN   <= AddrxDP + 1;
 
         if ICAPErrorxS = '1' then
           StatexDN <= STATE_ERROR;
@@ -139,7 +139,7 @@ begin  -- implementation
   -- signal assignments
   -----------------------------------------------------------------------------
   ICAPErrorxS <= ICAPStatusxDI(7);
-  ICAPCExSO   <= ICAPCExS;
+  ICAPCExSBO  <= ICAPCExSB;
 
   -----------------------------------------------------------------------------
   -- output assignments
