@@ -15,9 +15,9 @@ entity ICAPFsm is
     StartxSI      : in  std_logic;
     DonexSO       : out std_logic;
     ErrorxSO      : out std_logic;
-    LenxDI        : in  std_logic_vector(ADDR_WIDTH-1 downto 0);
-    RamAddrxDO    : out std_logic_vector(ADDR_WIDTH-1 downto 0);
-    ICAPCExSI     : in  std_logic;
+    LenxDI        : in  std_logic_vector(0 to ADDR_WIDTH-1);
+    RamAddrxDO    : out std_logic_vector(0 to ADDR_WIDTH-1);
+    ICAPCExSO     : out std_logic;
     ICAPStatusxDI : in  std_logic_vector(0 to 31)
     );
 
@@ -25,7 +25,7 @@ end ICAPFsm;
 
 
 architecture implementation of ICAPFsm is
-  type state_t is (STATE_IDLE, STATE_WRITE, STATE_CHECK, STATE_FINISH, STATE_ERROR);
+  type state_t is (STATE_IDLE, STATE_WRITE, STATE_CHECK, STATE_FINISH, STATE_ERROR, STATE_WAIT);
 
   -- signals
   signal AddrxDP, AddrxDN   : unsigned(ADDR_WIDTH-1 downto 0);
@@ -69,8 +69,16 @@ begin  -- implementation
 
     case StatexDP is
       -------------------------------------------------------------------------
-      -- idle state, wait for start signal
+      -- wait state, we wait one cycle before going to state IDLE as otherwise
+      -- we would need probably create a mealy machine, which is something we
+      -- want to avoid
       -------------------------------------------------------------------------
+      when STATE_WAIT =>
+        StatexDN <= STATE_IDLE;
+
+        -------------------------------------------------------------------------
+        -- idle state, wait for start signal
+        -------------------------------------------------------------------------
       when STATE_IDLE =>
         AddrxDN <= unsigned(conv_std_logic_vector(0, AddrxDP'length));
 
@@ -109,7 +117,7 @@ begin  -- implementation
       when STATE_FINISH =>
         DonexS <= '1';
 
-        StatexDN <= STATE_IDLE;
+        StatexDN <= STATE_WAIT;
 
         -----------------------------------------------------------------------
         -- An error occurred, set ErrorxS to high
@@ -117,7 +125,7 @@ begin  -- implementation
       when STATE_ERROR =>
         ErrorxS <= '1';
 
-        StatexDN <= STATE_IDLE;
+        StatexDN <= STATE_WAIT;
 
         -------------------------------------------------------------------------
         -- default case, will never be reached, do nothing
@@ -131,6 +139,7 @@ begin  -- implementation
   -- signal assignments
   -----------------------------------------------------------------------------
   ICAPErrorxS <= ICAPStatusxDI(7);
+  ICAPCExSO   <= ICAPCExS;
 
   -----------------------------------------------------------------------------
   -- output assignments

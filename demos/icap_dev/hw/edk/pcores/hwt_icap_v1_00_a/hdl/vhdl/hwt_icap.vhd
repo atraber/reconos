@@ -35,17 +35,20 @@ entity hwt_icap is
 
 
     -- DEBUG
-    DebugICAPFsmStart     : out std_logic;
-    DebugICAPFsmDone      : out std_logic;
-    DebugICAPFsmError     : out std_logic;
-    DebugICAPRamAddr      : out std_logic_vector(0 to 31);
-    DebugLen              : out std_logic_vector(31 downto 0);
-    DebugAddr             : out std_logic_vector(31 downto 0);
-    DebugStateIsGetLength : out std_logic;
-    DebugICAPDataIn       : out std_logic_vector(0 to 31);
-    DebugICAPOut          : out std_logic_vector(0 to 31);
-    DebugICAPCE           : out std_logic;
-    DebugICAPRamOut       : out std_logic_vector(0 to 31);
+    DebugICAPFsmStart      : out std_logic;
+    DebugICAPFsmDone       : out std_logic;
+    DebugICAPFsmError      : out std_logic;
+    DebugICAPRamAddr       : out std_logic_vector(0 to 10);
+    DebugICAPFsmLen        : out std_logic_vector(0 to 10);
+    DebugLen               : out std_logic_vector(31 downto 0);
+    DebugAddr              : out std_logic_vector(31 downto 0);
+    DebugStateIsGetLength  : out std_logic;
+    DebugStateMemCalc      : out std_logic;
+    DebugStateIcapTransfer : out std_logic;
+    DebugICAPDataIn        : out std_logic_vector(0 to 31);
+    DebugICAPOut           : out std_logic_vector(0 to 31);
+    DebugICAPCE            : out std_logic;
+    DebugICAPRamOut        : out std_logic_vector(0 to 31);
 
     -- HWT reset and clock
     clk : in std_logic;
@@ -66,9 +69,9 @@ architecture implementation of hwt_icap is
       StartxSI      : in  std_logic;
       DonexSO       : out std_logic;
       ErrorxSO      : out std_logic;
-      LenxDI        : in  std_logic_vector(ADDR_WIDTH-1 downto 0);
-      RamAddrxDO    : out std_logic_vector(ADDR_WIDTH-1 downto 0);
-      ICAPCExSI     : in  std_logic;
+      LenxDI        : in  std_logic_vector(0 to ADDR_WIDTH-1);
+      RamAddrxDO    : out std_logic_vector(0 to ADDR_WIDTH-1);
+      ICAPCExSO     : out std_logic;
       ICAPStatusxDI : in  std_logic_vector(0 to 31));
   end component;
 
@@ -124,6 +127,9 @@ architecture implementation of hwt_icap is
   signal LenxD  : std_logic_vector(31 downto 0);  -- in bytes
   signal LastxD : std_logic;
 
+  -- helper signals
+  signal LenSwapxD : std_logic_vector(0 to 31);
+
   -- icap signals
   signal ICAPBusyxS    : std_logic;
   signal ICAPCExS      : std_logic;
@@ -134,7 +140,7 @@ architecture implementation of hwt_icap is
   signal ICAPFsmDonexS  : std_logic;
   signal ICAPFsmStartxS : std_logic;
   signal ICAPFsmErrorxS : std_logic;
-  signal ICAPFsmLenxD   : std_logic_vector(C_LOCAL_RAM_ADDRESS_WIDTH-1 downto 0);  -- in words
+  signal ICAPFsmLenxD   : std_logic_vector(0 to C_LOCAL_RAM_ADDRESS_WIDTH-1);  -- in words
 
 begin
 
@@ -266,7 +272,7 @@ begin
           if LastxD = '1' then
             -- the remaining size is less than our local memory size
             -- convert length from bytes to words here
-            ICAPFsmLenxD <= LenxD(C_LOCAL_RAM_ADDRESS_WIDTH-1+2 downto 2);
+            ICAPFsmLenxD <= LenSwapxD(2 to C_LOCAL_RAM_ADDRESS_WIDTH-1+2);
           else
             -- transfer the content of the full memory to ICAP
             ICAPFsmLenxD <= (others => '1');
@@ -330,8 +336,8 @@ begin
       ICAP_WIDTH => ICAP_WIDTH)
     port map (
       clk   => clk,
-      csb   => not ICAPCExS,
-      rdwrb => ICAPWExS,
+      csb   => not ICAPCExS,            -- active low
+      rdwrb => not ICAPWExS,            -- active low
       i     => ICAPDataInxD,
       busy  => ICAPBusyxS,
       o     => ICAPDataOutxD);
@@ -351,7 +357,7 @@ begin
       ErrorxSO      => ICAPFsmErrorxS,
       LenxDI        => ICAPFsmLenxD,
       RamAddrxDO    => ICAPRamAddrxD,
-      ICAPCExSI     => ICAPCExS,
+      ICAPCExSO     => ICAPCExS,
       ICAPStatusxDI => ICAPDataOutxD);
 
 
@@ -362,6 +368,9 @@ begin
   ICAPWExS    <= '1';
   ICAPRamInxD <= (others => '0');
   ICAPRamWExD <= '0';
+
+  -- swap bit order
+  LenSwapxD(0 to 31) <= LenxD(31 downto 0);
 
   -- bit swapping of RAM output so that it matches the input format of the ICAP
   -- interface, see pg 43 of UG360 (v3.7)
@@ -381,11 +390,16 @@ begin
   DebugICAPFsmStart     <= ICAPFsmStartxS;
   DebugICAPFsmDone      <= ICAPFsmDonexS;
   DebugICAPFsmError     <= ICAPFsmErrorxS;
-  DebugICAPRamAddr      <= ICAPRamAddrxD(0 to C_LOCAL_RAM_ADDRESS_WIDTH-1) & "000000000000000000000";
+  DebugICAPFsmLen       <= ICAPFsmLenxD;
+  DebugICAPRamAddr      <= ICAPRamAddrxD;
   DebugLen              <= LenxD;
   DebugAddr             <= AddrxD;
   DebugStateIsGetLength <= '1' when state = STATE_GET_BITSTREAM_SIZE
                            else '0';
+  DebugStateMemCalc <= '1' when state = STATE_MEM_CALC
+                       else '0';
+  DebugStateIcapTransfer <= '1' when state = STATE_ICAP_TRANSFER
+                            else '0';
 
 end architecture;
 

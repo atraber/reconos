@@ -49,8 +49,11 @@ PORT Clk="", DIR=I, SIGIS=Clk
 PORT DebugICAPFsmStart="", DIR=O
 PORT DebugICAPFsmDone="", DIR=O
 PORT DebugICAPFsmError="", DIR=O
-PORT DebugICAPRamAddr="", DIR=O, VEC=[0:31]
+PORT DebugICAPRamAddr="", DIR=O, VEC=[0:10]
+PORT DebugICAPFsmLen="", DIR=O, VEC=[0:10]
 PORT DebugStateIsGetLength="", DIR=O
+PORT DebugStateMemCalc="", DIR=O
+PORT DebugStateIcapTransfer="", DIR=O
 PORT DebugLen="", DIR=O, VEC=[0:31]
 PORT DebugAddr="", DIR=O, VEC=[0:31]
 PORT DebugICAPDataIn="", DIR=O, VEC=[0:31]

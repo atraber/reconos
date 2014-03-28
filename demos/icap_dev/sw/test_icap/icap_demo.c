@@ -132,27 +132,36 @@ FAIL:
 // load partial bitfile via hardware icap thread
 int hw_icap_load(int thread_id)
 {
-	unsigned int ret;
+	int ret;
 
-  printf("sending first msg, containing ptr %X\n", (uint32_t)pr_bit[thread_id].block);
-  sleep(1);
+  unsigned int addr = (unsigned int)pr_bit[thread_id].block;
+  unsigned int size = (unsigned int)pr_bit[thread_id].length * 4;
+
   // send address of bitfile in main memory to hwt
-	mbox_put(&mb_in[HWT_ICAP], (uint32_t)pr_bit[thread_id].block);
-  printf("sending second msg, containing %X\n", pr_bit[thread_id].length * 4);
-  sleep(1);
-  // send length of bitfile (in bytes) in main memory to hwt
-	mbox_put(&mb_in[HWT_ICAP], pr_bit[thread_id].length * 4);
-  printf("waiting for msg\n");
+  printf("sending first msg, containing ptr %X\n", addr);
+	mbox_put(&mb_in[HWT_ICAP], addr);
 
-  sleep(1);
-  printf("slept for 1s\n");
-  sleep(1);
+  // send length of bitfile (in bytes) in main memory to hwt
+  printf("sending second msg, containing %X\n", size);
+	mbox_put(&mb_in[HWT_ICAP], size);
+
   // wait for response from hwt
 	ret = mbox_get(&mb_out[HWT_ICAP]);
 	printf("hwt_icap returned %X\n", ret);
-  sleep(1);
 
-	return 0;
+	return ret;
+}
+
+int linux_icap_load(int thread_id)
+{
+  int ret = -2;
+
+  if(thread_id == ADD)
+    ret = system("cat partial_bitstreams/partial_add.bit > /dev/icap0");
+  else if(thread_id == SUB)
+    ret = system("cat partial_bitstreams/partial_sub.bit > /dev/icap0");
+
+  return ret;
 }
 
 int test_prblock(int thread_id)
@@ -165,8 +174,6 @@ int test_prblock(int thread_id)
 	if (thread_id==SUB && ret==(val/0x10000)-(val%0x10000)) return 1;
 	return 0;
 }
-
-int g_debug_hw_sw = 1;
 
 int reconfigure_prblock(int thread_id)
 {
@@ -187,35 +194,19 @@ int reconfigure_prblock(int thread_id)
 	t_start = gettime();
 	
 	// reconfigure hardware slot
-	if (thread_id == ADD) {
-    switch(g_reconf_mode) {
-      case RECONF_LINUX:
-        ret = system("cat partial_bitstreams/partial_add.bit > /dev/icap0");
-        break;
-      case RECONF_SW:
-        ret = sw_icap_load(thread_id);
-        break;
-      case RECONF_HW:
-        ret = hw_icap_load(thread_id);
-        break;
-    }
-
-    configured = thread_id;
-  } else if (thread_id==SUB) {
-    switch(g_reconf_mode) {
-      case RECONF_LINUX:
-        ret = system("cat partial_bitstreams/partial_sub.bit > /dev/icap0");
-        break;
-      case RECONF_SW:
-        ret = sw_icap_load(thread_id);
-        break;
-      case RECONF_HW:
-        ret = hw_icap_load(thread_id);
-        break;
-    }
-
-    configured = thread_id;
+  switch(g_reconf_mode) {
+    case RECONF_LINUX:
+      ret = linux_icap_load(thread_id);
+      break;
+    case RECONF_SW:
+      ret = sw_icap_load(thread_id);
+      break;
+    case RECONF_HW:
+      ret = hw_icap_load(thread_id);
+      break;
   }
+
+  configured = thread_id;
 
 	t_stop = gettime();
 	t_check = calc_timediff_ms(t_start, t_stop);
@@ -233,6 +224,8 @@ int reconfigure_prblock(int thread_id)
 int main(int argc, char *argv[])
 {
 	int i, ret,cnt=1;
+  int max_cnt = 10;
+
 	printf( "-------------------------------------------------------\n"
 		    "ICAP DEMONSTRATOR\n"
 		    "(" __FILE__ ")\n"
@@ -263,13 +256,17 @@ int main(int argc, char *argv[])
   cache_bitstream(SUB, "partial_bitstreams/partial_sub.bit");
 
   // parse command line arguments
-  if(argc >= 2) {
-    if(strcmp(argv[1], "-sw") == 0)
+  for(i = 1; i < argc; i++) {
+    if(strcmp(argv[i], "-sw") == 0)
       g_reconf_mode = RECONF_SW;
-    else if(strcmp(argv[1], "-hw") == 0)
+    else if(strcmp(argv[i], "-hw") == 0)
       g_reconf_mode = RECONF_HW;
-    else if(strcmp(argv[1], "-linux") == 0)
+    else if(strcmp(argv[i], "-linux") == 0)
       g_reconf_mode = RECONF_LINUX;
+    else if(strcmp(argv[i], "-n") == 0) {
+      if(i + 1 < argc)
+        max_cnt = atoi(argv[i + 1]);
+    }
   }
 
   // what configuration mode are we using?
@@ -298,13 +295,14 @@ int main(int argc, char *argv[])
 		ret = test_prblock(SUB);
 
 		if (ret) printf("  # SUB: passed\n"); else printf("  # SUB: failed\n");
+
+
+    // stop after n reconfigurations
+    if(cnt == max_cnt)
+      break;
+
 		sleep(1); 
 		cnt++;
-
-
-    // stop after 10 reconfigurations
-    if(cnt == 10)
-      break;
 	}
 	return 0;
 }
