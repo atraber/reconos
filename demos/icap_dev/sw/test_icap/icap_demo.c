@@ -129,6 +129,32 @@ FAIL:
   return retval;
 }
 
+// load partial bitfile via hardware icap thread
+int hw_icap_load(int thread_id)
+{
+	unsigned int ret;
+
+  printf("sending first msg, containing ptr %X\n", (uint32_t)pr_bit[thread_id].block);
+  sleep(1);
+  // send address of bitfile in main memory to hwt
+	mbox_put(&mb_in[HWT_ICAP], (uint32_t)pr_bit[thread_id].block);
+  printf("sending second msg, containing %X\n", pr_bit[thread_id].length * 4);
+  sleep(1);
+  // send length of bitfile (in bytes) in main memory to hwt
+	mbox_put(&mb_in[HWT_ICAP], pr_bit[thread_id].length * 4);
+  printf("waiting for msg\n");
+
+  sleep(1);
+  printf("slept for 1s\n");
+  sleep(1);
+  // wait for response from hwt
+	ret = mbox_get(&mb_out[HWT_ICAP]);
+	printf("hwt_icap returned %X\n", ret);
+  sleep(1);
+
+	return 0;
+}
+
 int test_prblock(int thread_id)
 {
 	unsigned int ret, val=0x60003;
@@ -137,16 +163,6 @@ int test_prblock(int thread_id)
 	printf("  calc - input=%x, output=%d\n",val,ret);
 	if (thread_id==ADD && ret==(val/0x10000)+(val%0x10000)) return 1;
 	if (thread_id==SUB && ret==(val/0x10000)-(val%0x10000)) return 1;
-	return 0;
-}
-
-int test_icapblock(void)
-{
-	unsigned int ret;
-	mbox_put(&mb_in[HWT_ICAP],1);
-	mbox_put(&mb_in[HWT_ICAP],2);
-	ret = mbox_get(&mb_out[HWT_ICAP]);
-	printf("  ret=%d\n",ret);
 	return 0;
 }
 
@@ -180,7 +196,7 @@ int reconfigure_prblock(int thread_id)
         ret = sw_icap_load(thread_id);
         break;
       case RECONF_HW:
-          printf("NOT YET IMPLEMENTED\n");
+        ret = hw_icap_load(thread_id);
         break;
     }
 
@@ -194,7 +210,7 @@ int reconfigure_prblock(int thread_id)
         ret = sw_icap_load(thread_id);
         break;
       case RECONF_HW:
-          printf("NOT YET IMPLEMENTED\n");
+        ret = hw_icap_load(thread_id);
         break;
     }
 
@@ -230,11 +246,11 @@ int main(int argc, char *argv[])
 	for (i=0; i<NUM_SLOTS; i++){
 		// mbox init
 		mbox_init(&mb_in[i],  10);
-	    	mbox_init(&mb_out[i], 10);
+    mbox_init(&mb_out[i], 10);
 		// define resources
 		res[i][0].type = RECONOS_TYPE_MBOX;
 		res[i][0].ptr  = &mb_in[i];	  	
-	    	res[i][1].type = RECONOS_TYPE_MBOX;
+    res[i][1].type = RECONOS_TYPE_MBOX;
 		res[i][1].ptr  = &mb_out[i];
 		// start delegate threads
 		reconos_hwt_setresources(&hwt[i],res[i],2);

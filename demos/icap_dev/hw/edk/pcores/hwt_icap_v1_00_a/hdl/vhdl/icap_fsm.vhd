@@ -135,7 +135,8 @@ begin  -- implementation
   -----------------------------------------------------------------------------
   -- output assignments
   -----------------------------------------------------------------------------
-  ErrorxSO <= ErrorxS;
-  DonexSO  <= DonexS;
+  ErrorxSO   <= ErrorxS;
+  DonexSO    <= DonexS;
+  RamAddrxDO <= std_logic_vector(AddrxDP);
 
 end implementation;

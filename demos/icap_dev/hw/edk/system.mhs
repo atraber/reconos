@@ -73,6 +73,17 @@ BEGIN hwt_icap
  BUS_INTERFACE MFIFO32 = fifo32_0a_mfifo32
  PORT Rst = proc_control_0_reset0
  PORT Clk = clk_100_0000MHzMMCM0
+ PORT DebugStateIsGetLength = hwt_icap_0_DebugStateIsGetLength_to_chipscope_ila_0
+ PORT DebugICAPFsmDone = hwt_icap_0_DebugICAPFsmDone_to_chipscope_ila_0
+ PORT DebugICAPFsmStart = hwt_icap_0_DebugICAPFsmStart_to_chipscope_ila_0
+ PORT DebugAddr = hwt_icap_0_DebugAddr_to_chipscope_ila_0
+ PORT DebugLen = hwt_icap_0_DebugLen_to_chipscope_ila_0
+ PORT DebugICAPFsmError = hwt_icap_0_DebugICAPFsmError_to_chipscope_ila_0
+ PORT DebugICAPCE = hwt_icap_0_DebugICAPCE_to_chipscope_ila_0
+ PORT DebugICAPDataIn = hwt_icap_0_DebugICAPDataIn_to_chipscope_ila_0
+ PORT DebugICAPOut = hwt_icap_0_DebugICAPOut_to_chipscope_ila_0
+ PORT DebugICAPRamAddr = hwt_icap_0_DebugICAPRamAddr_to_chipscope_ila_0
+ PORT DebugICAPRamOut = hwt_icap_0_DebugICAPRamOut_to_chipscope_ila_0
 END
 
 BEGIN plb_v46
@@ -536,6 +547,9 @@ BEGIN microblaze
  PARAMETER C_DCACHE_LINE_LEN = 8
  PARAMETER C_DCACHE_USE_WRITEBACK = 0
  PARAMETER C_PVR = 2
+ PARAMETER C_NUMBER_OF_PC_BRK = 1
+ PARAMETER C_NUMBER_OF_RD_ADDR_BRK = 0
+ PARAMETER C_NUMBER_OF_WR_ADDR_BRK = 0
  BUS_INTERFACE DPLB = mb_plb
  BUS_INTERFACE IPLB = mb_plb
  BUS_INTERFACE SFSL0 = fsl_v20_0a
@@ -551,5 +565,26 @@ BEGIN microblaze
  BUS_INTERFACE MFSL3 = fsl_v20_3b
  PORT MB_RESET = mb_reset
  PORT INTERRUPT = microblaze_0_Interrupt
+END
+
+BEGIN chipscope_icon
+ PARAMETER INSTANCE = chipscope_icon_0
+ PARAMETER HW_VER = 1.06.a
+ PARAMETER C_NUM_CONTROL_PORTS = 1
+ PORT control0 = chipscope_ila_0_icon_control
+END
+
+BEGIN chipscope_ila
+ PARAMETER INSTANCE = chipscope_ila_0
+ PARAMETER HW_VER = 1.05.a
+ PARAMETER C_TRIG0_UNITS = 1
+ PARAMETER C_NUM_DATA_SAMPLES = 8192
+ PARAMETER C_TRIG0_TRIGGER_IN_WIDTH = 5
+ PARAMETER C_TRIG1_UNITS = 1
+ PARAMETER C_TRIG1_TRIGGER_IN_WIDTH = 192
+ PORT chipscope_ila_control = chipscope_ila_0_icon_control
+ PORT CLK = clk_100_0000MHzMMCM0
+ PORT TRIG0 = hwt_icap_0_DebugStateIsGetLength_to_chipscope_ila_0 & hwt_icap_0_DebugICAPFsmDone_to_chipscope_ila_0 & hwt_icap_0_DebugICAPFsmStart_to_chipscope_ila_0 & hwt_icap_0_DebugICAPFsmError_to_chipscope_ila_0 & hwt_icap_0_DebugICAPCE_to_chipscope_ila_0
+ PORT TRIG1 = hwt_icap_0_DebugAddr_to_chipscope_ila_0 & hwt_icap_0_DebugLen_to_chipscope_ila_0 & hwt_icap_0_DebugICAPDataIn_to_chipscope_ila_0 & hwt_icap_0_DebugICAPOut_to_chipscope_ila_0 & hwt_icap_0_DebugICAPRamAddr_to_chipscope_ila_0 & hwt_icap_0_DebugICAPRamOut_to_chipscope_ila_0
 END
 

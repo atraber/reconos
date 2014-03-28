@@ -33,6 +33,20 @@ entity hwt_icap is
     FIFO32_S_Rd   : out std_logic;
     FIFO32_M_Wr   : out std_logic;
 
+
+    -- DEBUG
+    DebugICAPFsmStart     : out std_logic;
+    DebugICAPFsmDone      : out std_logic;
+    DebugICAPFsmError     : out std_logic;
+    DebugICAPRamAddr      : out std_logic_vector(0 to 31);
+    DebugLen              : out std_logic_vector(31 downto 0);
+    DebugAddr             : out std_logic_vector(31 downto 0);
+    DebugStateIsGetLength : out std_logic;
+    DebugICAPDataIn       : out std_logic_vector(0 to 31);
+    DebugICAPOut          : out std_logic_vector(0 to 31);
+    DebugICAPCE           : out std_logic;
+    DebugICAPRamOut       : out std_logic_vector(0 to 31);
+
     -- HWT reset and clock
     clk : in std_logic;
     rst : in std_logic
@@ -275,7 +289,7 @@ begin
           ---------------------------------------------------------------------
         when STATE_MEM_CALC =>
           AddrxD <= AddrxD + C_LOCAL_RAM_SIZE_IN_BYTES;
-          LenxD  <= LenxD + C_LOCAL_RAM_SIZE_IN_BYTES;
+          LenxD  <= LenxD - C_LOCAL_RAM_SIZE_IN_BYTES;
 
           state <= STATE_CMPLEN;
 
@@ -357,6 +371,21 @@ begin
       ICAPDataInxD(i * 8 + j) <= ICAPRamOutxD((i + 1) * 8 - 1 - j);
     end generate bitSwapGen;
   end generate swapGen;
+
+
+  -- DEBUG
+  DebugICAPDataIn       <= ICAPDataInxD;
+  DebugICAPRamOut       <= ICAPRamOutxD;
+  DebugICAPOut          <= ICAPDataOutxD;
+  DebugICAPCE           <= ICAPCExS;
+  DebugICAPFsmStart     <= ICAPFsmStartxS;
+  DebugICAPFsmDone      <= ICAPFsmDonexS;
+  DebugICAPFsmError     <= ICAPFsmErrorxS;
+  DebugICAPRamAddr      <= ICAPRamAddrxD(0 to C_LOCAL_RAM_ADDRESS_WIDTH-1) & "000000000000000000000";
+  DebugLen              <= LenxD;
+  DebugAddr             <= AddrxD;
+  DebugStateIsGetLength <= '1' when state = STATE_GET_BITSTREAM_SIZE
+                           else '0';
 
 end architecture;
 
