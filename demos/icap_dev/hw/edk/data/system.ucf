@@ -351,6 +351,7 @@ NET "xps_hwicap_0/xps_hwicap_0/HWICAP_CTRL_I/icap_statemachine_I1/Icap_datain<*>
 NET "xps_hwicap_0/xps_hwicap_0/HWICAP_CTRL_I/icap_statemachine_I1/Icap_ce" MAXDELAY = 2ns;
 NET "xps_hwicap_0/xps_hwicap_0/HWICAP_CTRL_I/icap_statemachine_I1/Icap_we" MAXDELAY = 2ns;
 
+
 NET "clk_100_0000MHzMMCM0" TNM = "PLBCLK_GRP";
 NET "clk_80_ICAP" TNM = "ICAPCLK_GRP";
 TIMESPEC TS_TIG0 = FROM "PLBCLK_GRP" TO "ICAPCLK_GRP" TIG;

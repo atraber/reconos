@@ -18,6 +18,7 @@ entity ICAPFsm is
     LenxDI        : in  std_logic_vector(0 to ADDR_WIDTH-1);
     RamAddrxDO    : out std_logic_vector(0 to ADDR_WIDTH-1);
     ICAPCExSBO    : out std_logic;
+    ICAPWExSBO    : out std_logic;
     ICAPStatusxDI : in  std_logic_vector(0 to 31)
     );
 
@@ -25,13 +26,15 @@ end ICAPFsm;
 
 
 architecture implementation of ICAPFsm is
-  type state_t is (STATE_IDLE, STATE_WRITE, STATE_CHECK, STATE_FINISH, STATE_ERROR, STATE_WAIT);
+  type state_t is (STATE_IDLE, STATE_WRITE, STATE_CHECK, STATE_FINISH, STATE_ERROR, STATE_WAIT,
+                   STATE_ABORT0, STATE_ABORT1);        -- TODO: remove abort!
 
   -- signals
   signal AddrxDP, AddrxDN   : unsigned(ADDR_WIDTH-1 downto 0);
   signal StatexDP, StatexDN : state_t;
 
   signal ICAPCExSB   : std_logic;
+  signal ICAPWExSB   : std_logic;
   signal DonexS      : std_logic;
   signal ErrorxS     : std_logic;
   signal ICAPErrorxS : std_logic;       -- is set to 1 if ICAPStatus indicates
@@ -62,12 +65,28 @@ begin  -- implementation
   begin  -- process icapFSM
     StatexDN  <= StatexDP;
     AddrxDN   <= AddrxDP;
-    ICAPCExSB <= '1';
+    ICAPCExSB <= '1';                   -- active low, so not active here
+    ICAPWExSB <= '0';                   -- active low, doing a write
     DonexS    <= '0';
     ErrorxS   <= '0';
 
 
     case StatexDP is
+      -------------------------------------------------------------------------
+      -- DEBUG, TODO: REMOVE
+      -------------------------------------------------------------------------
+      when STATE_ABORT0 =>
+        ICAPCExSB <= '0';
+        StatexDN <= STATE_ABORT1;
+
+      -------------------------------------------------------------------------
+      -- DEBUG, TODO: REMOVE
+      -------------------------------------------------------------------------
+      when STATE_ABORT1 =>
+        ICAPCExSB <= '0';
+        ICAPWExSB <= '1';
+        StatexDN <= STATE_WRITE;
+
       -------------------------------------------------------------------------
       -- wait state, we wait one cycle before going to state IDLE as otherwise
       -- we would need probably create a mealy machine, which is something we
@@ -83,7 +102,7 @@ begin  -- implementation
         AddrxDN <= unsigned(conv_std_logic_vector(0, AddrxDP'length));
 
         if StartxSI = '1' then
-          StatexDN <= STATE_WRITE;
+          StatexDN <= STATE_ABORT0;
         end if;
 
         -------------------------------------------------------------------------
@@ -140,6 +159,7 @@ begin  -- implementation
   -----------------------------------------------------------------------------
   ICAPErrorxS <= ICAPStatusxDI(7);
   ICAPCExSBO  <= ICAPCExSB;
+  ICAPWExSBO  <= ICAPWExSB;
 
   -----------------------------------------------------------------------------
   -- output assignments

@@ -77,9 +77,12 @@ BEGIN hwt_icap
  PORT DebugICAPFsmDone = hwt_icap_0_DebugICAPFsmDone_to_chipscope_ila_0
  PORT DebugICAPFsmStart = hwt_icap_0_DebugICAPFsmStart_to_chipscope_ila_0
  PORT DebugICAPCE = hwt_icap_0_DebugICAPCE_to_chipscope_ila_0
+ PORT DebugStateMemCalc = hwt_icap_0_DebugStateMemCalc_to_chipscope_ila_0
  PORT DebugICAPOut = hwt_icap_0_DebugICAPOut_to_chipscope_ila_0
  PORT DebugICAPRamAddr = hwt_icap_0_DebugICAPRamAddr_to_chipscope_ila_0
- PORT DebugStateMemCalc = hwt_icap_0_DebugStateMemCalc_to_chipscope_ila_0
+ PORT DebugStateIcapTransfer = hwt_icap_0_DebugStateIcapTransfer_to_chipscope_ila_0
+ PORT DebugICAPWE = hwt_icap_0_DebugICAPWE_to_chipscope_ila_0
+ PORT DebugICAPBusy = hwt_icap_0_DebugICAPBusy_to_chipscope_ila_0
 END
 
 BEGIN plb_v46
@@ -203,7 +206,6 @@ BEGIN clock_generator
  PORT CLKOUT1 = clk_200_0000MHzMMCM0
  PORT CLKOUT2 = clk_400_0000MHzMMCM0
  PORT CLKOUT3 = clk_400_0000MHzMMCM0_nobuf_varphase
- PORT CLKOUT4 = clk_80_ICAP
  PORT PSCLK = clk_200_0000MHzMMCM0
  PORT PSEN = MPMC_DCM_PSEN
  PORT PSINCDEC = MPMC_DCM_PSINCDEC
@@ -245,7 +247,7 @@ BEGIN xps_intc
  PARAMETER C_HIGHADDR = 0x8180ffff
  PARAMETER C_NUM_INTR_INPUTS = 8
  BUS_INTERFACE SPLB = mb_plb
- PORT Intr = mdm_0_Interrupt & Ethernet_MAC_IP2INTC_Irpt & xps_timer_0_Interrupt & xps_hwicap_0_IP2INTC_Irpt & RS232_Uart_1_Interrupt & gnd2int_0_gnd15 & gnd2int_0_gnd14 & gnd2int_0_gnd13 & gnd2int_0_gnd12 & gnd2int_0_gnd11 & gnd2int_0_gnd10 & gnd2int_0_gnd9 & gnd2int_0_gnd8 & gnd2int_0_gnd7 & gnd2int_0_gnd6 & gnd2int_0_gnd5 & gnd2int_0_gnd4 & fsl_v20_3a_FSL_Has_Data & fsl_v20_2a_FSL_Has_Data & fsl_v20_1a_FSL_Has_Data & fsl_v20_0a_FSL_Has_Data & xps_sysace_0_SysACE_IRQ
+ PORT Intr = mdm_0_Interrupt & Ethernet_MAC_IP2INTC_Irpt & xps_timer_0_Interrupt & RS232_Uart_1_Interrupt & gnd2int_0_gnd15 & gnd2int_0_gnd14 & gnd2int_0_gnd13 & gnd2int_0_gnd12 & gnd2int_0_gnd11 & gnd2int_0_gnd10 & gnd2int_0_gnd9 & gnd2int_0_gnd8 & gnd2int_0_gnd7 & gnd2int_0_gnd6 & gnd2int_0_gnd5 & gnd2int_0_gnd4 & fsl_v20_3a_FSL_Has_Data & fsl_v20_2a_FSL_Has_Data & fsl_v20_1a_FSL_Has_Data & fsl_v20_0a_FSL_Has_Data & xps_sysace_0_SysACE_IRQ
  PORT Irq = microblaze_0_Interrupt
 END
 
@@ -511,17 +513,6 @@ BEGIN xps_sysace
  PORT SysACE_CLK = xps_sysace_0_SysACE_CLK
 END
 
-BEGIN xps_hwicap
- PARAMETER INSTANCE = xps_hwicap_0
- PARAMETER HW_VER = 5.01.a
- PARAMETER C_BASEADDR = 0x86000000
- PARAMETER C_HIGHADDR = 0x8600FFFF
- BUS_INTERFACE SPLB = mb_plb
- PORT IP2INTC_Irpt = xps_hwicap_0_IP2INTC_Irpt
-# clk_100_0000MHzMMCM0
- PORT ICAP_Clk = clk_80_ICAP
-END
-
 BEGIN microblaze
  PARAMETER INSTANCE = microblaze_0
  PARAMETER HW_VER = 8.50.b
@@ -575,12 +566,9 @@ BEGIN chipscope_ila
  PARAMETER HW_VER = 1.05.a
  PARAMETER C_TRIG0_UNITS = 1
  PARAMETER C_NUM_DATA_SAMPLES = 4096
- PARAMETER C_TRIG0_TRIGGER_IN_WIDTH = 5
- PARAMETER C_TRIG1_UNITS = 1
- PARAMETER C_TRIG1_TRIGGER_IN_WIDTH = 64
+ PARAMETER C_TRIG0_TRIGGER_IN_WIDTH = 51
  PORT chipscope_ila_control = chipscope_ila_0_icon_control
  PORT CLK = clk_100_0000MHzMMCM0
- PORT TRIG0 = hwt_icap_0_DebugStateIsGetLength_to_chipscope_ila_0 & hwt_icap_0_DebugICAPFsmDone_to_chipscope_ila_0 & hwt_icap_0_DebugICAPFsmStart_to_chipscope_ila_0 & hwt_icap_0_DebugICAPCE_to_chipscope_ila_0 & hwt_icap_0_DebugStateMemCalc_to_chipscope_ila_0
- PORT TRIG1 = hwt_icap_0_DebugICAPOut_to_chipscope_ila_0 & hwt_icap_0_DebugICAPRamAddr_to_chipscope_ila_0
+ PORT TRIG0 = hwt_icap_0_DebugStateIsGetLength_to_chipscope_ila_0 & hwt_icap_0_DebugICAPFsmDone_to_chipscope_ila_0 & hwt_icap_0_DebugICAPFsmStart_to_chipscope_ila_0 & hwt_icap_0_DebugICAPCE_to_chipscope_ila_0 & hwt_icap_0_DebugStateMemCalc_to_chipscope_ila_0 & hwt_icap_0_DebugICAPOut_to_chipscope_ila_0 & hwt_icap_0_DebugICAPRamAddr_to_chipscope_ila_0 & hwt_icap_0_DebugStateIcapTransfer_to_chipscope_ila_0 & hwt_icap_0_DebugICAPWE_to_chipscope_ila_0 & hwt_icap_0_DebugICAPBusy_to_chipscope_ila_0
 END
 

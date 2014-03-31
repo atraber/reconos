@@ -48,6 +48,8 @@ entity hwt_icap is
     DebugICAPDataIn        : out std_logic_vector(0 to 31);
     DebugICAPOut           : out std_logic_vector(0 to 31);
     DebugICAPCE            : out std_logic;
+    DebugICAPWE            : out std_logic;
+    DebugICAPBusy          : out std_logic;
     DebugICAPRamOut        : out std_logic_vector(0 to 31);
 
     -- HWT reset and clock
@@ -72,6 +74,7 @@ architecture implementation of hwt_icap is
       LenxDI        : in  std_logic_vector(0 to ADDR_WIDTH-1);
       RamAddrxDO    : out std_logic_vector(0 to ADDR_WIDTH-1);
       ICAPCExSBO    : out std_logic;
+      ICAPWExSBO    : out std_logic;
       ICAPStatusxDI : in  std_logic_vector(0 to 31));
   end component;
 
@@ -236,7 +239,7 @@ begin
           -- memory
           ---------------------------------------------------------------------
         when STATE_CMPLEN =>
-          if LenxD <= C_LOCAL_RAM_SIZE then
+          if LenxD <= C_LOCAL_RAM_SIZE_IN_BYTES then
             LastxD <= '1';
           else
             LastxD <= '0';
@@ -358,6 +361,7 @@ begin
       LenxDI        => ICAPFsmLenxD,
       RamAddrxDO    => ICAPRamAddrxD,
       ICAPCExSBO    => ICAPCExSB,
+      ICAPWExSBO    => ICAPWExSB,
       ICAPStatusxDI => ICAPDataOutxD);
 
 
@@ -365,7 +369,6 @@ begin
   -- concurrent signal assignments
   -----------------------------------------------------------------------------
 
-  ICAPWExSB   <= '0';
   ICAPRamInxD <= (others => '0');
   ICAPRamWExD <= '0';
 
@@ -387,6 +390,8 @@ begin
   DebugICAPRamOut       <= ICAPRamOutxD;
   DebugICAPOut          <= ICAPDataOutxD;
   DebugICAPCE           <= ICAPCExSB;
+  DebugICAPWE           <= ICAPWExSB;
+  DebugICAPBusy         <= ICAPBusyxS;
   DebugICAPFsmStart     <= ICAPFsmStartxS;
   DebugICAPFsmDone      <= ICAPFsmDonexS;
   DebugICAPFsmError     <= ICAPFsmErrorxS;

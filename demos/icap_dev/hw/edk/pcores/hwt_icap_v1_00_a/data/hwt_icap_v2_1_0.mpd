@@ -59,6 +59,8 @@ PORT DebugAddr="", DIR=O, VEC=[0:31]
 PORT DebugICAPDataIn="", DIR=O, VEC=[0:31]
 PORT DebugICAPOut="", DIR=O, VEC=[0:31]
 PORT DebugICAPCE="", DIR=O
+PORT DebugICAPWE="", DIR=O
+PORT DebugICAPBusy="", DIR=O
 PORT DebugICAPRamOut="", DIR=O, VEC=[0:31]
 
 END
