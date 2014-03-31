@@ -47,6 +47,7 @@ entity hwt_icap is
     DebugStateIcapTransfer : out std_logic;
     DebugICAPDataIn        : out std_logic_vector(0 to 31);
     DebugICAPOut           : out std_logic_vector(0 to 31);
+    DebugICAPStatusError   : out std_logic;
     DebugICAPCE            : out std_logic;
     DebugICAPWE            : out std_logic;
     DebugICAPBusy          : out std_logic;
@@ -69,6 +70,7 @@ architecture implementation of hwt_icap is
       ClkxCI        : in  std_logic;
       ResetxRI      : in  std_logic;
       StartxSI      : in  std_logic;
+      ModexSI       : in  std_logic;
       DonexSO       : out std_logic;
       ErrorxSO      : out std_logic;
       LenxDI        : in  std_logic_vector(0 to ADDR_WIDTH-1);
@@ -83,7 +85,7 @@ architecture implementation of hwt_icap is
   -----------------------------------------------------------------------------
   type STATE_TYPE is (STATE_GET_BITSTREAM_ADDR, STATE_GET_BITSTREAM_SIZE, STATE_THREAD_EXIT,
                       STATE_FINISHED, STATE_ERROR, STATE_CMPLEN, STATE_FETCH_MEM,
-                      STATE_ICAP_TRANSFER, STATE_MEM_CALC);
+                      STATE_ICAP_TRANSFER, STATE_ICAP_ABORT, STATE_MEM_CALC);
 
   constant MBOX_RECV   : std_logic_vector(C_FSL_WIDTH-1 downto 0) := x"00000000";
   constant MBOX_SEND   : std_logic_vector(C_FSL_WIDTH-1 downto 0) := x"00000001";
@@ -140,8 +142,9 @@ architecture implementation of hwt_icap is
   signal ICAPDataInxD  : std_logic_vector(0 to ICAP_DWIDTH-1);
   signal ICAPDataOutxD : std_logic_vector(0 to ICAP_DWIDTH-1);
 
-  signal ICAPFsmDonexS  : std_logic;
   signal ICAPFsmStartxS : std_logic;
+  signal ICAPFsmModexS  : std_logic;
+  signal ICAPFsmDonexS  : std_logic;
   signal ICAPFsmErrorxS : std_logic;
   signal ICAPFsmLenxD   : std_logic_vector(0 to C_LOCAL_RAM_ADDRESS_WIDTH-1);  -- in words
 
@@ -204,6 +207,7 @@ begin
       -- default assignments
       ICAPFsmLenxD   <= (others => '1');
       ICAPFsmStartxS <= '0';
+      ICAPFsmModexS  <= '0';            -- write
 
       case state is
         -----------------------------------------------------------------------
@@ -230,8 +234,19 @@ begin
             if (LenxD = X"FFFFFFFF") then
               state <= STATE_THREAD_EXIT;
             else
-              state <= STATE_CMPLEN;
+              state <= STATE_ICAP_ABORT;
             end if;
+          end if;
+
+          ---------------------------------------------------------------------
+          -- Do an ICAP abort to ensure that we are using the active ICAP interface
+          ---------------------------------------------------------------------
+        when STATE_ICAP_ABORT =>
+          ICAPFsmStartxS <= '1';
+          ICAPFsmModexS  <= '1';        -- abort
+
+          if ICAPFsmDonexS = '1' then
+            state <= STATE_CMPLEN;
           end if;
 
           ---------------------------------------------------------------------
@@ -356,6 +371,7 @@ begin
       ClkxCI        => clk,
       ResetxRI      => rst,
       StartxSI      => ICAPFsmStartxS,
+      ModexSI       => ICAPFsmModexS,
       DonexSO       => ICAPFsmDonexS,
       ErrorxSO      => ICAPFsmErrorxS,
       LenxDI        => ICAPFsmLenxD,
@@ -389,6 +405,7 @@ begin
   DebugICAPDataIn       <= ICAPDataInxD;
   DebugICAPRamOut       <= ICAPRamOutxD;
   DebugICAPOut          <= ICAPDataOutxD;
+  DebugICAPStatusError  <= ICAPDataOutxD(25);
   DebugICAPCE           <= ICAPCExSB;
   DebugICAPWE           <= ICAPWExSB;
   DebugICAPBusy         <= ICAPBusyxS;

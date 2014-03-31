@@ -478,6 +478,48 @@ NET "xps_hwicap_0/xps_hwicap_0/HWICAP_CTRL_I/icap_statemachine_I1/Icap_we" MAXDE
 #TIMESPEC TS_TIG1 = FROM "ICAPCLK_GRP" TO "PLBCLK_GRP" TIG ;
 
 
+##############################################################################
+# hwt_icap
+##############################################################################
+NET "hwt_icap_0/DebugICAPRamOut[0]" MAXDELAY = 2 ns;
+NET "hwt_icap_0/DebugICAPRamOut[1]" MAXDELAY = 2 ns;
+NET "hwt_icap_0/DebugICAPRamOut[2]" MAXDELAY = 2 ns;
+NET "hwt_icap_0/DebugICAPRamOut[3]" MAXDELAY = 2 ns;
+NET "hwt_icap_0/DebugICAPRamOut[4]" MAXDELAY = 2 ns;
+NET "hwt_icap_0/DebugICAPRamOut[5]" MAXDELAY = 2 ns;
+NET "hwt_icap_0/DebugICAPRamOut[6]" MAXDELAY = 2 ns;
+NET "hwt_icap_0/DebugICAPRamOut[7]" MAXDELAY = 2 ns;
+NET "hwt_icap_0/DebugICAPRamOut[8]" MAXDELAY = 2 ns;
+NET "hwt_icap_0/DebugICAPRamOut[9]" MAXDELAY = 2 ns;
+NET "hwt_icap_0/DebugICAPRamOut[10]" MAXDELAY = 2 ns;
+NET "hwt_icap_0/DebugICAPRamOut[11]" MAXDELAY = 2 ns;
+NET "hwt_icap_0/DebugICAPRamOut[12]" MAXDELAY = 2 ns;
+NET "hwt_icap_0/DebugICAPRamOut[13]" MAXDELAY = 2 ns;
+NET "hwt_icap_0/DebugICAPRamOut[14]" MAXDELAY = 2 ns;
+NET "hwt_icap_0/DebugICAPRamOut[15]" MAXDELAY = 2 ns;
+NET "hwt_icap_0/DebugICAPRamOut[16]" MAXDELAY = 2 ns;
+NET "hwt_icap_0/DebugICAPRamOut[17]" MAXDELAY = 2 ns;
+NET "hwt_icap_0/DebugICAPRamOut[18]" MAXDELAY = 2 ns;
+NET "hwt_icap_0/DebugICAPRamOut[19]" MAXDELAY = 2 ns;
+NET "hwt_icap_0/DebugICAPRamOut[20]" MAXDELAY = 2 ns;
+NET "hwt_icap_0/DebugICAPRamOut[21]" MAXDELAY = 2 ns;
+NET "hwt_icap_0/DebugICAPRamOut[22]" MAXDELAY = 2 ns;
+NET "hwt_icap_0/DebugICAPRamOut[23]" MAXDELAY = 2 ns;
+NET "hwt_icap_0/DebugICAPRamOut[24]" MAXDELAY = 2 ns;
+NET "hwt_icap_0/DebugICAPRamOut[25]" MAXDELAY = 2 ns;
+NET "hwt_icap_0/DebugICAPRamOut[26]" MAXDELAY = 2 ns;
+NET "hwt_icap_0/DebugICAPRamOut[27]" MAXDELAY = 2 ns;
+NET "hwt_icap_0/DebugICAPRamOut[28]" MAXDELAY = 2 ns;
+NET "hwt_icap_0/DebugICAPRamOut[29]" MAXDELAY = 2 ns;
+NET "hwt_icap_0/DebugICAPRamOut[30]" MAXDELAY = 2 ns;
+NET "hwt_icap_0/DebugICAPRamOut[31]" MAXDELAY = 2 ns;
+NET "hwt_icap_0_DebugICAPCE_to_chipscope_ila_0" MAXDELAY = 2 ns;
+NET "hwt_icap_0_DebugICAPWE_to_chipscope_ila_0" MAXDELAY = 2 ns;
+
+# place hwt_icap on top icap
+INST "hwt_icap_0/hwt_icap_0/ICAP_VERTEX6_I" LOC = ICAP_X0Y1;
+
+
 INST "hwt_pr_block_0" AREA_GROUP = "pblock_hwt_pr_block_0";
 AREA_GROUP "pblock_hwt_pr_block_0" RANGE=SLICE_X0Y120:SLICE_X61Y199;
 AREA_GROUP "pblock_hwt_pr_block_0" RANGE=DSP48_X0Y48:DSP48_X3Y79;

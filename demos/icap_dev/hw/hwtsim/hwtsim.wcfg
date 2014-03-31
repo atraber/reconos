@@ -3,7 +3,7 @@
    <wave_state>
    </wave_state>
    <db_ref_list>
-      <db_ref path="/home/atraber/git/reconos/demos/icap_dev/hw/hwtsim/hwt_tb_isim_beh1.wdb" id="1" type="auto">
+      <db_ref path="/home/atraber/git/reconos/demos/icap_dev/hw/hwtsim/hwt_tb_isim_beh.wdb" id="1" type="auto">
          <top_modules>
             <top_module name="hwt_tb" />
             <top_module name="numeric_std" />
@@ -20,84 +20,12 @@
          </top_modules>
       </db_ref>
    </db_ref_list>
-   <WVObjectSize size="61" />
+   <WVObjectSize size="47" />
    <wvobject fp_name="divider58" type="divider">
       <obj_property name="label">HWT2OS</obj_property>
       <obj_property name="DisplayName">label</obj_property>
       <obj_property name="BkColor">128 128 255</obj_property>
       <obj_property name="TextColor">230 230 230</obj_property>
-   </wvobject>
-   <wvobject fp_name="/hwt_tb/osfsl_m_data" type="array" db_ref_id="1">
-      <obj_property name="ElementShortName">osfsl_m_data[0:31]</obj_property>
-      <obj_property name="ObjectShortName">osfsl_m_data[0:31]</obj_property>
-      <obj_property name="Radix">HEXRADIX</obj_property>
-   </wvobject>
-   <wvobject fp_name="/hwt_tb/osfsl_m_full" type="logic" db_ref_id="1">
-      <obj_property name="ElementShortName">osfsl_m_full</obj_property>
-      <obj_property name="ObjectShortName">osfsl_m_full</obj_property>
-   </wvobject>
-   <wvobject fp_name="/hwt_tb/osfsl_m_write" type="logic" db_ref_id="1">
-      <obj_property name="ElementShortName">osfsl_m_write</obj_property>
-      <obj_property name="ObjectShortName">osfsl_m_write</obj_property>
-   </wvobject>
-   <wvobject fp_name="divider59" type="divider">
-      <obj_property name="label">OS2HWT</obj_property>
-      <obj_property name="DisplayName">label</obj_property>
-      <obj_property name="BkColor">128 128 255</obj_property>
-      <obj_property name="TextColor">230 230 230</obj_property>
-   </wvobject>
-   <wvobject fp_name="/hwt_tb/osfsl_s_data" type="array" db_ref_id="1">
-      <obj_property name="ElementShortName">osfsl_s_data[0:31]</obj_property>
-      <obj_property name="ObjectShortName">osfsl_s_data[0:31]</obj_property>
-      <obj_property name="Radix">HEXRADIX</obj_property>
-   </wvobject>
-   <wvobject fp_name="/hwt_tb/osfsl_s_exists" type="logic" db_ref_id="1">
-      <obj_property name="ElementShortName">osfsl_s_exists</obj_property>
-      <obj_property name="ObjectShortName">osfsl_s_exists</obj_property>
-   </wvobject>
-   <wvobject fp_name="/hwt_tb/osfsl_s_read" type="logic" db_ref_id="1">
-      <obj_property name="ElementShortName">osfsl_s_read</obj_property>
-      <obj_property name="ObjectShortName">osfsl_s_read</obj_property>
-   </wvobject>
-   <wvobject fp_name="divider60" type="divider">
-      <obj_property name="label">HWT2MEM</obj_property>
-      <obj_property name="DisplayName">label</obj_property>
-      <obj_property name="BkColor">128 128 255</obj_property>
-      <obj_property name="TextColor">230 230 230</obj_property>
-   </wvobject>
-   <wvobject fp_name="/hwt_tb/fifo32_m_data" type="array" db_ref_id="1">
-      <obj_property name="ElementShortName">fifo32_m_data[31:0]</obj_property>
-      <obj_property name="ObjectShortName">fifo32_m_data[31:0]</obj_property>
-      <obj_property name="Radix">HEXRADIX</obj_property>
-   </wvobject>
-   <wvobject fp_name="/hwt_tb/fifo32_m_wr" type="logic" db_ref_id="1">
-      <obj_property name="ElementShortName">fifo32_m_wr</obj_property>
-      <obj_property name="ObjectShortName">fifo32_m_wr</obj_property>
-   </wvobject>
-   <wvobject fp_name="/hwt_tb/fifo32_m_rem" type="array" db_ref_id="1">
-      <obj_property name="ElementShortName">fifo32_m_rem[15:0]</obj_property>
-      <obj_property name="ObjectShortName">fifo32_m_rem[15:0]</obj_property>
-      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
-   </wvobject>
-   <wvobject fp_name="divider61" type="divider">
-      <obj_property name="label">MEM2HWT</obj_property>
-      <obj_property name="DisplayName">label</obj_property>
-      <obj_property name="BkColor">128 128 255</obj_property>
-      <obj_property name="TextColor">230 230 230</obj_property>
-   </wvobject>
-   <wvobject fp_name="/hwt_tb/fifo32_s_data" type="array" db_ref_id="1">
-      <obj_property name="ElementShortName">fifo32_s_data[31:0]</obj_property>
-      <obj_property name="ObjectShortName">fifo32_s_data[31:0]</obj_property>
-      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
-   </wvobject>
-   <wvobject fp_name="/hwt_tb/fifo32_s_rd" type="logic" db_ref_id="1">
-      <obj_property name="ElementShortName">fifo32_s_rd</obj_property>
-      <obj_property name="ObjectShortName">fifo32_s_rd</obj_property>
-   </wvobject>
-   <wvobject fp_name="/hwt_tb/fifo32_s_fill" type="array" db_ref_id="1">
-      <obj_property name="ElementShortName">fifo32_s_fill[15:0]</obj_property>
-      <obj_property name="ObjectShortName">fifo32_s_fill[15:0]</obj_property>
-      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
    </wvobject>
    <wvobject fp_name="divider62" type="divider">
       <obj_property name="label">CLK and RST</obj_property>
@@ -219,10 +147,6 @@
       <obj_property name="ElementShortName">clkxci</obj_property>
       <obj_property name="ObjectShortName">clkxci</obj_property>
    </wvobject>
-   <wvobject fp_name="/hwt_tb/uut/ICAPFsmInst/resetxri" type="logic" db_ref_id="1">
-      <obj_property name="ElementShortName">resetxri</obj_property>
-      <obj_property name="ObjectShortName">resetxri</obj_property>
-   </wvobject>
    <wvobject fp_name="/hwt_tb/uut/ICAPFsmInst/startxsi" type="logic" db_ref_id="1">
       <obj_property name="ElementShortName">startxsi</obj_property>
       <obj_property name="ObjectShortName">startxsi</obj_property>
@@ -263,6 +187,14 @@
    <wvobject fp_name="/hwt_tb/uut/ICAPFsmInst/statexdn" type="other" db_ref_id="1">
       <obj_property name="ElementShortName">statexdn</obj_property>
       <obj_property name="ObjectShortName">statexdn</obj_property>
+   </wvobject>
+   <wvobject fp_name="/hwt_tb/uut/ICAPFsmInst/waitxdp" type="array" db_ref_id="1">
+      <obj_property name="ElementShortName">waitxdp[2:0]</obj_property>
+      <obj_property name="ObjectShortName">waitxdp[2:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/hwt_tb/uut/ICAPFsmInst/waitxdn" type="array" db_ref_id="1">
+      <obj_property name="ElementShortName">waitxdn[2:0]</obj_property>
+      <obj_property name="ObjectShortName">waitxdn[2:0]</obj_property>
    </wvobject>
    <wvobject fp_name="/hwt_tb/uut/ICAPFsmInst/donexs" type="logic" db_ref_id="1">
       <obj_property name="ElementShortName">donexs</obj_property>

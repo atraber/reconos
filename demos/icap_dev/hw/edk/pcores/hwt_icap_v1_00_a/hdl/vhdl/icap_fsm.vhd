@@ -13,6 +13,7 @@ entity ICAPFsm is
     ClkxCI        : in  std_logic;
     ResetxRI      : in  std_logic;
     StartxSI      : in  std_logic;
+    ModexSI       : in  std_logic;      -- '0' means write, '1' means abort
     DonexSO       : out std_logic;
     ErrorxSO      : out std_logic;
     LenxDI        : in  std_logic_vector(0 to ADDR_WIDTH-1);
@@ -27,12 +28,18 @@ end ICAPFsm;
 
 architecture implementation of ICAPFsm is
   type state_t is (STATE_IDLE, STATE_WRITE, STATE_CHECK, STATE_FINISH, STATE_ERROR, STATE_WAIT,
-                   STATE_ABORT0, STATE_ABORT1);        -- TODO: remove abort!
+                   STATE_ABORT0, STATE_ABORT1);
 
+  -----------------------------------------------------------------------------
   -- signals
+  -----------------------------------------------------------------------------
+
+  -- registers
   signal AddrxDP, AddrxDN   : unsigned(ADDR_WIDTH-1 downto 0);
   signal StatexDP, StatexDN : state_t;
+  signal WaitxDP, WaitxDN   : unsigned(2 downto 0);
 
+  -- ordinary signals
   signal ICAPCExSB   : std_logic;
   signal ICAPWExSB   : std_logic;
   signal DonexS      : std_logic;
@@ -51,9 +58,11 @@ begin  -- implementation
     if ResetxRI = '1' then              -- asynchronous reset (active high)
       StatexDP <= STATE_IDLE;
       AddrxDP  <= unsigned(conv_std_logic_vector(0, AddrxDP'length));
+      WaitxDP  <= unsigned(conv_std_logic_vector(0, WaitxDP'length));
     elsif ClkxCI'event and ClkxCI = '1' then  -- rising clock edge
       StatexDP <= StatexDN;
       AddrxDP  <= AddrxDN;
+      WaitxDP  <= WaitxDN;
     end if;
   end process regFF;
 
@@ -61,10 +70,12 @@ begin  -- implementation
   -- ICAP FSM
   -----------------------------------------------------------------------------
 
-  icapFSM : process (AddrxDP, ICAPErrorxS, LenxDI, StartxSI, StatexDP)
+  icapFSM : process (AddrxDP, ICAPErrorxS, LenxDI, StartxSI, StatexDP, WaitxDN,
+                     WaitxDP)
   begin  -- process icapFSM
     StatexDN  <= StatexDP;
     AddrxDN   <= AddrxDP;
+    WaitxDN   <= WaitxDP;
     ICAPCExSB <= '1';                   -- active low, so not active here
     ICAPWExSB <= '0';                   -- active low, doing a write
     DonexS    <= '0';
@@ -73,27 +84,33 @@ begin  -- implementation
 
     case StatexDP is
       -------------------------------------------------------------------------
-      -- DEBUG, TODO: REMOVE
+      -- Abort, chip select and write
       -------------------------------------------------------------------------
       when STATE_ABORT0 =>
         ICAPCExSB <= '0';
-        StatexDN <= STATE_ABORT1;
+        StatexDN  <= STATE_ABORT1;
 
-      -------------------------------------------------------------------------
-      -- DEBUG, TODO: REMOVE
-      -------------------------------------------------------------------------
+        -------------------------------------------------------------------------
+        -- Abort, chip select and read => causes an abort
+        -------------------------------------------------------------------------
       when STATE_ABORT1 =>
         ICAPCExSB <= '0';
         ICAPWExSB <= '1';
-        StatexDN <= STATE_WRITE;
 
-      -------------------------------------------------------------------------
-      -- wait state, we wait one cycle before going to state IDLE as otherwise
-      -- we would need probably create a mealy machine, which is something we
-      -- want to avoid
-      -------------------------------------------------------------------------
+        DonexS <= '1';
+
+        WaitxDN  <= unsigned(conv_std_logic_vector(5, WaitxDN'length));
+        StatexDN <= STATE_WAIT;
+
+        -------------------------------------------------------------------------
+        -- wait state, we wait for WaitxDN cycles before returning to STATE_IDLE
+        -------------------------------------------------------------------------
       when STATE_WAIT =>
-        StatexDN <= STATE_IDLE;
+        WaitxDN <= WaitxDP - 1;
+
+        if WaitxDN = unsigned(conv_std_logic_vector(0, WaitxDN'length)) then
+          StatexDN <= STATE_IDLE;
+        end if;
 
         -------------------------------------------------------------------------
         -- idle state, wait for start signal
@@ -102,7 +119,11 @@ begin  -- implementation
         AddrxDN <= unsigned(conv_std_logic_vector(0, AddrxDP'length));
 
         if StartxSI = '1' then
-          StatexDN <= STATE_ABORT0;
+          if ModexSI = '1' then
+            StatexDN <= STATE_ABORT0;
+          else
+            StatexDN <= STATE_WRITE;
+          end if;
         end if;
 
         -------------------------------------------------------------------------
@@ -136,6 +157,7 @@ begin  -- implementation
       when STATE_FINISH =>
         DonexS <= '1';
 
+        WaitxDN  <= unsigned(conv_std_logic_vector(1, WaitxDN'length));
         StatexDN <= STATE_WAIT;
 
         -----------------------------------------------------------------------
@@ -144,6 +166,7 @@ begin  -- implementation
       when STATE_ERROR =>
         ErrorxS <= '1';
 
+        WaitxDN  <= unsigned(conv_std_logic_vector(1, WaitxDN'length));
         StatexDN <= STATE_WAIT;
 
         -------------------------------------------------------------------------
@@ -157,7 +180,7 @@ begin  -- implementation
   -----------------------------------------------------------------------------
   -- signal assignments
   -----------------------------------------------------------------------------
-  ICAPErrorxS <= ICAPStatusxDI(7);
+  ICAPErrorxS <= '0'; -- TODO: replace ICAPStatusxDI(7);
   ICAPCExSBO  <= ICAPCExSB;
   ICAPWExSBO  <= ICAPWExSB;
 
