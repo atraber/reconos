@@ -49,10 +49,10 @@ begin
           read(file_in, char_buffer1);
           read(file_in, char_buffer2);
           read(file_in, char_buffer3);
-          mem(CONV_INTEGER(i)) <= std_logic_vector(conv_std_logic_vector(character'pos(char_buffer1), 8)) &
-                                  std_logic_vector(conv_std_logic_vector(character'pos(char_buffer0), 8)) &
-                                  std_logic_vector(conv_std_logic_vector(character'pos(char_buffer3), 8)) &
-                                  std_logic_vector(conv_std_logic_vector(character'pos(char_buffer2), 8));
+          mem(CONV_INTEGER(i)) <= std_logic_vector(conv_std_logic_vector(character'pos(char_buffer0), 8)) &
+                                  std_logic_vector(conv_std_logic_vector(character'pos(char_buffer1), 8)) &
+                                  std_logic_vector(conv_std_logic_vector(character'pos(char_buffer2), 8)) &
+                                  std_logic_vector(conv_std_logic_vector(character'pos(char_buffer3), 8));
 
           i := i + 1;
         end loop readLoop;

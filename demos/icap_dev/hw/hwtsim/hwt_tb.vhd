@@ -322,7 +322,7 @@ BEGIN
 		wait for clk_period*10;
 		
 		MB_M_Write <= '1';
-		MB_M_Data <= x"00001FFC";
+		MB_M_Data <= x"000001F0";
 		
 		wait for clk_period;
 		

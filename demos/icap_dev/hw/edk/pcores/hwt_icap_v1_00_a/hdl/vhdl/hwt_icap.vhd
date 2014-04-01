@@ -41,12 +41,13 @@ entity hwt_icap is
     DebugICAPRamAddr       : out std_logic_vector(0 to 10);
     DebugICAPFsmLen        : out std_logic_vector(0 to 10);
     DebugLen               : out std_logic_vector(31 downto 0);
+    DebugLast              : out std_logic;
     DebugAddr              : out std_logic_vector(31 downto 0);
     DebugStateIsGetLength  : out std_logic;
     DebugStateMemCalc      : out std_logic;
     DebugStateIcapTransfer : out std_logic;
     DebugICAPDataIn        : out std_logic_vector(0 to 31);
-    DebugICAPOut           : out std_logic_vector(0 to 31);
+    DebugICAPOut2          : out std_logic_vector(24 to 31);
     DebugICAPStatusError   : out std_logic;
     DebugICAPCE            : out std_logic;
     DebugICAPWE            : out std_logic;
@@ -131,9 +132,6 @@ architecture implementation of hwt_icap is
   signal AddrxD : std_logic_vector(31 downto 0);  -- in bytes
   signal LenxD  : std_logic_vector(31 downto 0);  -- in bytes
   signal LastxD : std_logic;
-
-  -- helper signals
-  signal LenSwapxD : std_logic_vector(0 to 31);
 
   -- icap signals
   signal ICAPBusyxS    : std_logic;
@@ -234,7 +232,7 @@ begin
             if (LenxD = X"FFFFFFFF") then
               state <= STATE_THREAD_EXIT;
             else
-              state <= STATE_ICAP_ABORT;
+              state <= STATE_CMPLEN;  -- TODO: remove STATE_ICAP_ABORT
             end if;
           end if;
 
@@ -351,7 +349,9 @@ begin
   -----------------------------------------------------------------------------
   ICAP_VERTEX6_I : ICAP_VIRTEX6
     generic map (
-      ICAP_WIDTH => ICAP_WIDTH)
+      ICAP_WIDTH => ICAP_WIDTH  -- FOR SIMULATION:, DEVICE_ID  => "00000100001001010000000010010011"
+      )
+
     port map (
       clk   => clk,
       csb   => ICAPCExSB,               -- active low
@@ -388,12 +388,8 @@ begin
   ICAPRamInxD <= (others => '0');
   ICAPRamWExD <= '0';
 
-  -- swap bit order
-  LenSwapxD(0 to 31) <= LenxD(31 downto 0);
-
   -- bit swapping of RAM output so that it matches the input format of the ICAP
   -- interface, see pg 43 of UG360 (v3.7)
-  -- TODO: check if this is correct!
   swapGen : for i in 0 to 3 generate
     bitSwapGen : for j in 0 to 7 generate
       ICAPDataInxD(i * 8 + j) <= ICAPRamOutxD((i + 1) * 8 - 1 - j);
@@ -404,8 +400,8 @@ begin
   -- DEBUG
   DebugICAPDataIn       <= ICAPDataInxD;
   DebugICAPRamOut       <= ICAPRamOutxD;
-  DebugICAPOut          <= ICAPDataOutxD;
-  DebugICAPStatusError  <= ICAPDataOutxD(25);
+  DebugICAPOut2         <= ICAPDataOutxD(24 to 31);
+  DebugICAPStatusError  <= not ICAPDataOutxD(24);
   DebugICAPCE           <= ICAPCExSB;
   DebugICAPWE           <= ICAPWExSB;
   DebugICAPBusy         <= ICAPBusyxS;
@@ -415,6 +411,7 @@ begin
   DebugICAPFsmLen       <= ICAPFsmLenxD;
   DebugICAPRamAddr      <= ICAPRamAddrxD;
   DebugLen              <= LenxD;
+  DebugLast             <= LastxD;
   DebugAddr             <= AddrxD;
   DebugStateIsGetLength <= '1' when state = STATE_GET_BITSTREAM_SIZE
                            else '0';

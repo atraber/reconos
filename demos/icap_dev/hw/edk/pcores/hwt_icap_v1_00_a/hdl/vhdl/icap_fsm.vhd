@@ -70,8 +70,8 @@ begin  -- implementation
   -- ICAP FSM
   -----------------------------------------------------------------------------
 
-  icapFSM : process (AddrxDP, ICAPErrorxS, LenxDI, StartxSI, StatexDP, WaitxDN,
-                     WaitxDP)
+  icapFSM : process (AddrxDN, AddrxDP, ICAPErrorxS, LenxDI, ModexSI, StartxSI,
+                     StatexDP, WaitxDN, WaitxDP)
   begin  -- process icapFSM
     StatexDN  <= StatexDP;
     AddrxDN   <= AddrxDP;
@@ -84,10 +84,12 @@ begin  -- implementation
 
     case StatexDP is
       -------------------------------------------------------------------------
-      -- Abort, chip select and write
+      -- Abort, chip select and change from read to write
       -------------------------------------------------------------------------
       when STATE_ABORT0 =>
         ICAPCExSB <= '0';
+        ICAPWExSB <= '1';
+
         StatexDN  <= STATE_ABORT1;
 
         -------------------------------------------------------------------------
@@ -95,7 +97,7 @@ begin  -- implementation
         -------------------------------------------------------------------------
       when STATE_ABORT1 =>
         ICAPCExSB <= '0';
-        ICAPWExSB <= '1';
+        ICAPWExSB <= '0';
 
         DonexS <= '1';
 
@@ -137,7 +139,7 @@ begin  -- implementation
           StatexDN <= STATE_ERROR;
         end if;
 
-        if std_logic_vector(AddrxDP) = LenxDI then
+        if std_logic_vector(AddrxDN) = LenxDI then
           StatexDN <= STATE_CHECK;
         end if;
 
@@ -180,7 +182,7 @@ begin  -- implementation
   -----------------------------------------------------------------------------
   -- signal assignments
   -----------------------------------------------------------------------------
-  ICAPErrorxS <= '0'; -- TODO: replace ICAPStatusxDI(7);
+  ICAPErrorxS <= '0'; -- TODO: replace not ICAPStatusxDI(24);
   ICAPCExSBO  <= ICAPCExSB;
   ICAPWExSBO  <= ICAPWExSB;
 

@@ -56,8 +56,9 @@ PORT DebugStateMemCalc="", DIR=O
 PORT DebugStateIcapTransfer="", DIR=O
 PORT DebugLen="", DIR=O, VEC=[0:31]
 PORT DebugAddr="", DIR=O, VEC=[0:31]
+PORT DebugLast="", DIR=O
 PORT DebugICAPDataIn="", DIR=O, VEC=[0:31]
-PORT DebugICAPOut="", DIR=O, VEC=[0:31]
+PORT DebugICAPOut2="", DIR=O, VEC=[0:7]
 PORT DebugICAPStatusError="", DIR=O
 PORT DebugICAPCE="", DIR=O
 PORT DebugICAPWE="", DIR=O
