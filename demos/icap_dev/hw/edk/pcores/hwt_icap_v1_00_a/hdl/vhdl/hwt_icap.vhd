@@ -39,7 +39,7 @@ entity hwt_icap is
     DebugICAPFsmDone       : out std_logic;
     DebugICAPFsmError      : out std_logic;
     DebugICAPRamAddr       : out std_logic_vector(0 to 10);
-    DebugICAPFsmLen        : out std_logic_vector(0 to 10);
+    DebugICAPFsmLen        : out std_logic_vector(0 to 11);
     DebugLen               : out std_logic_vector(31 downto 0);
     DebugLast              : out std_logic;
     DebugAddr              : out std_logic_vector(31 downto 0);
@@ -74,7 +74,7 @@ architecture implementation of hwt_icap is
       ModexSI       : in  std_logic;
       DonexSO       : out std_logic;
       ErrorxSO      : out std_logic;
-      LenxDI        : in  std_logic_vector(0 to ADDR_WIDTH-1);
+      LenxDI        : in  std_logic_vector(0 to ADDR_WIDTH);
       RamAddrxDO    : out std_logic_vector(0 to ADDR_WIDTH-1);
       ICAPCExSBO    : out std_logic;
       ICAPWExSBO    : out std_logic;
@@ -129,22 +129,26 @@ architecture implementation of hwt_icap is
   signal ignore : std_logic_vector(C_FSL_WIDTH-1 downto 0);
 
   -- registers
-  signal AddrxD : std_logic_vector(31 downto 0);  -- in bytes
-  signal LenxD  : std_logic_vector(31 downto 0);  -- in bytes
-  signal LastxD : std_logic;
+  signal AddrxD                             : std_logic_vector(31 downto 0);  -- in bytes
+  signal LenxD                              : std_logic_vector(31 downto 0);  -- in bytes
+  signal LastxD                             : std_logic;
+  -- registers for ICAP interface, hopefully this circumvents the timing
+  -- closure problem as we can have a maximum delay of 2 ns
+  signal ICAPWERegxSBP, ICAPWERegxSBN       : std_logic;
+  signal ICAPCERegxSBP, ICAPCERegxSBN       : std_logic;
+  signal ICAPDataInRegxDP, ICAPDataInRegxDN : std_logic_vector(0 to ICAP_DWIDTH-1);
 
   -- icap signals
   signal ICAPBusyxS    : std_logic;
   signal ICAPCExSB     : std_logic;
   signal ICAPWExSB     : std_logic;
-  signal ICAPDataInxD  : std_logic_vector(0 to ICAP_DWIDTH-1);
   signal ICAPDataOutxD : std_logic_vector(0 to ICAP_DWIDTH-1);
 
   signal ICAPFsmStartxS : std_logic;
   signal ICAPFsmModexS  : std_logic;
   signal ICAPFsmDonexS  : std_logic;
   signal ICAPFsmErrorxS : std_logic;
-  signal ICAPFsmLenxD   : std_logic_vector(0 to C_LOCAL_RAM_ADDRESS_WIDTH-1);  -- in words
+  signal ICAPFsmLenxD   : std_logic_vector(0 to C_LOCAL_RAM_ADDRESS_WIDTH);  -- in words
 
 begin
 
@@ -203,7 +207,7 @@ begin
     elsif rising_edge(clk) then
 
       -- default assignments
-      ICAPFsmLenxD   <= (others => '1');
+      ICAPFsmLenxD   <= conv_std_logic_vector(C_LOCAL_RAM_SIZE, C_LOCAL_RAM_ADDRESS_WIDTH + 1);
       ICAPFsmStartxS <= '0';
       ICAPFsmModexS  <= '0';            -- write
 
@@ -232,7 +236,7 @@ begin
             if (LenxD = X"FFFFFFFF") then
               state <= STATE_THREAD_EXIT;
             else
-              state <= STATE_CMPLEN;  -- TODO: remove STATE_ICAP_ABORT
+              state <= STATE_CMPLEN;    -- TODO: change!
             end if;
           end if;
 
@@ -288,10 +292,10 @@ begin
           if LastxD = '1' then
             -- the remaining size is less than our local memory size
             -- convert length from bytes to words here
-            ICAPFsmLenxD <= LenxD(C_LOCAL_RAM_ADDRESS_WIDTH-1+2 downto 2);
+            ICAPFsmLenxD <= LenxD(C_LOCAL_RAM_ADDRESS_WIDTH + 2 downto 2);
           else
             -- transfer the content of the full memory to ICAP
-            ICAPFsmLenxD <= (others => '1');
+            ICAPFsmLenxD <= conv_std_logic_vector(C_LOCAL_RAM_SIZE, C_LOCAL_RAM_ADDRESS_WIDTH + 1);
           end if;
 
           if ICAPFsmErrorxS = '1' then
@@ -354,11 +358,27 @@ begin
 
     port map (
       clk   => clk,
-      csb   => ICAPCExSB,               -- active low
-      rdwrb => ICAPWExSB,               -- active low
-      i     => ICAPDataInxD,
+      csb   => ICAPCERegxSBP,           -- active low
+      rdwrb => ICAPWERegxSBP,           -- active low
+      i     => ICAPDataInRegxDP,
       busy  => ICAPBusyxS,
       o     => ICAPDataOutxD);
+
+  -----------------------------------------------------------------------------
+  -- ICAP registers
+  -----------------------------------------------------------------------------
+  icapReg : process (clk, rst)
+  begin  -- process icapReg
+    if rst = '1' then                   -- asynchronous reset (active high)
+      ICAPCERegxSBP    <= '1';
+      ICAPWERegxSBP    <= '1';
+      ICAPDataInRegxDP <= (others => '0');
+    elsif clk'event and clk = '1' then  -- rising clock edge
+      ICAPCERegxSBP    <= ICAPCERegxSBN;
+      ICAPWERegxSBP    <= ICAPWERegxSBN;
+      ICAPDataInRegxDP <= ICAPDataInRegxDN;
+    end if;
+  end process icapReg;
 
 
   -----------------------------------------------------------------------------
@@ -376,8 +396,8 @@ begin
       ErrorxSO      => ICAPFsmErrorxS,
       LenxDI        => ICAPFsmLenxD,
       RamAddrxDO    => ICAPRamAddrxD,
-      ICAPCExSBO    => ICAPCExSB,
-      ICAPWExSBO    => ICAPWExSB,
+      ICAPCExSBO    => ICAPCERegxSBN,
+      ICAPWExSBO    => ICAPWERegxSBN,
       ICAPStatusxDI => ICAPDataOutxD);
 
 
@@ -392,18 +412,18 @@ begin
   -- interface, see pg 43 of UG360 (v3.7)
   swapGen : for i in 0 to 3 generate
     bitSwapGen : for j in 0 to 7 generate
-      ICAPDataInxD(i * 8 + j) <= ICAPRamOutxD((i + 1) * 8 - 1 - j);
+      ICAPDataInRegxDN(i * 8 + j) <= ICAPRamOutxD((i + 1) * 8 - 1 - j);
     end generate bitSwapGen;
   end generate swapGen;
 
 
   -- DEBUG
-  DebugICAPDataIn       <= ICAPDataInxD;
+  DebugICAPDataIn       <= ICAPDataInRegxDP;
   DebugICAPRamOut       <= ICAPRamOutxD;
   DebugICAPOut2         <= ICAPDataOutxD(24 to 31);
   DebugICAPStatusError  <= not ICAPDataOutxD(24);
-  DebugICAPCE           <= ICAPCExSB;
-  DebugICAPWE           <= ICAPWExSB;
+  DebugICAPCE           <= ICAPCERegxSBP;
+  DebugICAPWE           <= ICAPWEregxSBP;
   DebugICAPBusy         <= ICAPBusyxS;
   DebugICAPFsmStart     <= ICAPFsmStartxS;
   DebugICAPFsmDone      <= ICAPFsmDonexS;
