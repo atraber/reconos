@@ -129,20 +129,16 @@ architecture implementation of hwt_icap is
   signal ignore : std_logic_vector(C_FSL_WIDTH-1 downto 0);
 
   -- registers
-  signal AddrxD                             : std_logic_vector(31 downto 0);  -- in bytes
-  signal LenxD                              : std_logic_vector(31 downto 0);  -- in bytes
-  signal LastxD                             : std_logic;
-  -- registers for ICAP interface, hopefully this circumvents the timing
-  -- closure problem as we can have a maximum delay of 2 ns
-  signal ICAPWERegxSBP, ICAPWERegxSBN       : std_logic;
-  signal ICAPCERegxSBP, ICAPCERegxSBN       : std_logic;
-  signal ICAPDataInRegxDP, ICAPDataInRegxDN : std_logic_vector(0 to ICAP_DWIDTH-1);
+  signal AddrxD : std_logic_vector(31 downto 0);  -- in bytes
+  signal LenxD  : std_logic_vector(31 downto 0);  -- in bytes
+  signal LastxD : std_logic;
 
   -- icap signals
   signal ICAPBusyxS    : std_logic;
   signal ICAPCExSB     : std_logic;
   signal ICAPWExSB     : std_logic;
   signal ICAPDataOutxD : std_logic_vector(0 to ICAP_DWIDTH-1);
+  signal ICAPDataInxD  : std_logic_vector(0 to ICAP_DWIDTH-1);
 
   signal ICAPFsmStartxS : std_logic;
   signal ICAPFsmModexS  : std_logic;
@@ -358,28 +354,11 @@ begin
 
     port map (
       clk   => clk,
-      csb   => ICAPCERegxSBP,           -- active low
-      rdwrb => ICAPWERegxSBP,           -- active low
-      i     => ICAPDataInRegxDP,
+      csb   => ICAPCExSB,               -- active low
+      rdwrb => ICAPWExSB,               -- active low
+      i     => ICAPDataInxD,
       busy  => ICAPBusyxS,
       o     => ICAPDataOutxD);
-
-  -----------------------------------------------------------------------------
-  -- ICAP registers
-  -----------------------------------------------------------------------------
-  icapReg : process (clk, rst)
-  begin  -- process icapReg
-    if rst = '1' then                   -- asynchronous reset (active high)
-      ICAPCERegxSBP    <= '1';
-      ICAPWERegxSBP    <= '1';
-      ICAPDataInRegxDP <= (others => '0');
-    elsif clk'event and clk = '1' then  -- rising clock edge
-      ICAPCERegxSBP    <= ICAPCERegxSBN;
-      ICAPWERegxSBP    <= ICAPWERegxSBN;
-      ICAPDataInRegxDP <= ICAPDataInRegxDN;
-    end if;
-  end process icapReg;
-
 
   -----------------------------------------------------------------------------
   -- ICAPFsm
@@ -396,8 +375,8 @@ begin
       ErrorxSO      => ICAPFsmErrorxS,
       LenxDI        => ICAPFsmLenxD,
       RamAddrxDO    => ICAPRamAddrxD,
-      ICAPCExSBO    => ICAPCERegxSBN,
-      ICAPWExSBO    => ICAPWERegxSBN,
+      ICAPCExSBO    => ICAPCExSB,
+      ICAPWExSBO    => ICAPWExSB,
       ICAPStatusxDI => ICAPDataOutxD);
 
 
@@ -412,18 +391,18 @@ begin
   -- interface, see pg 43 of UG360 (v3.7)
   swapGen : for i in 0 to 3 generate
     bitSwapGen : for j in 0 to 7 generate
-      ICAPDataInRegxDN(i * 8 + j) <= ICAPRamOutxD((i + 1) * 8 - 1 - j);
+      ICAPDataInxD(i * 8 + j) <= ICAPRamOutxD((i + 1) * 8 - 1 - j);
     end generate bitSwapGen;
   end generate swapGen;
 
 
   -- DEBUG
-  DebugICAPDataIn       <= ICAPDataInRegxDP;
+  DebugICAPDataIn       <= ICAPDataInxD;
   DebugICAPRamOut       <= ICAPRamOutxD;
   DebugICAPOut2         <= ICAPDataOutxD(24 to 31);
   DebugICAPStatusError  <= not ICAPDataOutxD(24);
-  DebugICAPCE           <= ICAPCERegxSBP;
-  DebugICAPWE           <= ICAPWEregxSBP;
+  DebugICAPCE           <= ICAPCExSB;
+  DebugICAPWE           <= ICAPWExSB;
   DebugICAPBusy         <= ICAPBusyxS;
   DebugICAPFsmStart     <= ICAPFsmStartxS;
   DebugICAPFsmDone      <= ICAPFsmDonexS;

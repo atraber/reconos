@@ -64,7 +64,7 @@ begin
 	
 	val1 <= vals(31 downto 16);
 	val2 <= vals(15 downto 0);
-	result1 <= val1 + val2;
+	result1 <= val1 - val2;
 	result <= X"0000"&result1;
 		
 	-- os and memory synchronisation state machine
