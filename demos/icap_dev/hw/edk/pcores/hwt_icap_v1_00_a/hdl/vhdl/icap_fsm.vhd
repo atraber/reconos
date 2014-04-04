@@ -186,7 +186,7 @@ begin  -- implementation
   -----------------------------------------------------------------------------
   -- signal assignments
   -----------------------------------------------------------------------------
-  ICAPErrorxS <= '0';                   -- TODO: replace not ICAPStatusxDI(24);
+  ICAPErrorxS <= not ICAPStatusxDI(24);
   ICAPCExSBO  <= ICAPCExSBP;
   ICAPWExSBO  <= ICAPWExSBP;
 

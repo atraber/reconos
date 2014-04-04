@@ -29,6 +29,7 @@
 #define RECONF_LINUX 0
 #define RECONF_SW    1
 #define RECONF_HW    2
+#define RECONF_NULL  3
 
 unsigned int g_reconf_mode = RECONF_LINUX;
 
@@ -204,6 +205,8 @@ int reconfigure_prblock(int thread_id)
     case RECONF_HW:
       ret = hw_icap_load(thread_id);
       break;
+    default:
+      break;
   }
 
   configured = thread_id;
@@ -263,6 +266,8 @@ int main(int argc, char *argv[])
       g_reconf_mode = RECONF_HW;
     else if(strcmp(argv[i], "-linux") == 0)
       g_reconf_mode = RECONF_LINUX;
+    else if(strcmp(argv[i], "-null") == 0)
+      g_reconf_mode = RECONF_NULL;
     else if(strcmp(argv[i], "-n") == 0) {
       if(i + 1 < argc)
         max_cnt = atoi(argv[i + 1]);
@@ -279,6 +284,9 @@ int main(int argc, char *argv[])
       break;
     case RECONF_HW:
       printf("Using hw reconfiguration mode\n");
+      break;
+    case RECONF_NULL:
+      printf("Using null reconfiguration mode\n");
       break;
   }
 
