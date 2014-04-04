@@ -33,27 +33,6 @@ entity hwt_icap is
     FIFO32_S_Rd   : out std_logic;
     FIFO32_M_Wr   : out std_logic;
 
-
-    -- DEBUG
-    DebugICAPFsmStart      : out std_logic;
-    DebugICAPFsmDone       : out std_logic;
-    DebugICAPFsmError      : out std_logic;
-    DebugICAPRamAddr       : out std_logic_vector(0 to 10);
-    DebugICAPFsmLen        : out std_logic_vector(0 to 11);
-    DebugLen               : out std_logic_vector(31 downto 0);
-    DebugLast              : out std_logic;
-    DebugAddr              : out std_logic_vector(31 downto 0);
-    DebugStateIsGetLength  : out std_logic;
-    DebugStateMemCalc      : out std_logic;
-    DebugStateIcapTransfer : out std_logic;
-    DebugICAPDataIn        : out std_logic_vector(0 to 31);
-    DebugICAPOut2          : out std_logic_vector(24 to 31);
-    DebugICAPStatusError   : out std_logic;
-    DebugICAPCE            : out std_logic;
-    DebugICAPWE            : out std_logic;
-    DebugICAPBusy          : out std_logic;
-    DebugICAPRamOut        : out std_logic_vector(0 to 31);
-
     -- HWT reset and clock
     clk : in std_logic;
     rst : in std_logic
@@ -349,9 +328,8 @@ begin
   -----------------------------------------------------------------------------
   ICAP_VERTEX6_I : ICAP_VIRTEX6
     generic map (
-      ICAP_WIDTH => ICAP_WIDTH  -- FOR SIMULATION:, DEVICE_ID  => "00000100001001010000000010010011"
+      ICAP_WIDTH => ICAP_WIDTH
       )
-
     port map (
       clk   => clk,
       csb   => ICAPCExSB,               -- active low
@@ -394,30 +372,6 @@ begin
       ICAPDataInxD(i * 8 + j) <= ICAPRamOutxD((i + 1) * 8 - 1 - j);
     end generate bitSwapGen;
   end generate swapGen;
-
-
-  -- DEBUG
-  DebugICAPDataIn       <= ICAPDataInxD;
-  DebugICAPRamOut       <= ICAPRamOutxD;
-  DebugICAPOut2         <= ICAPDataOutxD(24 to 31);
-  DebugICAPStatusError  <= not ICAPDataOutxD(24);
-  DebugICAPCE           <= ICAPCExSB;
-  DebugICAPWE           <= ICAPWExSB;
-  DebugICAPBusy         <= ICAPBusyxS;
-  DebugICAPFsmStart     <= ICAPFsmStartxS;
-  DebugICAPFsmDone      <= ICAPFsmDonexS;
-  DebugICAPFsmError     <= ICAPFsmErrorxS;
-  DebugICAPFsmLen       <= ICAPFsmLenxD;
-  DebugICAPRamAddr      <= ICAPRamAddrxD;
-  DebugLen              <= LenxD;
-  DebugLast             <= LastxD;
-  DebugAddr             <= AddrxD;
-  DebugStateIsGetLength <= '1' when state = STATE_GET_BITSTREAM_SIZE
-                           else '0';
-  DebugStateMemCalc <= '1' when state = STATE_MEM_CALC
-                       else '0';
-  DebugStateIcapTransfer <= '1' when state = STATE_ICAP_TRANSFER
-                            else '0';
 
 end architecture;
 

@@ -102,6 +102,51 @@ FAIL:
   return retval;
 }
 
+// load arbitrary cmd sequence via hardware icap thread
+int hw_icap_write(uint32_t* addr, unsigned int size)
+{
+	int ret;
+
+  // send address of bitfile in main memory to hwt
+	mbox_put(&mb_in[HWT_ICAP], (unsigned int)addr);
+
+  // send length of bitfile (in bytes) in main memory to hwt
+	mbox_put(&mb_in[HWT_ICAP], size);
+
+  // wait for response from hwt
+	ret = mbox_get(&mb_out[HWT_ICAP]);
+	printf("hwt_icap returned %X\n", ret);
+
+	return ret;
+}
+
+// load arbitrary cmd sequence via software icap
+int sw_icap_write(uint32_t* addr, unsigned int size)
+{
+  int retval = 1;
+
+  FILE* fp = fopen("/dev/icap0", "w");
+  if(fp == NULL) {
+    printf("Could not open icap\n");
+
+    retval = 0;
+    goto FAIL;
+  }
+
+  // write whole file in one command
+  if( fwrite(addr, sizeof(uint32_t), size/4, fp) != (size / 4)) {
+    printf("Something went wrong while writing to ICAP\n");
+
+    retval = 0;
+    goto FAIL;
+  }
+
+FAIL:
+  fclose(fp);
+
+  return retval;
+}
+
 // loads bitstream into ICAP
 // Returns 1 if successfull, 0 otherwise
 int sw_icap_load(int thread_id)
@@ -135,23 +180,65 @@ int hw_icap_load(int thread_id)
 {
 	int ret;
 
-  unsigned int addr = (unsigned int)pr_bit[thread_id].block;
+  uint32_t* addr = pr_bit[thread_id].block;
   unsigned int size = (unsigned int)pr_bit[thread_id].length * 4;
 
-  // send address of bitfile in main memory to hwt
-  printf("sending first msg, containing ptr %X\n", addr);
-	mbox_put(&mb_in[HWT_ICAP], addr);
-
-  // send length of bitfile (in bytes) in main memory to hwt
-  printf("sending second msg, containing %X\n", size);
-	mbox_put(&mb_in[HWT_ICAP], size);
-
-  // wait for response from hwt
-	ret = mbox_get(&mb_out[HWT_ICAP]);
-	printf("hwt_icap returned %X\n", ret);
+  ret = hw_icap_write(addr, size);
 
 	return ret;
 }
+
+
+// untested
+uint32_t g_icap_crc_clear[] = {0xFFFFFFFF,
+                               0x000000BB,
+                               0x11220044,
+                               0xFFFFFFFF,
+                               0xAA995566,
+                               0x20000000,
+                               0x30008001,
+                               0x00000007,
+                               0x20000000,
+                               0x30008001,
+                               0x0000000D,
+                               0x20000000,
+                               0x20000000};
+// icap switch to bottom, does work!
+uint32_t g_icap_switch_bot[] = {0xFFFFFFFF,
+                                0x000000BB,
+                                0x11220044,
+                                0xFFFFFFFF,
+                                0xAA995566, // sync
+                                0x20000000,
+                                0x3000A001, // write to mask
+                                0x40000000,
+                                0x20000000,
+                                0x3000C001, // write to ctl0
+                                0x40000000,
+                                0x20000000,
+                                0x30008001,
+                                0x0000000D, // desync
+                                0x20000000,
+                                0x20000000};
+
+// does not work?
+// icap switch to top
+uint32_t g_icap_switch_top[] = {0xFFFFFFFF,
+                                0x000000BB,
+                                0x11220044,
+                                0xFFFFFFFF,
+                                0xAA995566, // sync
+                                0x20000000,
+                                0x3000A001, // write to mask
+                                0x40000000,
+                                0x20000000,
+                                0x3000C001, // write to ctl0
+                                0x00000000,
+                                0x20000000,
+                                0x30008001,
+                                0x0000000D, // desync
+                                0x20000000,
+                                0x20000000};
 
 int linux_icap_load(int thread_id)
 {
@@ -289,6 +376,9 @@ int main(int argc, char *argv[])
       printf("Using null reconfiguration mode\n");
       break;
   }
+
+//  sw_icap_write(g_icap_switch_top, sizeof g_icap_switch_top);
+//  return 0;
 
 	while(1) {
 		// reconfigure partial hw slot and check thread

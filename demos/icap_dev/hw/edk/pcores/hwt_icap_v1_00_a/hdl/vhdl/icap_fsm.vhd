@@ -13,7 +13,6 @@ entity ICAPFsm is
     ClkxCI        : in  std_logic;
     ResetxRI      : in  std_logic;
     StartxSI      : in  std_logic;
-    ModexSI       : in  std_logic;      -- '0' means write, '1' means abort
     DonexSO       : out std_logic;
     ErrorxSO      : out std_logic;
     LenxDI        : in  std_logic_vector(0 to ADDR_WIDTH);
@@ -27,8 +26,7 @@ end ICAPFsm;
 
 
 architecture implementation of ICAPFsm is
-  type state_t is (STATE_IDLE, STATE_WRITE, STATE_CHECK, STATE_FINISH, STATE_ERROR, STATE_WAIT,
-                   STATE_ABORT0, STATE_ABORT1);
+  type state_t is (STATE_IDLE, STATE_WRITE, STATE_CHECK, STATE_FINISH, STATE_ERROR, STATE_WAIT);
 
   -----------------------------------------------------------------------------
   -- signals
@@ -56,15 +54,13 @@ begin  -- implementation
   regFF : process (ClkxCI, ResetxRI)
   begin  -- process regFF
     if ResetxRI = '1' then              -- asynchronous reset (active high)
-      StatexDP      <= STATE_IDLE;
-      AddrxDP       <= unsigned(conv_std_logic_vector(0, AddrxDP'length));
-      WaitxDP       <= unsigned(conv_std_logic_vector(0, WaitxDP'length));
+      StatexDP   <= STATE_IDLE;
+      AddrxDP    <= unsigned(conv_std_logic_vector(0, AddrxDP'length));
       ICAPWExSBP <= '0';
       ICAPCExSBP <= '1';
     elsif ClkxCI'event and ClkxCI = '1' then  -- rising clock edge
-      StatexDP      <= StatexDN;
-      AddrxDP       <= AddrxDN;
-      WaitxDP       <= WaitxDN;
+      StatexDP   <= StatexDN;
+      AddrxDP    <= AddrxDN;
       ICAPWExSBP <= ICAPWExSBN;
       ICAPCExSBP <= ICAPCExSBN;
     end if;
@@ -74,12 +70,10 @@ begin  -- implementation
   -- ICAP FSM
   -----------------------------------------------------------------------------
 
-  icapFSM : process (AddrxDN, AddrxDP, ICAPErrorxS, LenxDI, ModexSI, StartxSI,
-                     StatexDP, WaitxDN, WaitxDP)
+  icapFSM : process (AddrxDN, AddrxDP, ICAPErrorxS, LenxDI, StartxSI, StatexDP)
   begin  -- process icapFSM
     StatexDN   <= StatexDP;
     AddrxDN    <= AddrxDP;
-    WaitxDN    <= WaitxDP;
     ICAPCExSBN <= '1';                  -- active low, so not active here
     ICAPWExSBN <= '0';                  -- active low, doing a write
     DonexS     <= '0';
@@ -88,35 +82,10 @@ begin  -- implementation
 
     case StatexDP is
       -------------------------------------------------------------------------
-      -- Abort, chip select and change from read to write
+      -- wait state, we wait for 1 cycle before returning to STATE_IDLE
       -------------------------------------------------------------------------
-      when STATE_ABORT0 =>
-        ICAPCExSBN <= '0';
-        ICAPWExSBN <= '1';
-
-        StatexDN <= STATE_ABORT1;
-
-        -------------------------------------------------------------------------
-        -- Abort, chip select and read => causes an abort
-        -------------------------------------------------------------------------
-      when STATE_ABORT1 =>
-        ICAPCExSBN <= '0';
-        ICAPWExSBN <= '0';
-
-        DonexS <= '1';
-
-        WaitxDN  <= unsigned(conv_std_logic_vector(5, WaitxDN'length));
-        StatexDN <= STATE_WAIT;
-
-        -------------------------------------------------------------------------
-        -- wait state, we wait for WaitxDN cycles before returning to STATE_IDLE
-        -------------------------------------------------------------------------
       when STATE_WAIT =>
-        WaitxDN <= WaitxDP - 1;
-
-        if WaitxDN = unsigned(conv_std_logic_vector(0, WaitxDN'length)) then
-          StatexDN <= STATE_IDLE;
-        end if;
+        StatexDN <= STATE_IDLE;
 
         -------------------------------------------------------------------------
         -- idle state, wait for start signal
@@ -125,11 +94,7 @@ begin  -- implementation
         AddrxDN <= unsigned(conv_std_logic_vector(0, AddrxDP'length));
 
         if StartxSI = '1' then
-          if ModexSI = '1' then
-            StatexDN <= STATE_ABORT0;
-          else
-            StatexDN <= STATE_WRITE;
-          end if;
+          StatexDN <= STATE_WRITE;
         end if;
 
         -------------------------------------------------------------------------
@@ -138,10 +103,6 @@ begin  -- implementation
       when STATE_WRITE =>
         ICAPCExSBN <= '0';              -- active low
         AddrxDN    <= AddrxDP + 1;
-
-        if ICAPErrorxS = '1' then
-          StatexDN <= STATE_ERROR;
-        end if;
 
         if std_logic_vector(AddrxDN) = LenxDI then
           StatexDN <= STATE_CHECK;
@@ -163,7 +124,6 @@ begin  -- implementation
       when STATE_FINISH =>
         DonexS <= '1';
 
-        WaitxDN  <= unsigned(conv_std_logic_vector(1, WaitxDN'length));
         StatexDN <= STATE_WAIT;
 
         -----------------------------------------------------------------------
@@ -172,7 +132,6 @@ begin  -- implementation
       when STATE_ERROR =>
         ErrorxS <= '1';
 
-        WaitxDN  <= unsigned(conv_std_logic_vector(1, WaitxDN'length));
         StatexDN <= STATE_WAIT;
 
         -------------------------------------------------------------------------
@@ -183,16 +142,16 @@ begin  -- implementation
   end process icapFSM;
 
 
-  -----------------------------------------------------------------------------
-  -- signal assignments
-  -----------------------------------------------------------------------------
+-----------------------------------------------------------------------------
+-- signal assignments
+-----------------------------------------------------------------------------
   ICAPErrorxS <= not ICAPStatusxDI(24);
   ICAPCExSBO  <= ICAPCExSBP;
   ICAPWExSBO  <= ICAPWExSBP;
 
-  -----------------------------------------------------------------------------
-  -- output assignments
-  -----------------------------------------------------------------------------
+-----------------------------------------------------------------------------
+-- output assignments
+-----------------------------------------------------------------------------
   ErrorxSO   <= ErrorxS;
   DonexSO    <= DonexS;
   RamAddrxDO <= std_logic_vector(AddrxDP(ADDR_WIDTH-1 downto 0));
