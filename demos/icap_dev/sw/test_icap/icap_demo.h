@@ -2,9 +2,11 @@
 #define ICAP_DEMO_H
 
 // hw threads
-#define NUM_SLOTS 2
+#define NUM_SLOTS 4
 #define HWT_ICAP  0
 #define HWT_DPR   1
+#define HWT_DPR2  1
+#define HWT_DPR3  1
 
 #define ADD 0
 #define SUB 1

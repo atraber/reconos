@@ -3,6 +3,10 @@
 	<Partition Name="/system" State="implement" ImportLocation="NONE">
 		<Partition Name="/system/hwt_pr_block_0" State="implement" ImportLocation="NONE" Reconfigurable="true" ReconfigModuleName="hwt_pr_a">
 		</Partition>
+		<Partition Name="/system/hwt_pr_block_2" State="implement" ImportLocation="NONE" Reconfigurable="true" ReconfigModuleName="hwt_pr_a">
+		</Partition>
+		<Partition Name="/system/hwt_pr_block_3" State="implement" ImportLocation="NONE" Reconfigurable="true" ReconfigModuleName="hwt_pr_a">
+		</Partition>
 	</Partition>
 </Project>
 

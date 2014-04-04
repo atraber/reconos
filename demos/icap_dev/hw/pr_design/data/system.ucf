@@ -481,41 +481,6 @@ NET "xps_hwicap_0/xps_hwicap_0/HWICAP_CTRL_I/icap_statemachine_I1/Icap_we" MAXDE
 ##############################################################################
 # hwt_icap
 ##############################################################################
-# this should no longer be needed for virtex 6
-# NET "hwt_icap_0/DebugICAPRamOut[0]" MAXDELAY = 2 ns;
-# NET "hwt_icap_0/DebugICAPRamOut[1]" MAXDELAY = 2 ns;
-# NET "hwt_icap_0/DebugICAPRamOut[2]" MAXDELAY = 2 ns;
-# NET "hwt_icap_0/DebugICAPRamOut[3]" MAXDELAY = 2 ns;
-# NET "hwt_icap_0/DebugICAPRamOut[4]" MAXDELAY = 2 ns;
-# NET "hwt_icap_0/DebugICAPRamOut[5]" MAXDELAY = 2 ns;
-# NET "hwt_icap_0/DebugICAPRamOut[6]" MAXDELAY = 2 ns;
-# NET "hwt_icap_0/DebugICAPRamOut[7]" MAXDELAY = 2 ns;
-# NET "hwt_icap_0/DebugICAPRamOut[8]" MAXDELAY = 2 ns;
-# NET "hwt_icap_0/DebugICAPRamOut[9]" MAXDELAY = 2 ns;
-# NET "hwt_icap_0/DebugICAPRamOut[10]" MAXDELAY = 2 ns;
-# NET "hwt_icap_0/DebugICAPRamOut[11]" MAXDELAY = 2 ns;
-# NET "hwt_icap_0/DebugICAPRamOut[12]" MAXDELAY = 2 ns;
-# NET "hwt_icap_0/DebugICAPRamOut[13]" MAXDELAY = 2 ns;
-# NET "hwt_icap_0/DebugICAPRamOut[14]" MAXDELAY = 2 ns;
-# NET "hwt_icap_0/DebugICAPRamOut[15]" MAXDELAY = 2 ns;
-# NET "hwt_icap_0/DebugICAPRamOut[16]" MAXDELAY = 2 ns;
-# NET "hwt_icap_0/DebugICAPRamOut[17]" MAXDELAY = 2 ns;
-# NET "hwt_icap_0/DebugICAPRamOut[18]" MAXDELAY = 2 ns;
-# NET "hwt_icap_0/DebugICAPRamOut[19]" MAXDELAY = 2 ns;
-# NET "hwt_icap_0/DebugICAPRamOut[20]" MAXDELAY = 2 ns;
-# NET "hwt_icap_0/DebugICAPRamOut[21]" MAXDELAY = 2 ns;
-# NET "hwt_icap_0/DebugICAPRamOut[22]" MAXDELAY = 2 ns;
-# NET "hwt_icap_0/DebugICAPRamOut[23]" MAXDELAY = 2 ns;
-# NET "hwt_icap_0/DebugICAPRamOut[24]" MAXDELAY = 2 ns;
-# NET "hwt_icap_0/DebugICAPRamOut[25]" MAXDELAY = 2 ns;
-# NET "hwt_icap_0/DebugICAPRamOut[26]" MAXDELAY = 2 ns;
-# NET "hwt_icap_0/DebugICAPRamOut[27]" MAXDELAY = 2 ns;
-# NET "hwt_icap_0/DebugICAPRamOut[28]" MAXDELAY = 2 ns;
-# NET "hwt_icap_0/DebugICAPRamOut[29]" MAXDELAY = 2 ns;
-# NET "hwt_icap_0/DebugICAPRamOut[30]" MAXDELAY = 2 ns;
-# NET "hwt_icap_0/DebugICAPRamOut[31]" MAXDELAY = 2 ns;
-# NET "hwt_icap_0_DebugICAPCE_to_chipscope_ila_0" MAXDELAY = 2 ns;
-# NET "hwt_icap_0_DebugICAPWE_to_chipscope_ila_0" MAXDELAY = 2 ns;
 
 # place hwt_icap on top icap
 INST "hwt_icap_0/hwt_icap_0/ICAP_VERTEX6_I" LOC = ICAP_X0Y1;
@@ -537,8 +502,24 @@ INST "hwt_pr_block_0" AREA_GROUP = "pblock_hwt_pr_block_0";
 # AREA_GROUP "pblock_hwt_pr_block_0" RESET_AFTER_RECONFIG=TRUE;
 
 # very small
-AREA_GROUP "pblock_hwt_pr_block_0" RANGE=SLICE_X32Y160:SLICE_X45Y199;
-AREA_GROUP "pblock_hwt_pr_block_0" RANGE=DSP48_X2Y64:DSP48_X2Y79;
-AREA_GROUP "pblock_hwt_pr_block_0" RANGE=RAMB18_X2Y64:RAMB18_X2Y79;
-AREA_GROUP "pblock_hwt_pr_block_0" RANGE=RAMB36_X2Y32:RAMB36_X2Y39;
+AREA_GROUP "pblock_hwt_pr_block_0" RANGE=SLICE_X124Y160:SLICE_X141Y199;
+AREA_GROUP "pblock_hwt_pr_block_0" RANGE=DSP48_X6Y64:DSP48_X6Y79;
+AREA_GROUP "pblock_hwt_pr_block_0" RANGE=RAMB18_X6Y64:RAMB18_X6Y79;
+AREA_GROUP "pblock_hwt_pr_block_0" RANGE=RAMB36_X6Y32:RAMB36_X6Y39;
 AREA_GROUP "pblock_hwt_pr_block_0" RESET_AFTER_RECONFIG=TRUE;
+
+INST "hwt_pr_block_2" AREA_GROUP = "pblock_hwt_pr_block_2";
+# medium
+AREA_GROUP "pblock_hwt_pr_block_2" RANGE=SLICE_X12Y40:SLICE_X51Y79;
+AREA_GROUP "pblock_hwt_pr_block_2" RANGE=DSP48_X0Y16:DSP48_X3Y31;
+AREA_GROUP "pblock_hwt_pr_block_2" RANGE=RAMB18_X1Y16:RAMB18_X2Y31;
+AREA_GROUP "pblock_hwt_pr_block_2" RANGE=RAMB36_X1Y8:RAMB36_X2Y15;
+AREA_GROUP "pblock_hwt_pr_block_2" RESET_AFTER_RECONFIG=TRUE;
+
+INST "hwt_pr_block_3" AREA_GROUP = "pblock_hwt_pr_block_3";
+# very large
+AREA_GROUP "pblock_hwt_pr_block_3" RANGE=SLICE_X0Y120:SLICE_X61Y199;
+AREA_GROUP "pblock_hwt_pr_block_3" RANGE=DSP48_X0Y48:DSP48_X3Y79;
+AREA_GROUP "pblock_hwt_pr_block_3" RANGE=RAMB18_X1Y48:RAMB18_X3Y79;
+AREA_GROUP "pblock_hwt_pr_block_3" RANGE=RAMB36_X1Y24:RAMB36_X3Y39;
+AREA_GROUP "pblock_hwt_pr_block_3" RESET_AFTER_RECONFIG=TRUE;

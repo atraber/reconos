@@ -32,6 +32,8 @@ cp ./implementation/*.ngc ../pr_design/syn/static/
 # Netlist of Reconfigurable Module is moved to a folder specific for this
 # configuration
 mv ../pr_design/syn/static/system_hwt_pr_block_0_wrapper.ngc ../pr_design/syn/pr_a/
+mv ../pr_design/syn/static/system_hwt_pr_block_2_wrapper.ngc ../pr_design/syn/pr_a/
+mv ../pr_design/syn/static/system_hwt_pr_block_3_wrapper.ngc ../pr_design/syn/pr_a/
 
 echo "CONFIGURATION A FINISHED"
 
@@ -66,6 +68,8 @@ echo "run netlist" | xps -nw ./system.xmp
 # Netlist of Reconfigurable Module is moved to a folder specific for this
 # configuration
 mv ./implementation/system_hwt_pr_block_0_wrapper.ngc ../pr_design/syn/pr_b/
+mv ./implementation/system_hwt_pr_block_2_wrapper.ngc ../pr_design/syn/pr_b/
+mv ./implementation/system_hwt_pr_block_3_wrapper.ngc ../pr_design/syn/pr_b/
 
 echo "CONFIGURATION B FINISHED"
 

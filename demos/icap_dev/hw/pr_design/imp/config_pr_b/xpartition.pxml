@@ -3,6 +3,10 @@
 	<Partition Name="/system" State="import" ImportLocation="../config_pr_a" Preserve="routing">
 		<Partition Name="/system/hwt_pr_block_0" State="implement" ImportLocation="NONE" Reconfigurable="true" ReconfigModuleName="hwt_pr_b">
 		</Partition>
+		<Partition Name="/system/hwt_pr_block_2" State="implement" ImportLocation="NONE" Reconfigurable="true" ReconfigModuleName="hwt_pr_b">
+		</Partition>
+		<Partition Name="/system/hwt_pr_block_3" State="implement" ImportLocation="NONE" Reconfigurable="true" ReconfigModuleName="hwt_pr_b">
+		</Partition>
 	</Partition>
 </Project>
 
