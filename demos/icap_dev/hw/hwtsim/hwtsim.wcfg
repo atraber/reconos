@@ -20,7 +20,7 @@
          </top_modules>
       </db_ref>
    </db_ref_list>
-   <WVObjectSize size="50" />
+   <WVObjectSize size="46" />
    <wvobject fp_name="divider62" type="divider">
       <obj_property name="label">CLK and RST</obj_property>
       <obj_property name="DisplayName">label</obj_property>
@@ -208,31 +208,13 @@
       <obj_property name="ElementShortName">icapbusyxs</obj_property>
       <obj_property name="ObjectShortName">icapbusyxs</obj_property>
    </wvobject>
-   <wvobject fp_name="/hwt_tb/uut/icapweregxsbp" type="logic" db_ref_id="1">
-      <obj_property name="ElementShortName">icapweregxsbp</obj_property>
-      <obj_property name="ObjectShortName">icapweregxsbp</obj_property>
+   <wvobject fp_name="/hwt_tb/uut/icapcexsb" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">icapcexsb</obj_property>
+      <obj_property name="ObjectShortName">icapcexsb</obj_property>
    </wvobject>
-   <wvobject fp_name="/hwt_tb/uut/icapweregxsbn" type="logic" db_ref_id="1">
-      <obj_property name="ElementShortName">icapweregxsbn</obj_property>
-      <obj_property name="ObjectShortName">icapweregxsbn</obj_property>
-   </wvobject>
-   <wvobject fp_name="/hwt_tb/uut/icapceregxsbp" type="logic" db_ref_id="1">
-      <obj_property name="ElementShortName">icapceregxsbp</obj_property>
-      <obj_property name="ObjectShortName">icapceregxsbp</obj_property>
-   </wvobject>
-   <wvobject fp_name="/hwt_tb/uut/icapceregxsbn" type="logic" db_ref_id="1">
-      <obj_property name="ElementShortName">icapceregxsbn</obj_property>
-      <obj_property name="ObjectShortName">icapceregxsbn</obj_property>
-   </wvobject>
-   <wvobject fp_name="/hwt_tb/uut/icapdatainregxdp" type="array" db_ref_id="1">
-      <obj_property name="ElementShortName">icapdatainregxdp[0:31]</obj_property>
-      <obj_property name="ObjectShortName">icapdatainregxdp[0:31]</obj_property>
-      <obj_property name="Radix">HEXRADIX</obj_property>
-   </wvobject>
-   <wvobject fp_name="/hwt_tb/uut/icapdatainregxdn" type="array" db_ref_id="1">
-      <obj_property name="ElementShortName">icapdatainregxdn[0:31]</obj_property>
-      <obj_property name="ObjectShortName">icapdatainregxdn[0:31]</obj_property>
-      <obj_property name="Radix">HEXRADIX</obj_property>
+   <wvobject fp_name="/hwt_tb/uut/icapwexsb" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">icapwexsb</obj_property>
+      <obj_property name="ObjectShortName">icapwexsb</obj_property>
    </wvobject>
    <wvobject fp_name="/hwt_tb/uut/icapramaddrxd" type="array" db_ref_id="1">
       <obj_property name="ElementShortName">icapramaddrxd[0:10]</obj_property>

@@ -22,6 +22,7 @@
 /imp/config_pr_a/system_hwt_pr_block_0_hwt_pr_a_partial.bit
 /imp/config_pr_a/system_hwt_pr_block_0_hwt_pr_a_partial.drc
 /imp/config_pr_a/system_map.map
+/imp/config_pr_a/system_map.ncd
 /imp/config_pr_a/system_map.mrp
 /imp/config_pr_a/system_map.ngm
 /imp/config_pr_a/system_map.xrpt
@@ -58,6 +59,7 @@
 /imp/config_pr_b/system_map.map
 /imp/config_pr_b/system_map.mrp
 /imp/config_pr_b/system_map.ngm
+/imp/config_pr_b/system_map.ncd
 /imp/config_pr_b/system_map.xrpt
 /imp/config_pr_b/system_map_prev_mapped.ncd
 /imp/config_pr_b/system_map_prev_mapped.ngm

@@ -45,24 +45,4 @@ PORT FIFO32_M_Rem  = FIFO32_M_Rem,  DIR=I, VEC=[0:15], BUS=MFIFO32
 PORT Rst="", DIR=I, SIGIS=Rst
 PORT Clk="", DIR=I, SIGIS=Clk
 
-# DEBUG
-PORT DebugICAPFsmStart="", DIR=O
-PORT DebugICAPFsmDone="", DIR=O
-PORT DebugICAPFsmError="", DIR=O
-PORT DebugICAPRamAddr="", DIR=O, VEC=[0:10]
-PORT DebugICAPFsmLen="", DIR=O, VEC=[0:11]
-PORT DebugStateIsGetLength="", DIR=O
-PORT DebugStateMemCalc="", DIR=O
-PORT DebugStateIcapTransfer="", DIR=O
-PORT DebugLen="", DIR=O, VEC=[0:31]
-PORT DebugAddr="", DIR=O, VEC=[0:31]
-PORT DebugLast="", DIR=O
-PORT DebugICAPDataIn="", DIR=O, VEC=[0:31]
-PORT DebugICAPOut2="", DIR=O, VEC=[0:7]
-PORT DebugICAPStatusError="", DIR=O
-PORT DebugICAPCE="", DIR=O
-PORT DebugICAPWE="", DIR=O
-PORT DebugICAPBusy="", DIR=O
-PORT DebugICAPRamOut="", DIR=O, VEC=[0:31]
-
 END
