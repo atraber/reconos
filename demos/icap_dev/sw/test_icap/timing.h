@@ -24,6 +24,7 @@ typedef unsigned int ms_t;
 #elif defined USE_GETTIMEOFDAY
 typedef struct timeval timing_t;
 typedef unsigned long ms_t;
+typedef unsigned long us_t;
 #else
 typedef unsigned long timing_t;
 typedef unsigned long ms_t;
@@ -31,6 +32,7 @@ typedef unsigned long ms_t;
 
 timing_t gettime(  );
 ms_t calc_timediff_ms( timing_t start, timing_t stop );
+us_t calc_timediff_us( timing_t start, timing_t stop );
 #ifdef USE_DCR_TIMEBASE
 int init_timebase();
 void close_timebase();

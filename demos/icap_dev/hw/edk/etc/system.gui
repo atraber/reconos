@@ -25,14 +25,14 @@
       <VARIABLE ID="mb_plb" ROW_INDEX="8"/>
       <VARIABLE ID="RS232_Uart_1" ROW_INDEX="28"/>
       <VARIABLE ID="DDR3_SDRAM" ROW_INDEX="10"/>
-      <VARIABLE ID="FLASH_CE_inverter" ROW_INDEX="33"/>
-      <VARIABLE ID="PCIe_Diff_Clk" ROW_INDEX="31"/>
-      <VARIABLE ID="clock_generator_0" ROW_INDEX="29"/>
+      <VARIABLE ID="FLASH_CE_inverter" ROW_INDEX="35"/>
+      <VARIABLE ID="PCIe_Diff_Clk" ROW_INDEX="33"/>
+      <VARIABLE ID="clock_generator_0" ROW_INDEX="31"/>
       <VARIABLE ID="mdm_0" ROW_INDEX="11"/>
-      <VARIABLE ID="proc_sys_reset_0" ROW_INDEX="34"/>
+      <VARIABLE ID="proc_sys_reset_0" ROW_INDEX="36"/>
       <VARIABLE ID="xps_intc_0" ROW_INDEX="12"/>
       <VARIABLE ID="Ethernet_MAC" ROW_INDEX="23"/>
-      <VARIABLE ID="AND_Gate" ROW_INDEX="32"/>
+      <VARIABLE ID="AND_Gate" ROW_INDEX="34"/>
       <VARIABLE ID="xps_timer_0" ROW_INDEX="27"/>
       <VARIABLE ID="fsl_v20_0a" ROW_INDEX="0"/>
       <VARIABLE ID="fsl_v20_0b" ROW_INDEX="1"/>
@@ -51,10 +51,12 @@
       <VARIABLE ID="mmu_0" ROW_INDEX="21"/>
       <VARIABLE ID="xps_mem_0" ROW_INDEX="25"/>
       <VARIABLE ID="proc_control_0" ROW_INDEX="22"/>
-      <VARIABLE ID="gnd2int_0" ROW_INDEX="30"/>
+      <VARIABLE ID="gnd2int_0" ROW_INDEX="32"/>
       <VARIABLE ID="xps_sysace_0" ROW_INDEX="26"/>
       <VARIABLE ID="xps_hwicap_0" ROW_INDEX="24"/>
       <VARIABLE ID="microblaze_0" ROW_INDEX="9"/>
+      <VARIABLE ID="chipscope_ila_0" ROW_INDEX="30"/>
+      <VARIABLE ID="chipscope_icon_0" ROW_INDEX="29"/>
     </SEQUENCES>
   </SET>
 

@@ -47,7 +47,7 @@ int test_prblock(int thread_id)
 int reconfigure_prblock(int thread_id)
 {
 	timing_t t_start, t_stop;
-  ms_t t_check;
+  us_t t_check;
 
 	int ret = -2;
 
@@ -80,9 +80,9 @@ int reconfigure_prblock(int thread_id)
   configured = thread_id;
 
 	t_stop = gettime();
-	t_check = calc_timediff_ms(t_start, t_stop);
+	t_check = calc_timediff_us(t_start, t_stop);
 
-  printf("Reconfiguration done in %lu ms, reseting hardware thread\n", t_check);
+  printf("Reconfiguration done in %lu us, reseting hardware thread\n", t_check);
 
 	// reset hardware thread and start new delegate
 	reconos_hwt_setresources(&hwt[HWT_DPR],res[HWT_DPR],2);

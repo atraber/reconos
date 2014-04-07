@@ -30,6 +30,10 @@ entity hwt_icap is
     FIFO32_S_Rd   : out std_logic;
     FIFO32_M_Wr   : out std_logic;
 
+    -- DEBUG
+    DebugICAPOut  : out std_logic_vector(0 to 7);
+    DebugICAPBusy : out std_logic;
+
     -- HWT reset and clock
     clk : in std_logic;
     rst : in std_logic
@@ -418,6 +422,13 @@ begin
       ICAPDataInxD(i * 8 + j) <= ICAPRamOutxD((i + 1) * 8 - 1 - j);
     end generate bitSwapGen;
   end generate swapGen;
+
+
+  -----------------------------------------------------------------------------
+  -- DEBUG
+  -----------------------------------------------------------------------------
+  DebugICAPOut  <= ICAPDataOutxD(24 to 31);
+  DebugICAPBusy <= ICAPBusyxS;
 
 end architecture;
 
