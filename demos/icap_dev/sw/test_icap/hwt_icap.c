@@ -38,7 +38,10 @@ int hw_icap_write(uint32_t* addr, unsigned int size)
 
   // wait for response from hwt
 	ret = mbox_get(&mb_out[HWT_ICAP]);
-	printf("hwt_icap returned %X\n", ret);
+  if(ret == 0x1337)
+    printf("hwt_icap returned SUCCESS, code %X\n", ret);
+  else
+    printf("hwt_icap returned ERROR, code %X\n", ret);
 
 	return ret;
 }
