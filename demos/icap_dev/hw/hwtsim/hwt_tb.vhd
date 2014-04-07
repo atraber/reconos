@@ -310,8 +310,6 @@ BEGIN
 		wait for clk_period*10;
 
 
-    wait for clk_period * 100 * 2;
-		
 		MB_M_Write <= '1';
 		MB_M_Data <= x"00000000";
 		
@@ -322,7 +320,7 @@ BEGIN
 		wait for clk_period*10;
 		
 		MB_M_Write <= '1';
-		MB_M_Data <= x"000001F0";
+		MB_M_Data <= x"00054AC8";
 		
 		wait for clk_period;
 		
@@ -332,4 +330,3 @@ BEGIN
 	end process;
 
 END;
-

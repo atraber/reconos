@@ -11,6 +11,7 @@
             <top_module name="reconos_pkg" />
             <top_module name="std_logic_1164" />
             <top_module name="std_logic_arith" />
+            <top_module name="std_logic_textio" />
             <top_module name="std_logic_unsigned" />
             <top_module name="textio" />
             <top_module name="vcomponents" />
@@ -20,7 +21,7 @@
          </top_modules>
       </db_ref>
    </db_ref_list>
-   <WVObjectSize size="46" />
+   <WVObjectSize size="44" />
    <wvobject fp_name="divider62" type="divider">
       <obj_property name="label">CLK and RST</obj_property>
       <obj_property name="DisplayName">label</obj_property>
@@ -105,7 +106,7 @@
    <wvobject fp_name="/hwt_tb/ram_addr" type="array" db_ref_id="1">
       <obj_property name="ElementShortName">ram_addr[31:0]</obj_property>
       <obj_property name="ObjectShortName">ram_addr[31:0]</obj_property>
-      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
    </wvobject>
    <wvobject fp_name="divider94" type="divider">
       <obj_property name="label">ReconosFSM</obj_property>
@@ -114,8 +115,10 @@
       <obj_property name="TextColor">230 230 230</obj_property>
    </wvobject>
    <wvobject fp_name="/hwt_tb/uut/state" type="other" db_ref_id="1">
+      <obj_property name="DisplayName">label</obj_property>
       <obj_property name="ElementShortName">state</obj_property>
       <obj_property name="ObjectShortName">state</obj_property>
+      <obj_property name="label">state</obj_property>
    </wvobject>
    <wvobject fp_name="/hwt_tb/uut/addrxd" type="array" db_ref_id="1">
       <obj_property name="ElementShortName">addrxd[31:0]</obj_property>
@@ -178,14 +181,6 @@
       <obj_property name="ElementShortName">statexdn</obj_property>
       <obj_property name="ObjectShortName">statexdn</obj_property>
    </wvobject>
-   <wvobject fp_name="/hwt_tb/uut/ICAPFsmInst/waitxdp" type="array" db_ref_id="1">
-      <obj_property name="ElementShortName">waitxdp[2:0]</obj_property>
-      <obj_property name="ObjectShortName">waitxdp[2:0]</obj_property>
-   </wvobject>
-   <wvobject fp_name="/hwt_tb/uut/ICAPFsmInst/waitxdn" type="array" db_ref_id="1">
-      <obj_property name="ElementShortName">waitxdn[2:0]</obj_property>
-      <obj_property name="ObjectShortName">waitxdn[2:0]</obj_property>
-   </wvobject>
    <wvobject fp_name="/hwt_tb/uut/ICAPFsmInst/donexs" type="logic" db_ref_id="1">
       <obj_property name="ElementShortName">donexs</obj_property>
       <obj_property name="ObjectShortName">donexs</obj_property>
@@ -226,7 +221,9 @@
       <obj_property name="Radix">HEXRADIX</obj_property>
    </wvobject>
    <wvobject fp_name="/hwt_tb/uut/icapdataoutxd" type="array" db_ref_id="1">
-      <obj_property name="ElementShortName">icapdataoutxd[0:31]</obj_property>
-      <obj_property name="ObjectShortName">icapdataoutxd[0:31]</obj_property>
+      <obj_property name="ElementShortName">icapdataoutxd[31:0]</obj_property>
+      <obj_property name="ObjectShortName">icapdataoutxd[31:0]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
+      <obj_property name="Reversed">true</obj_property>
    </wvobject>
 </wave_config>

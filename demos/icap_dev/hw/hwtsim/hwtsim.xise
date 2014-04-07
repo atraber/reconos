@@ -326,7 +326,7 @@
       <library xil_pn:name="reconos_v3_00_b"/>
     </file>
     <file xil_pn:name="hwt_tb.vhd" xil_pn:type="FILE_VHDL">
-      <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="14"/>
+      <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="15"/>
       <association xil_pn:name="PostMapSimulation" xil_pn:seqID="66"/>
       <association xil_pn:name="PostRouteSimulation" xil_pn:seqID="66"/>
       <association xil_pn:name="PostTranslateSimulation" xil_pn:seqID="66"/>
@@ -337,7 +337,7 @@
       <library xil_pn:name="fsl_v20_v2_11_e"/>
     </file>
     <file xil_pn:name="/opt/Xilinx/14.7/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/fsl_v20_v2_11_e/hdl/vhdl/fsl_v20.vhd" xil_pn:type="FILE_VHDL">
-      <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="10"/>
+      <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="11"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="7"/>
       <library xil_pn:name="fsl_v20_v2_11_e"/>
     </file>
@@ -367,26 +367,26 @@
       <library xil_pn:name="fsl_v20_v2_11_e"/>
     </file>
     <file xil_pn:name="../../../../pcores/fifo32_v1_00_a/hdl/vhdl/fifo32.vhd" xil_pn:type="FILE_VHDL">
-      <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="11"/>
+      <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="12"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="0"/>
       <library xil_pn:name="fifo32_v1_00_a"/>
     </file>
     <file xil_pn:name="memory.vhd" xil_pn:type="FILE_VHDL">
-      <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="12"/>
+      <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="13"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="0"/>
     </file>
     <file xil_pn:name="icap_sim.vhd" xil_pn:type="FILE_VHDL">
-      <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="0"/>
+      <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="9"/>
       <association xil_pn:name="PostMapSimulation" xil_pn:seqID="73"/>
       <association xil_pn:name="PostRouteSimulation" xil_pn:seqID="73"/>
       <association xil_pn:name="PostTranslateSimulation" xil_pn:seqID="73"/>
     </file>
     <file xil_pn:name="../edk/pcores/hwt_icap_v1_00_a/hdl/vhdl/hwt_icap.vhd" xil_pn:type="FILE_VHDL">
-      <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="13"/>
+      <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="14"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="0"/>
     </file>
     <file xil_pn:name="../edk/pcores/hwt_icap_v1_00_a/hdl/vhdl/icap_fsm.vhd" xil_pn:type="FILE_VHDL">
-      <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="9"/>
+      <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="10"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="0"/>
     </file>
   </files>

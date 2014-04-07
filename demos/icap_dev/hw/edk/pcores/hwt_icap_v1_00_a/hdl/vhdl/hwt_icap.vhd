@@ -9,9 +9,6 @@ use proc_common_v3_00_a.proc_common_pkg.all;
 library reconos_v3_00_b;
 use reconos_v3_00_b.reconos_pkg.all;
 
-library unisim;
-use unisim.vcomponents.all;
-
 entity hwt_icap is
   port (
     -- OSIF FSL   
@@ -59,6 +56,18 @@ architecture implementation of hwt_icap is
       ICAPStatusxDI : in  std_logic_vector(0 to 31));
   end component;
 
+  component ICAPWrapper
+    generic (
+      ICAP_WIDTH : natural);
+    port (
+      clk   : in  std_logic;
+      csb   : in  std_logic;
+      rdwrb : in  std_logic;
+      i     : in  std_logic_vector(0 to ICAP_WIDTH-1);
+      busy  : out std_logic;
+      o     : out std_logic_vector(0 to ICAP_WIDTH-1));
+  end component;
+
   -----------------------------------------------------------------------------
   -- signals
   -----------------------------------------------------------------------------
@@ -70,8 +79,7 @@ architecture implementation of hwt_icap is
   constant MBOX_SEND   : std_logic_vector(C_FSL_WIDTH-1 downto 0) := x"00000001";
   constant RESULT_OK   : std_logic_vector(31 downto 0)            := x"00001337";
   constant RESULT_FAIL : std_logic_vector(31 downto 0)            := x"00000666";
-  constant ICAP_DWIDTH : integer                                  := 32;
-  constant ICAP_WIDTH  : string                                   := "X32";
+  constant ICAP_WIDTH  : integer                                  := 32;
 
   constant C_LOCAL_RAM_SIZE          : integer := 2048;  -- in words
   constant C_LOCAL_RAM_ADDRESS_WIDTH : integer := clog2(C_LOCAL_RAM_SIZE);
@@ -115,8 +123,8 @@ architecture implementation of hwt_icap is
   signal ICAPBusyxS    : std_logic;
   signal ICAPCExSB     : std_logic;
   signal ICAPWExSB     : std_logic;
-  signal ICAPDataOutxD : std_logic_vector(0 to ICAP_DWIDTH-1);
-  signal ICAPDataInxD  : std_logic_vector(0 to ICAP_DWIDTH-1);
+  signal ICAPDataOutxD : std_logic_vector(0 to ICAP_WIDTH-1);
+  signal ICAPDataInxD  : std_logic_vector(0 to ICAP_WIDTH-1);
 
   signal ICAPFsmStartxS : std_logic;
   signal ICAPFsmDonexS  : std_logic;
@@ -310,9 +318,11 @@ begin
   end process;
 
   -----------------------------------------------------------------------------
-  -- ICAP primitive of virtex 6
+  -- ICAP wrapper, the wrapper just passes through the signals
+  -- It mainly exists to make simulation easier as we can just replace the
+  -- wrapper for simulation runs
   -----------------------------------------------------------------------------
-  ICAP_VERTEX6_I : ICAP_VIRTEX6
+  icapWrapperInst : ICAPWrapper
     generic map (
       ICAP_WIDTH => ICAP_WIDTH
       )
