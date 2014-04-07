@@ -6,7 +6,7 @@
 -- Author     : atraber  <atraber@student.ethz.ch>
 -- Company    : Computer Engineering and Networks Laboratory, ETH Zurich
 -- Created    : 2014-04-04
--- Last update: 2014-04-06
+-- Last update: 2014-04-07
 -- Platform   : Xilinx ISIM (simulation), Xilinx (synthesis)
 -- Standard   : VHDL'87
 -------------------------------------------------------------------------------
@@ -113,6 +113,9 @@ begin  -- behavioral
       if csb = '0' and rdwrb = '0' then
         busy <= '0';
 
+        -----------------------------------------------------------------------
+        -- check responses
+        -----------------------------------------------------------------------
         readline(file_in, line);
         hread(line, vec, read_ok);
 
@@ -121,7 +124,14 @@ begin  -- behavioral
             & " while expected " & to_hex_string(vec) severity note;
         end if;
 
+        if endfile(file_in) then
+          report "End of File reached, finished loading bitfile" severity note;
+        end if;
 
+
+        -----------------------------------------------------------------------
+        -- react to commands from bitfile
+        -----------------------------------------------------------------------
         if wasCmd then
           -- check for desync
           if DataInxD = x"0000000D" then

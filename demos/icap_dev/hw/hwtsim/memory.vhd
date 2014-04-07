@@ -45,7 +45,7 @@ begin
           severity failure;
       end if;
 
-      if to_integer(unsigned(addr)) >= memLastValid then
+      if to_integer(unsigned(addr)) >= memLastValid and not (endfile(file_in)) then
         -----------------------------------------------------------------------------
         -- read from bit file and place it in memory
         -----------------------------------------------------------------------------

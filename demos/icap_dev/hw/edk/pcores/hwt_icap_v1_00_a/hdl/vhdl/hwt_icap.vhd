@@ -47,9 +47,11 @@ architecture implementation of hwt_icap is
       ClkxCI        : in  std_logic;
       ResetxRI      : in  std_logic;
       StartxSI      : in  std_logic;
+      AckxSI        : in  std_logic;
       DonexSO       : out std_logic;
       ErrorxSO      : out std_logic;
-      LenxDI        : in  std_logic_vector(0 to ADDR_WIDTH);
+      LenxDI        : in  std_logic_vector(0 to ADDR_WIDTH-1);
+      UpperxSI      : in  std_logic;
       RamAddrxDO    : out std_logic_vector(0 to ADDR_WIDTH-1);
       ICAPCExSBO    : out std_logic;
       ICAPWExSBO    : out std_logic;
@@ -73,7 +75,8 @@ architecture implementation of hwt_icap is
   -----------------------------------------------------------------------------
   type STATE_TYPE is (STATE_GET_BITSTREAM_ADDR, STATE_GET_BITSTREAM_SIZE, STATE_THREAD_EXIT,
                       STATE_FINISHED, STATE_ERROR, STATE_CMPLEN, STATE_FETCH_MEM,
-                      STATE_ICAP_TRANSFER, STATE_MEM_CALC);
+                      STATE_ICAP_TRANSFER, STATE_ICAP_WAIT, STATE_ICAP_WAIT_LAST,
+                      STATE_MEM_CALC);
 
   constant MBOX_RECV   : std_logic_vector(C_FSL_WIDTH-1 downto 0) := x"00000000";
   constant MBOX_SEND   : std_logic_vector(C_FSL_WIDTH-1 downto 0) := x"00000001";
@@ -115,9 +118,11 @@ architecture implementation of hwt_icap is
   signal ignore : std_logic_vector(C_FSL_WIDTH-1 downto 0);
 
   -- registers
-  signal AddrxD : std_logic_vector(31 downto 0);  -- in bytes
-  signal LenxD  : std_logic_vector(31 downto 0);  -- in bytes
-  signal LastxD : std_logic;
+  signal AddrxD  : std_logic_vector(31 downto 0);  -- in bytes
+  signal LenxD   : std_logic_vector(31 downto 0);  -- in bytes
+  signal LastxS  : std_logic;
+  signal FirstxS : std_logic;
+  signal UpperxS : std_logic;
 
   -- icap signals
   signal ICAPBusyxS    : std_logic;
@@ -127,9 +132,10 @@ architecture implementation of hwt_icap is
   signal ICAPDataInxD  : std_logic_vector(0 to ICAP_WIDTH-1);
 
   signal ICAPFsmStartxS : std_logic;
+  signal ICAPFsmAckxS   : std_logic;
   signal ICAPFsmDonexS  : std_logic;
   signal ICAPFsmErrorxS : std_logic;
-  signal ICAPFsmLenxD   : std_logic_vector(0 to C_LOCAL_RAM_ADDRESS_WIDTH);  -- in words
+  signal ICAPFsmLenxD   : std_logic_vector(0 to C_LOCAL_RAM_ADDRESS_WIDTH-1);  -- in words
 
 begin
 
@@ -173,7 +179,9 @@ begin
   -- os and memory synchronisation state machine
   -----------------------------------------------------------------------------
   reconos_fsm : process (clk, rst, o_osif) is
-    variable done : boolean;
+    variable done      : boolean;
+    variable localAddr : std_logic_vector(31 downto 0);
+    variable len       : std_logic_vector(23 downto 0);
   begin
     if rst = '1' then
       osif_reset(o_osif);
@@ -182,14 +190,17 @@ begin
       state <= STATE_GET_BITSTREAM_ADDR;
       done  := false;
 
-      AddrxD <= (others => '0');
-      LenxD  <= (others => '0');
-      LastxD <= '0';
+      AddrxD  <= (others => '0');
+      LenxD   <= (others => '0');
+      LastxS  <= '0';
+      FirstxS <= '0';
+      UpperxS <= '0';
     elsif rising_edge(clk) then
 
       -- default assignments
-      ICAPFsmLenxD   <= conv_std_logic_vector(C_LOCAL_RAM_SIZE, C_LOCAL_RAM_ADDRESS_WIDTH + 1);
+      ICAPFsmLenxD   <= conv_std_logic_vector(C_LOCAL_RAM_SIZE/2, C_LOCAL_RAM_ADDRESS_WIDTH);
       ICAPFsmStartxS <= '0';
+      ICAPFsmAckxS   <= '0';
 
       case state is
         -----------------------------------------------------------------------
@@ -212,6 +223,9 @@ begin
         when STATE_GET_BITSTREAM_SIZE =>
           osif_mbox_get(i_osif, o_osif, MBOX_RECV, LenxD, done);
 
+          FirstxS <= '1';
+          UpperxS <= '0';
+
           if done then
             if (LenxD = X"FFFFFFFF") then
               state <= STATE_THREAD_EXIT;
@@ -225,10 +239,10 @@ begin
           -- memory
           ---------------------------------------------------------------------
         when STATE_CMPLEN =>
-          if LenxD <= C_LOCAL_RAM_SIZE_IN_BYTES then
-            LastxD <= '1';
+          if LenxD <= (C_LOCAL_RAM_SIZE_IN_BYTES/2) then
+            LastxS <= '1';
           else
-            LastxD <= '0';
+            LastxS <= '0';
           end if;
 
           state <= STATE_FETCH_MEM;
@@ -237,19 +251,59 @@ begin
           -- Copy data from main memory to our local memory
           ---------------------------------------------------------------------
         when STATE_FETCH_MEM =>
-          if LastxD = '1' then
-            -- LenxD is smaller than the size of local memory, so we only fill
-            -- it partially
-            memif_read(i_ram, o_ram, i_memif, o_memif, AddrxD, X"00000000",
-                       LenxD(23 downto 0), done);
+          if UpperxS = '1' then
+            -- fill upper part of memory
+            localAddr := conv_std_logic_vector(C_LOCAL_RAM_SIZE/2, 32);
           else
-            -- completely fill our local memory
-            memif_read(i_ram, o_ram, i_memif, o_memif, AddrxD, X"00000000",
-                       conv_std_logic_vector(C_LOCAL_RAM_SIZE_IN_BYTES, 24), done);
+            -- fill lower part of memory
+            localAddr := X"00000000";
           end if;
 
+          if LastxS = '1' then
+            -- LenxD is smaller than the size of half the local memory, so we
+            -- only fill it partially
+            len := LenxD(23 downto 0);
+          else
+            -- completely fill our half local memory
+            len := conv_std_logic_vector(C_LOCAL_RAM_SIZE_IN_BYTES/2, 24);
+          end if;
+
+          memif_read(i_ram, o_ram, i_memif, o_memif, AddrxD, localAddr, len, done);
+
           if done then
+            if FirstxS = '1' then
+              state <= STATE_ICAP_TRANSFER;
+            else
+              state <= STATE_ICAP_WAIT;
+            end if;
+          end if;
+
+          ---------------------------------------------------------------------
+          -- Wait for running ICAP before proceeding to next transfer
+          ---------------------------------------------------------------------
+        when STATE_ICAP_WAIT =>
+          ICAPFsmAckxS <= '1';
+
+          if ICAPFsmErrorxS = '1' then
+            state <= STATE_ERROR;
+          end if;
+
+          if ICAPFsmDonexS = '1' then
             state <= STATE_ICAP_TRANSFER;
+          end if;
+
+          ---------------------------------------------------------------------
+          -- Wait for running ICAP before proceeding to finish
+          ---------------------------------------------------------------------
+        when STATE_ICAP_WAIT_LAST =>
+          ICAPFsmAckxS <= '1';
+
+          if ICAPFsmErrorxS = '1' then
+            state <= STATE_ERROR;
+          end if;
+
+          if ICAPFsmDonexS = '1' then
+            state <= STATE_FINISHED;
           end if;
 
           ---------------------------------------------------------------------
@@ -258,33 +312,28 @@ begin
         when STATE_ICAP_TRANSFER =>
           ICAPFsmStartxS <= '1';
 
-          if LastxD = '1' then
-            -- the remaining size is less than our local memory size
+          if LastxS = '1' then
+            -- the remaining size is less than half of our local memory size
             -- convert length from bytes to words here
-            ICAPFsmLenxD <= LenxD(C_LOCAL_RAM_ADDRESS_WIDTH + 2 downto 2);
+            ICAPFsmLenxD <= LenxD(C_LOCAL_RAM_ADDRESS_WIDTH-1 + 2 downto 2);
+
+            state <= STATE_ICAP_WAIT_LAST;
           else
             -- transfer the content of the full memory to ICAP
-            ICAPFsmLenxD <= conv_std_logic_vector(C_LOCAL_RAM_SIZE, C_LOCAL_RAM_ADDRESS_WIDTH + 1);
-          end if;
+            ICAPFsmLenxD <= conv_std_logic_vector(C_LOCAL_RAM_SIZE/2, C_LOCAL_RAM_ADDRESS_WIDTH);
 
-          if ICAPFsmErrorxS = '1' then
-            state <= STATE_ERROR;
-          else
-            if ICAPFsmDonexS = '1' then
-              if LastxD = '1' then
-                state <= STATE_FINISHED;
-              else
-                state <= STATE_MEM_CALC;
-              end if;
-            end if;
+            state <= STATE_MEM_CALC;
           end if;
 
           ---------------------------------------------------------------------
           -- Calculate the remaining length of the bitfile and the new address
           ---------------------------------------------------------------------
         when STATE_MEM_CALC =>
-          AddrxD <= AddrxD + C_LOCAL_RAM_SIZE_IN_BYTES;
-          LenxD  <= LenxD - C_LOCAL_RAM_SIZE_IN_BYTES;
+          AddrxD <= AddrxD + (C_LOCAL_RAM_SIZE_IN_BYTES/2);
+          LenxD  <= LenxD - (C_LOCAL_RAM_SIZE_IN_BYTES/2);
+
+          UpperxS <= not UpperxS;
+          FirstxS <= '0';
 
           state <= STATE_CMPLEN;
 
@@ -344,9 +393,11 @@ begin
       ClkxCI        => clk,
       ResetxRI      => rst,
       StartxSI      => ICAPFsmStartxS,
+      AckxSI        => ICAPFsmAckxS,
       DonexSO       => ICAPFsmDonexS,
       ErrorxSO      => ICAPFsmErrorxS,
       LenxDI        => ICAPFsmLenxD,
+      UpperxSI      => UpperxS,
       RamAddrxDO    => ICAPRamAddrxD,
       ICAPCExSBO    => ICAPCExSB,
       ICAPWExSBO    => ICAPWExSB,
