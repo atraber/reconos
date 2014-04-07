@@ -27,7 +27,7 @@ architecture Behavioral of memory is
   signal memFirstValid : integer := 0;
   signal memLastValid  : integer := 0;
 
-  file file_in : text open read_mode is "./partial_add.hex";  -- open the frame file for reading
+  file file_in : text open read_mode is "./partial_stim.hex";  -- open the frame file for reading
 begin
 
   do <= mem(to_integer(unsigned(addr(C_ADDRESS_WIDTH-1 downto 0))));

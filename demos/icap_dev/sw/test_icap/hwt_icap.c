@@ -76,19 +76,19 @@ FAIL:
 
 
 // untested
-uint32_t g_icap_crc_clear[] = {0xFFFFFFFF,
-                               0x000000BB,
-                               0x11220044,
-                               0xFFFFFFFF,
-                               0xAA995566,
-                               0x20000000,
-                               0x30008001,
-                               0x00000007,
-                               0x20000000,
-                               0x30008001,
-                               0x0000000D,
-                               0x20000000,
-                               0x20000000};
+uint32_t g_icap_crc_clear[] = {0xFFFFFFFF, // Dummy Word
+                               0x000000BB, // Bus Width Sync Word
+                               0x11220044, // Bus Width Detect
+                               0xFFFFFFFF, // Dummy Word
+                               0xAA995566, // Sync Word
+                               0x20000000, // NOOP
+                               0x30008001, // Type 1 write to CMD
+                               0x00000007, // RCRC
+                               0x20000000, // NOOP
+                               0x30008001, // Type 1 write to CMD
+                               0x0000000D, // DESYNC
+                               0x20000000, // NOOP
+                               0x20000000}; // NOOP
 // icap switch to bottom, does work!
 uint32_t g_icap_switch_bot[] = {0xFFFFFFFF,
                                 0x000000BB,
@@ -130,6 +130,11 @@ uint32_t g_icap_switch_top[] = {0xFFFFFFFF,
 // switches to bottom icap using hwt_icap
 void hwt_icap_switch_bot() {
   hw_icap_write(g_icap_switch_bot, sizeof g_icap_switch_bot);
+}
+
+// switches to bottom icap using hwt_icap
+void hwt_icap_clear_crc() {
+  hw_icap_write(g_icap_crc_clear, sizeof g_icap_crc_clear);
 }
 
 

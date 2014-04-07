@@ -51,15 +51,28 @@ entity ICAPWrapper is
 end ICAPWrapper;
 
 architecture behavioral of ICAPWrapper is
-  constant STATUS_IDLE      : std_logic_vector(0 to 31) := x"F9FFFFFF";
-  constant STATUS_SYNC      : std_logic_vector(0 to 31) := x"FBFFFFFF";
-  constant STATUS_SYNCERR   : std_logic_vector(0 to 31) := x"FAFFFFFF";
-  constant STATUS_NOSYNCERR : std_logic_vector(0 to 31) := x"F8FFFFFF";
+  -----------------------------------------------------------------------------
+  -- constants
+  -----------------------------------------------------------------------------
+  constant STATUS_IDLE      : std_logic_vector(0 to 31) := x"FFFFFF9F";  -- x"F9FFFFFF";
+  constant STATUS_SYNC      : std_logic_vector(0 to 31) := x"FFFFFFDF";  -- x"FBFFFFFF";
+  constant STATUS_SYNCERR   : std_logic_vector(0 to 31) := x"FFFFFF5F";  -- x"FAFFFFFF";
+  constant STATUS_NOSYNCERR : std_logic_vector(0 to 31) := x"FFFFFF1F";  -- x"F8FFFFFF";
 
+  -----------------------------------------------------------------------------
+  -- signals
+  -----------------------------------------------------------------------------
   signal DataInxD : std_logic_vector(0 to 31);
+  signal OutxD    : std_logic_vector(0 to 31);
 
-  file file_in : text open read_mode is "./partial_add.hex";  -- open the frame file for reading
+  -----------------------------------------------------------------------------
+  -- files
+  -----------------------------------------------------------------------------
+  file file_in : text open read_mode is "./partial_check.hex";  -- open the frame file for reading
 
+  -----------------------------------------------------------------------------
+  -- functions
+  -----------------------------------------------------------------------------
   function to_hex_string(s : in std_logic_vector)
     return string
   is
@@ -104,8 +117,8 @@ begin  -- behavioral
 
     variable wasCmd : boolean := false;
   begin  -- process checkResp
-    busy <= '1';
-    o    <= STATUS_IDLE;
+    busy  <= '1';
+    OutxD <= STATUS_IDLE;
 
     L1 : loop
       wait until rising_edge(clk);
@@ -122,6 +135,12 @@ begin  -- behavioral
         if DataInxD /= vec then
           report "bitstream not equal, is " & to_hex_string(DataInxD)
             & " while expected " & to_hex_string(vec) severity note;
+
+          if OutxD = STATUS_SYNC then
+            OutxD <= STATUS_SYNCERR;
+          elsif OutxD = STATUS_IDLE then
+            OutxD <= STATUS_NOSYNCERR;  -- not actually possible but useful for debugging
+          end if;
         end if;
 
         if endfile(file_in) then
@@ -135,8 +154,11 @@ begin  -- behavioral
         if wasCmd then
           -- check for desync
           if DataInxD = x"0000000D" then
-            o <= STATUS_IDLE;           -- does not yet work
-          report "desync received" severity note;
+            OutxD <= STATUS_IDLE;       -- does not yet work
+            report "desync received" severity note;
+          elsif DataInxD = x"00000007" then
+            OutxD <= STATUS_SYNC;
+            report "RCRC received" severity note;
           end if;
         end if;
         wasCmd := false;
@@ -146,7 +168,11 @@ begin  -- behavioral
           wasCmd := true;
           report "type 1, cmd reg received" severity note;
         elsif DataInxD = x"AA995566" then
-          o <= STATUS_SYNC;
+          if OutxD = STATUS_IDLE then
+            OutxD <= STATUS_SYNC;
+          elsif OutxD = STATUS_NOSYNCERR then
+            OutxD <= STATUS_SYNCERR;
+          end if;
           report "sync word received" severity note;
         end if;
 
@@ -159,11 +185,21 @@ begin  -- behavioral
     end loop;
   end process checkResp;
 
+  -----------------------------------------------------------------------------
+  -- signal assignments
+  -----------------------------------------------------------------------------
+
   -- ICAP input is bit swapped, so swap it back so that we can use it
   swapGen : for k in 0 to 3 generate
     bitSwapGen : for j in 0 to 7 generate
       DataInxD(k * 8 + j) <= i((k + 1) * 8 - 1 - j);
     end generate bitSwapGen;
   end generate swapGen;
+
+
+  -----------------------------------------------------------------------------
+  -- output assignments
+  -----------------------------------------------------------------------------
+  o <= OutxD;
 
 end behavioral;

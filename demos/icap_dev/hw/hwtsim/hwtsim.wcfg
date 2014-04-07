@@ -21,7 +21,7 @@
          </top_modules>
       </db_ref>
    </db_ref_list>
-   <WVObjectSize size="45" />
+   <WVObjectSize size="49" />
    <wvobject fp_name="divider62" type="divider">
       <obj_property name="label">CLK and RST</obj_property>
       <obj_property name="DisplayName">label</obj_property>
@@ -203,6 +203,14 @@
       <obj_property name="BkColor">128 128 255</obj_property>
       <obj_property name="TextColor">230 230 230</obj_property>
    </wvobject>
+   <wvobject fp_name="/hwt_tb/uut/ICAPFsmInst/icapsyncxs" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">icapsyncxs</obj_property>
+      <obj_property name="ObjectShortName">icapsyncxs</obj_property>
+   </wvobject>
+   <wvobject fp_name="/hwt_tb/uut/ICAPFsmInst/icaperrorxs" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">icaperrorxs</obj_property>
+      <obj_property name="ObjectShortName">icaperrorxs</obj_property>
+   </wvobject>
    <wvobject fp_name="/hwt_tb/uut/icapbusyxs" type="logic" db_ref_id="1">
       <obj_property name="ElementShortName">icapbusyxs</obj_property>
       <obj_property name="ObjectShortName">icapbusyxs</obj_property>
@@ -219,15 +227,24 @@
       <obj_property name="ElementShortName">icapramaddrxd[0:10]</obj_property>
       <obj_property name="ObjectShortName">icapramaddrxd[0:10]</obj_property>
    </wvobject>
+   <wvobject fp_name="/hwt_tb/uut/icaplutoutxd" type="array" db_ref_id="1">
+      <obj_property name="ElementShortName">icaplutoutxd[0:31]</obj_property>
+      <obj_property name="ObjectShortName">icaplutoutxd[0:31]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
+   </wvobject>
+   <wvobject fp_name="/hwt_tb/uut/icapramlutmuxxs" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">icapramlutmuxxs</obj_property>
+      <obj_property name="ObjectShortName">icapramlutmuxxs</obj_property>
+   </wvobject>
    <wvobject fp_name="/hwt_tb/uut/icapramoutxd" type="array" db_ref_id="1">
       <obj_property name="ElementShortName">icapramoutxd[0:31]</obj_property>
       <obj_property name="ObjectShortName">icapramoutxd[0:31]</obj_property>
       <obj_property name="Radix">HEXRADIX</obj_property>
    </wvobject>
    <wvobject fp_name="/hwt_tb/uut/icapdataoutxd" type="array" db_ref_id="1">
-      <obj_property name="ElementShortName">icapdataoutxd[31:0]</obj_property>
-      <obj_property name="ObjectShortName">icapdataoutxd[31:0]</obj_property>
+      <obj_property name="ElementShortName">icapdataoutxd[0:31]</obj_property>
+      <obj_property name="ObjectShortName">icapdataoutxd[0:31]</obj_property>
       <obj_property name="Radix">HEXRADIX</obj_property>
-      <obj_property name="Reversed">true</obj_property>
+      <obj_property name="Reversed">false</obj_property>
    </wvobject>
 </wave_config>

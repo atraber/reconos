@@ -57,6 +57,7 @@ architecture implementation of hwt_icap is
       LenxDI        : in  std_logic_vector(0 to ADDR_WIDTH-1);
       UpperxSI      : in  std_logic;
       RamAddrxDO    : out std_logic_vector(0 to ADDR_WIDTH-1);
+      RamLutMuxxSO  : out std_logic;
       ICAPCExSBO    : out std_logic;
       ICAPWExSBO    : out std_logic;
       ICAPStatusxDI : in  std_logic_vector(0 to 31));
@@ -72,6 +73,13 @@ architecture implementation of hwt_icap is
       i     : in  std_logic_vector(0 to ICAP_WIDTH-1);
       busy  : out std_logic;
       o     : out std_logic_vector(0 to ICAP_WIDTH-1));
+  end component;
+
+  component CmdLut
+    port (
+      ClkxCI  : in  std_logic;
+      AddrxDI : in  std_logic_vector(0 to 3);
+      OutxDO  : out std_logic_vector(0 to 31));
   end component;
 
   -----------------------------------------------------------------------------
@@ -129,17 +137,21 @@ architecture implementation of hwt_icap is
   signal UpperxS : std_logic;
 
   -- icap signals
-  signal ICAPBusyxS    : std_logic;
-  signal ICAPCExSB     : std_logic;
-  signal ICAPWExSB     : std_logic;
-  signal ICAPDataOutxD : std_logic_vector(0 to ICAP_WIDTH-1);
-  signal ICAPDataInxD  : std_logic_vector(0 to ICAP_WIDTH-1);
+  signal ICAPBusyxS      : std_logic;
+  signal ICAPCExSB       : std_logic;
+  signal ICAPWExSB       : std_logic;
+  signal ICAPDataOutxD   : std_logic_vector(0 to ICAP_WIDTH-1);
+  signal ICAPDataInxD    : std_logic_vector(0 to ICAP_WIDTH-1);
+  signal ICAPSwappedInxD : std_logic_vector(0 to ICAP_WIDTH-1);
 
-  signal ICAPFsmStartxS : std_logic;
-  signal ICAPFsmAckxS   : std_logic;
-  signal ICAPFsmDonexS  : std_logic;
-  signal ICAPFsmErrorxS : std_logic;
-  signal ICAPFsmLenxD   : std_logic_vector(0 to C_LOCAL_RAM_ADDRESS_WIDTH-1);  -- in words
+  signal ICAPLutOutxD : std_logic_vector(0 to ICAP_WIDTH-1);
+
+  signal ICAPFsmStartxS  : std_logic;
+  signal ICAPFsmAckxS    : std_logic;
+  signal ICAPRamLutMuxxS : std_logic;
+  signal ICAPFsmDonexS   : std_logic;
+  signal ICAPFsmErrorxS  : std_logic;
+  signal ICAPFsmLenxD    : std_logic_vector(0 to C_LOCAL_RAM_ADDRESS_WIDTH-1);  -- in words
 
 begin
 
@@ -383,7 +395,7 @@ begin
       clk   => clk,
       csb   => ICAPCExSB,               -- active low
       rdwrb => ICAPWExSB,               -- active low
-      i     => ICAPDataInxD,
+      i     => ICAPSwappedInxD,
       busy  => ICAPBusyxS,
       o     => ICAPDataOutxD);
 
@@ -403,10 +415,19 @@ begin
       LenxDI        => ICAPFsmLenxD,
       UpperxSI      => UpperxS,
       RamAddrxDO    => ICAPRamAddrxD,
+      RamLutMuxxSO  => ICAPRamLutMuxxS,
       ICAPCExSBO    => ICAPCExSB,
       ICAPWExSBO    => ICAPWExSB,
       ICAPStatusxDI => ICAPDataOutxD);
 
+  -----------------------------------------------------------------------------
+  -- ICAP Command Lookup-Table
+  -----------------------------------------------------------------------------
+  cmdLutInst : CmdLut
+    port map (
+      ClkxCI  => clk,
+      AddrxDI => ICAPRamAddrxD(ICAPRamAddrxD'length-4 to ICAPRamAddrxD'length-1),
+      OutxDO  => ICAPLutOutxD);
 
   -----------------------------------------------------------------------------
   -- concurrent signal assignments
@@ -415,11 +436,15 @@ begin
   ICAPRamInxD <= (others => '0');
   ICAPRamWExD <= '0';
 
+
+  ICAPDataInxD <= ICAPRamOutxD when ICAPRamLutMuxxS = '0'
+                  else ICAPLutOutxD;
+
   -- bit swapping of RAM output so that it matches the input format of the ICAP
   -- interface, see pg 43 of UG360 (v3.7)
   swapGen : for i in 0 to 3 generate
     bitSwapGen : for j in 0 to 7 generate
-      ICAPDataInxD(i * 8 + j) <= ICAPRamOutxD((i + 1) * 8 - 1 - j);
+      ICAPSwappedInxD(i * 8 + j) <= ICAPDataInxD((i + 1) * 8 - 1 - j);
     end generate bitSwapGen;
   end generate swapGen;
 
