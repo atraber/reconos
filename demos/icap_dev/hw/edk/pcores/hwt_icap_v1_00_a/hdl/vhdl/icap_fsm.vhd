@@ -6,7 +6,7 @@
 -- Author     : atraber  <atraber@student.ethz.ch>
 -- Company    : Computer Engineering and Networks Laboratory, ETH Zurich
 -- Created    : 2014-04-07
--- Last update: 2014-04-07
+-- Last update: 2014-04-10
 -- Platform   : Xilinx ISIM (simulation), Xilinx (synthesis)
 -- Standard   : VHDL'87
 -------------------------------------------------------------------------------
@@ -51,21 +51,21 @@ end ICAPFsm;
 
 
 architecture implementation of ICAPFsm is
-  type state_t is (STATE_IDLE, STATE_WRITE, STATE_CRCCHECK, STATE_CRCRESET,
-                   STATE_FINISH, STATE_ERROR);
+  type state_t is (STATE_IDLE, STATE_WRITE_WAIT, STATE_WRITE, STATE_FINISH, STATE_ERROR,
+                   STATE_CRCCHECK, STATE_CRCRESET, STATE_CRCRESET_WAIT);
 
   -----------------------------------------------------------------------------
   -- signals
   -----------------------------------------------------------------------------
 
   -- registers
-  signal AddrxDP, AddrxDN           : unsigned(ADDR_WIDTH-1 downto 0);
-  signal StatexDP, StatexDN         : state_t;
-  signal LenxDP, LenxDN             : std_logic_vector(0 to ADDR_WIDTH-1);
-  signal UpperxSP, UpperxSN         : std_logic;
-  signal ICAPCExSBP, ICAPCExSBN     : std_logic;
-  signal ICAPWExSBP, ICAPWExSBN     : std_logic;
-  signal RamLutMuxxSP, RamLutMuxxSN : std_logic;
+  signal AddrxDP, AddrxDN   : unsigned(ADDR_WIDTH-1 downto 0);
+  signal StatexDP, StatexDN : state_t;
+  signal LenxDP, LenxDN     : std_logic_vector(0 to ADDR_WIDTH-1);
+  signal UpperxSP, UpperxSN : std_logic;
+  signal ICAPCExSB          : std_logic;
+  signal ICAPWExSB          : std_logic;
+  signal RamLutMuxxS        : std_logic;
 
   -- ordinary signals
   signal DonexS      : std_logic;
@@ -81,21 +81,15 @@ begin  -- implementation
   regFF : process (ClkxCI, ResetxRI)
   begin  -- process regFF
     if ResetxRI = '1' then              -- asynchronous reset (active high)
-      StatexDP     <= STATE_IDLE;
-      AddrxDP      <= unsigned(conv_std_logic_vector(0, AddrxDP'length));
-      LenxDP       <= (others => '0');
-      UpperxSP     <= '0';
-      ICAPWExSBP   <= '0';
-      ICAPCExSBP   <= '1';
-      RamLutMuxxSP <= '0';
+      StatexDP <= STATE_IDLE;
+      AddrxDP  <= unsigned(conv_std_logic_vector(0, AddrxDP'length));
+      LenxDP   <= (others => '0');
+      UpperxSP <= '0';
     elsif ClkxCI'event and ClkxCI = '1' then  -- rising clock edge
-      StatexDP     <= StatexDN;
-      AddrxDP      <= AddrxDN;
-      LenxDP       <= LenxDN;
-      UpperxSP     <= UpperxSN;
-      ICAPWExSBP   <= ICAPWExSBN;
-      ICAPCExSBP   <= ICAPCExSBN;
-      RamLutMuxxSP <= RamLutMuxxSN;
+      StatexDP <= StatexDN;
+      AddrxDP  <= AddrxDN;
+      LenxDP   <= LenxDN;
+      UpperxSP <= UpperxSN;
     end if;
   end process regFF;
 
@@ -106,15 +100,15 @@ begin  -- implementation
   icapFSM : process (AckxSI, AddrxDN, AddrxDP, ICAPErrorxS, ICAPSyncxS, LenxDI,
                      LenxDP, StartxSI, StatexDP, UpperxSI, UpperxSP)
   begin  -- process icapFSM
-    StatexDN     <= StatexDP;
-    AddrxDN      <= AddrxDP;
-    LenxDN       <= LenxDP;
-    UpperxSN     <= UpperxSP;
-    RamLutMuxxSN <= '0';                -- RAM
-    ICAPCExSBN   <= '1';                -- active low, so not active here
-    ICAPWExSBN   <= '0';                -- active low, doing a write
-    DonexS       <= '0';
-    ErrorxS      <= '0';
+    StatexDN    <= StatexDP;
+    AddrxDN     <= AddrxDP;
+    LenxDN      <= LenxDP;
+    UpperxSN    <= UpperxSP;
+    RamLutMuxxS <= '0';                 -- RAM
+    ICAPCExSB   <= '1';                 -- active low, so not active here
+    ICAPWExSB   <= '0';                 -- active low, doing a write
+    DonexS      <= '0';
+    ErrorxS     <= '0';
 
 
     case StatexDP is
@@ -125,26 +119,34 @@ begin  -- implementation
         AddrxDN <= unsigned(conv_std_logic_vector(0, AddrxDP'length));
 
         if StartxSI = '1' then
-          StatexDN <= STATE_WRITE;
+          StatexDN <= STATE_WRITE_WAIT;
           UpperxSN <= UpperxSI;
           LenxDN   <= LenxDI;
         end if;
 
         -------------------------------------------------------------------------
+        -- Write to ICAP, make sure that first address is applied
+        -------------------------------------------------------------------------
+      when STATE_WRITE_WAIT =>
+        AddrxDN <= AddrxDP + 1;
+
+        StatexDN <= STATE_WRITE;
+
+        -------------------------------------------------------------------------
         -- Write to ICAP
         -------------------------------------------------------------------------
       when STATE_WRITE =>
-        ICAPCExSBN <= '0';              -- active low
-        AddrxDN    <= AddrxDP + 1;
+        ICAPCExSB <= '0';               -- active low
+        ICAPWExSB <= '0';               -- active low
+        AddrxDN   <= AddrxDP + 1;
 
         if ICAPErrorxS = '1' then
           StatexDN <= STATE_CRCCHECK;
         else
-          if std_logic_vector(AddrxDN) = LenxDP then
+          if std_logic_vector(AddrxDP) = LenxDP then
             StatexDN <= STATE_CRCCHECK;
           end if;
         end if;
-
 
         -----------------------------------------------------------------------
         -- Check if an error occurred on last write cycle, and if yes, we go
@@ -159,20 +161,28 @@ begin  -- implementation
             AddrxDN <= unsigned(conv_std_logic_vector(0, AddrxDP'length));
           end if;
 
-          StatexDN <= STATE_CRCRESET;
+          StatexDN <= STATE_CRCRESET_WAIT;
         else
           StatexDN <= STATE_FINISH;
         end if;
 
         -----------------------------------------------------------------------
+        -- Wait one cycle for RAM before starting with CRC reset on ICAP interface
+        -----------------------------------------------------------------------
+      when STATE_CRCRESET_WAIT =>
+        AddrxDN <= AddrxDP + 1;
+
+        StatexDN <= STATE_CRCRESET;
+
+        -----------------------------------------------------------------------
         -- Reset CRC on ICAP interface
         -----------------------------------------------------------------------
       when STATE_CRCRESET =>
-        ICAPCExSBN   <= '0';            -- active low
-        RamLutMuxxSN <= '1';            -- LUT active
-        AddrxDN      <= AddrxDP + 1;
+        ICAPCExSB   <= '0';             -- active low
+        RamLutMuxxS <= '1';             -- LUT active
+        AddrxDN     <= AddrxDP + 1;
 
-        if AddrxDN = 13 then
+        if AddrxDP = 13 then
           StatexDN <= STATE_ERROR;
         end if;
 
@@ -219,9 +229,9 @@ begin  -- implementation
   -----------------------------------------------------------------------------
   ErrorxSO     <= ErrorxS;
   DonexSO      <= DonexS;
-  ICAPCExSBO   <= ICAPCExSBP;
-  ICAPWExSBO   <= ICAPWExSBP;
-  RamLutMuxxSO <= RamLutMuxxSP;
+  ICAPCExSBO   <= ICAPCExSB;
+  ICAPWExSBO   <= ICAPWExSB;
+  RamLutMuxxSO <= RamLutMuxxS;
 
   RamAddrxDO <= std_logic_vector(UpperxSP & AddrxDP(ADDR_WIDTH-2 downto 0));
 

@@ -218,6 +218,7 @@
    <wvobject fp_name="/hwt_tb/uut/icapramaddrxd" type="array" db_ref_id="1">
       <obj_property name="ElementShortName">icapramaddrxd[0:10]</obj_property>
       <obj_property name="ObjectShortName">icapramaddrxd[0:10]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
    </wvobject>
    <wvobject fp_name="/hwt_tb/uut/icaplutoutxd" type="array" db_ref_id="1">
       <obj_property name="ElementShortName">icaplutoutxd[0:31]</obj_property>
