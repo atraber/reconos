@@ -24,7 +24,8 @@ int sw_icap_load(int thread_id);
 int hw_icap_load(int thread_id);
 int linux_icap_load(int thread_id);
 
-void hwt_icap_switch_bot();
+void icap_switch_bot();
+void icap_switch_top();
 void hwt_icap_clear_crc();
 
 

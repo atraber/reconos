@@ -54,21 +54,24 @@ architecture behavioral of ICAPWrapper is
   -----------------------------------------------------------------------------
   -- constants
   -----------------------------------------------------------------------------
-  constant STATUS_IDLE      : std_logic_vector(0 to 31) := x"FFFFFF9F";  -- x"F9FFFFFF";
-  constant STATUS_SYNC      : std_logic_vector(0 to 31) := x"FFFFFFDF";  -- x"FBFFFFFF";
-  constant STATUS_SYNCERR   : std_logic_vector(0 to 31) := x"FFFFFF5F";  -- x"FAFFFFFF";
-  constant STATUS_NOSYNCERR : std_logic_vector(0 to 31) := x"FFFFFF1F";  -- x"F8FFFFFF";
+  constant STATUS_IDLE      : std_logic_vector(0 to 31) := x"FFFFFF9F";
+  constant STATUS_SYNC      : std_logic_vector(0 to 31) := x"FFFFFFDF";
+  constant STATUS_SYNCERR   : std_logic_vector(0 to 31) := x"FFFFFF5F";
+  constant STATUS_NOSYNCERR : std_logic_vector(0 to 31) := x"FFFFFF1F";
 
   -----------------------------------------------------------------------------
   -- signals
   -----------------------------------------------------------------------------
   signal DataInxD : std_logic_vector(0 to 31);
   signal OutxD    : std_logic_vector(0 to 31);
+  signal StatusxD : std_logic_vector(0 to 31);
+  signal BusyxS   : std_logic;
 
   -----------------------------------------------------------------------------
   -- files
   -----------------------------------------------------------------------------
-  file file_in : text open read_mode is "./partial_check.hex";  -- open the frame file for reading
+  file file_check : text open read_mode is "./partial_check.hex";  -- open the file for reading
+  file file_read  : text open read_mode is "./partial_read.hex";  -- open the file for reading
 
   -----------------------------------------------------------------------------
   -- functions
@@ -117,33 +120,38 @@ begin  -- behavioral
 
     variable wasCmd : boolean := false;
   begin  -- process checkResp
-    busy  <= '1';
-    OutxD <= STATUS_IDLE;
+    BusyxS   <= '1';
+    StatusxD <= STATUS_IDLE;
+    OutxD    <= StatusxD;
 
     L1 : loop
       wait until rising_edge(clk);
 
       if csb = '0' and rdwrb = '0' then
-        busy <= '0';
+        -----------------------------------------------------------------------
+        -- writing to ICAP
+        -----------------------------------------------------------------------
+
+        BusyxS <= '0';
 
         -----------------------------------------------------------------------
         -- check responses
         -----------------------------------------------------------------------
-        readline(file_in, line);
+        readline(file_check, line);
         hread(line, vec, read_ok);
 
         if DataInxD /= vec then
           report "bitstream not equal, is " & to_hex_string(DataInxD)
             & " while expected " & to_hex_string(vec) severity note;
 
-          if OutxD = STATUS_SYNC then
-            OutxD <= STATUS_SYNCERR;
-          elsif OutxD = STATUS_IDLE then
-            OutxD <= STATUS_NOSYNCERR;  -- not actually possible but useful for debugging
+          if StatusxD = STATUS_SYNC then
+            StatusxD <= STATUS_SYNCERR;
+          elsif StatusxD = STATUS_IDLE then
+            StatusxD <= STATUS_NOSYNCERR;  -- not actually possible but useful for debugging
           end if;
         end if;
 
-        if endfile(file_in) then
+        if endfile(file_check) then
           report "End of File reached, finished loading bitfile" severity note;
         end if;
 
@@ -154,10 +162,10 @@ begin  -- behavioral
         if wasCmd then
           -- check for desync
           if DataInxD = x"0000000D" then
-            OutxD <= STATUS_IDLE;       -- does not yet work
+            StatusxD <= STATUS_IDLE;    -- does not yet work
             report "desync received" severity note;
           elsif DataInxD = x"00000007" then
-            OutxD <= STATUS_SYNC;
+            StatusxD <= STATUS_SYNC;
             report "RCRC received" severity note;
           end if;
         end if;
@@ -168,17 +176,41 @@ begin  -- behavioral
           wasCmd := true;
           report "type 1, cmd reg received" severity note;
         elsif DataInxD = x"AA995566" then
-          if OutxD = STATUS_IDLE then
-            OutxD <= STATUS_SYNC;
-          elsif OutxD = STATUS_NOSYNCERR then
-            OutxD <= STATUS_SYNCERR;
+          if StatusxD = STATUS_IDLE then
+            StatusxD <= STATUS_SYNC;
+          elsif StatusxD = STATUS_NOSYNCERR then
+            StatusxD <= STATUS_SYNCERR;
           end if;
           report "sync word received" severity note;
         end if;
 
+        OutxD <= StatusxD;
+      elsif csb = '0' and rdwrb = '1' then
+        -----------------------------------------------------------------------
+        -- reading from ICAP
+        -----------------------------------------------------------------------
+
         j := j + 1;
+
+        -- only output something every third cycle
+        if (j mod 3) = 0 then
+          BusyxS <= '0';
+        else
+          BusyxS <= '1';
+        end if;
+
+        if BusyxS = '0' then
+          readline(file_read, line);
+          hread(line, vec, read_ok);
+
+          OutxD <= vec;                 -- swapped?
+        else
+          OutxD <= StatusxD;            -- not sure if this is correct
+        end if;
       else
-        busy <= '1';
+        BusyxS <= '1';
+
+        OutxD <= StatusxD;              -- not sure if this is correct
       end if;
 
       
@@ -200,6 +232,7 @@ begin  -- behavioral
   -----------------------------------------------------------------------------
   -- output assignments
   -----------------------------------------------------------------------------
-  o <= OutxD;
+  o    <= OutxD;
+  busy <= BusyxS;
 
 end behavioral;
