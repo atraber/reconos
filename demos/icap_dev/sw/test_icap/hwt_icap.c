@@ -274,10 +274,10 @@ uint32_t g_icap_read_cmd[] = {0xFFFFFFFF,
                               0x30008001, // write to cmd
                               0x00000004, // RCFG
                               0x20000000, // noop
-                              0x00008A80, // write to FAR
-                              0x00400000, // FAR address
+                              0x30002001, // write to FAR
+                              0x00008A80, // FAR address
                               0x28006000, // type 1 read 0 words from FDRO
-                              0x48010080, // type 2 read 128 words from FDRO
+                              0x48000080, // type 2 read 128 words from FDRO
                               0x20000000, // noop
                               0x20000000, // noop
                               0x20000000, // noop
@@ -323,23 +323,81 @@ uint32_t g_icap_read_cmd2[] = {0x20000000, // noop
                                0x20000000, // noop
                                0x20000000};// noop
 
-int hw_icap_read() {
+#define get_bit(in, bit)    ((in & (1 << bit)) >> bit)
+uint32_t bitswap(uint32_t in) {
+  uint32_t out = 0;
+
+  out = (get_bit(in, 24) << 31) |
+        (get_bit(in, 25) << 30) |
+        (get_bit(in, 26) << 29) |
+        (get_bit(in, 27) << 28) |
+        (get_bit(in, 28) << 27) |
+        (get_bit(in, 29) << 26) |
+        (get_bit(in, 30) << 25) |
+        (get_bit(in, 31) << 24) |
+        (get_bit(in, 16) << 23) |
+        (get_bit(in, 17) << 22) |
+        (get_bit(in, 18) << 21) |
+        (get_bit(in, 19) << 20) |
+        (get_bit(in, 20) << 19) |
+        (get_bit(in, 21) << 18) |
+        (get_bit(in, 22) << 17) |
+        (get_bit(in, 23) << 16) |
+        (get_bit(in,  8) << 15) |
+        (get_bit(in,  9) << 14) |
+        (get_bit(in, 10) << 13) |
+        (get_bit(in, 11) << 12) |
+        (get_bit(in, 12) << 11) |
+        (get_bit(in, 13) << 10) |
+        (get_bit(in, 14) <<  9) |
+        (get_bit(in, 15) <<  8) |
+        (get_bit(in,  0) <<  7) |
+        (get_bit(in,  1) <<  6) |
+        (get_bit(in,  2) <<  5) |
+        (get_bit(in,  3) <<  4) |
+        (get_bit(in,  4) <<  3) |
+        (get_bit(in,  5) <<  2) |
+        (get_bit(in,  6) <<  1) |
+        (get_bit(in,  7) <<  0);
+
+        return out;
+}
+
+// size must be in words
+int hw_icap_read(uint32_t far, uint32_t size) {
+  g_icap_read_cmd[21] = far;
+  g_icap_read_cmd[23] = size | 0x48000000;
+
+
   printf("Writing to ICAP\n");
   hw_icap_write(g_icap_read_cmd, sizeof g_icap_read_cmd);
 
   // read
-  uint32_t mem[128];
-  printf("Reading from ICAP\n");
-  hw_icap_write(mem, (sizeof mem) | 0x00000001);
+  uint32_t* mem = (uint32_t*)malloc(size * sizeof(uint32_t));
+
+  if(mem == NULL) {
+    printf("Could not allocate buffer\n");
+    return 1;
+  }
+
+  printf("Reading %lu bytes from ICAP\n", size * sizeof(uint32_t));
+  hw_icap_write(mem, (size * sizeof(uint32_t)) | 0x00000001);
 
   printf("Finishing ICAP\n");
   hw_icap_write(g_icap_read_cmd2, sizeof g_icap_read_cmd2);
 
 
   unsigned int i;
-  for(i = 0; i < 128; i++) {
+  for(i = 0; i < size; i++) {
+    if(i == 81 + 1) { 
+      // the first 81 words are probably rubish, because they are from the pad frame
+      printf("This was the pad frame + dummy words, now real data should be available\n");
+    }
+
     printf("%08X\n", mem[i]);
   }
+
+  free(mem);
 
   return 0;
 }
@@ -360,6 +418,7 @@ uint32_t g_icap_read_stat2[] = {0x30008001, // write to cmd
                                0x20000000, // noop
                                0x20000000};// noop
 
+
 int hw_icap_read_stat() {
   printf("Writing to ICAP\n");
   hw_icap_write(g_icap_read_stat, sizeof g_icap_read_stat);
@@ -375,7 +434,7 @@ int hw_icap_read_stat() {
 
   unsigned int i;
   for(i = 0; i < 1; i++) {
-    printf("%X\n", mem[i]);
+    printf("%X\n", bitswap(mem[i]));
   }
 
   return 0;

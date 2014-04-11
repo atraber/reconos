@@ -6,7 +6,7 @@
 -- Author     : atraber  <atraber@student.ethz.ch>
 -- Company    : Computer Engineering and Networks Laboratory, ETH Zurich
 -- Created    : 2014-04-04
--- Last update: 2014-04-10
+-- Last update: 2014-04-11
 -- Platform   : Xilinx ISIM (simulation), Xilinx (synthesis)
 -- Standard   : VHDL'87
 -------------------------------------------------------------------------------
@@ -198,10 +198,16 @@ begin  -- behavioral
           readline(file_read, line);
           hread(line, vec, read_ok);
 
-          OutxD <= vec;                 -- swapped?
+          -- ICAP output is bit swapped, so swap it back so that we can use it
+          swapGen : for k in 0 to 3 loop
+            bitSwapGen : for j in 0 to 7 loop
+              OutxD(k * 8 + j) <= vec((k + 1) * 8 - 1 - j);
+            end loop bitSwapGen;
+          end loop swapGen;
+
         else
           BusyxS <= '1';
-          OutxD <= StatusxD;            -- not sure if this is correct
+          OutxD  <= StatusxD;           -- not sure if this is correct
         end if;
       else
         BusyxS <= '1';

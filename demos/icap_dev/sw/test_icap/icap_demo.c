@@ -25,6 +25,11 @@
 
 unsigned int g_reconf_mode = RECONF_LINUX;
 
+#define MODE_WRITE  0
+#define MODE_READ   1
+
+unsigned int g_mode = MODE_WRITE;
+
 struct reconos_resource res[NUM_SLOTS][2];
 struct reconos_hwt hwt[NUM_SLOTS];
 struct mbox mb_in[NUM_SLOTS];
@@ -96,6 +101,8 @@ int main(int argc, char *argv[])
 {
 	int i, ret,cnt=1;
   int max_cnt = 10;
+  unsigned int read_far = 0x00008A80;
+  unsigned int read_words = 1;
 
 	printf( "-------------------------------------------------------\n"
 		    "ICAP DEMONSTRATOR\n"
@@ -137,8 +144,25 @@ int main(int argc, char *argv[])
     else if(strcmp(argv[i], "-null") == 0)
       g_reconf_mode = RECONF_NULL;
     else if(strcmp(argv[i], "-n") == 0) {
-      if(i + 1 < argc)
+      if(i + 1 < argc) {
         max_cnt = atoi(argv[i + 1]);
+        i++; // skip one as we handle it already here
+      }
+    } else if(strcmp(argv[i], "-r") == 0) {
+      g_mode = MODE_READ;
+
+      if(i + 1 < argc) {
+        read_words = atoi(argv[i + 1]);
+        i++; // skip one as we handle it already here
+      }
+    } else if(strcmp(argv[i], "-f") == 0) {
+      g_mode = MODE_READ;
+
+      if(i + 1 < argc) {
+        // TODO: this should be hex!
+        read_far = atoi(argv[i + 1]);
+        i++; // skip one as we handle it already here
+      }
     }
   }
 
@@ -158,31 +182,34 @@ int main(int argc, char *argv[])
       break;
   }
 
-  hw_icap_read();
-  return 0;
+  if(g_mode == MODE_WRITE) {
+    while(1) {
+      // reconfigure partial hw slot and check thread
+      printf("[icap] Test no. %03d\n",cnt);
 
-	while(1) {
-		// reconfigure partial hw slot and check thread
-		printf("[icap] Test no. %03d\n",cnt);
+      ret = reconfigure_prblock(ADD);
+      ret = test_prblock(ADD);
 
-		ret = reconfigure_prblock(ADD);
-		ret = test_prblock(ADD);
+      if (ret) printf("  # ADD: passed\n"); else printf("  # ADD: failed\n");
 
-		if (ret) printf("  # ADD: passed\n"); else printf("  # ADD: failed\n");
+      ret = reconfigure_prblock(SUB);
+      ret = test_prblock(SUB);
 
-		ret = reconfigure_prblock(SUB);
-		ret = test_prblock(SUB);
-
-		if (ret) printf("  # SUB: passed\n"); else printf("  # SUB: failed\n");
+      if (ret) printf("  # SUB: passed\n"); else printf("  # SUB: failed\n");
 
 
-    // stop after n reconfigurations
-    if(cnt == max_cnt)
-      break;
+      // stop after n reconfigurations
+      if(cnt == max_cnt)
+        break;
 
-		sleep(1); 
-		cnt++;
-	}
+      sleep(1); 
+      cnt++;
+    }
+  } else {
+    printf("Readback mode, reading %d words from 0x%08X\n", read_words, read_far);
+    hw_icap_read(read_far, read_words);
+  }
+
 	return 0;
 }
 

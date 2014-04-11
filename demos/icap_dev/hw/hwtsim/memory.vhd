@@ -73,7 +73,7 @@ begin
 
   process(clk, rst)
     variable i       : natural := 0;
-    variable j : natural := 0;
+    variable j       : natural := 0;
     variable line    : line;
     variable vec     : std_logic_vector(31 downto 0);
     variable read_ok : boolean;
@@ -97,7 +97,7 @@ begin
           readLoop : while not (endfile(file_stim)) and i < C_MEM_SIZE loop
             readline(file_stim, line);
             hread(line, vec, read_ok);
-            mem(i) <= vec;
+            --mem(i) <= vec;
 
             i := i + 1;
           end loop readLoop;
@@ -120,7 +120,7 @@ begin
         mem(to_integer(unsigned(addr(C_ADDRESS_WIDTH-1 downto 0)))) <= di;
 
         if endfile(file_check) then
-          report "End of response file reached" severity note;
+          report "End of response file reached" severity failure;
         end if;
 
         -- check with bit file if this is correct
@@ -131,6 +131,10 @@ begin
           report "not equal" severity note;
           report "bitstream not equal, is " & to_hex_string(di)
             & " while expected " & to_hex_string(vec) severity note;
+        end if;
+
+        if endfile(file_check) then
+          report "This was the last response" severity note;
         end if;
 
         if to_integer(unsigned(addr)) /= j then

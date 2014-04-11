@@ -28,7 +28,7 @@ void icap_switch_bot();
 void icap_switch_top();
 void hwt_icap_clear_crc();
 
-int hw_icap_read();
+int hw_icap_read(uint32_t far, uint32_t size);
 int hw_icap_read_stat();
 
 #endif

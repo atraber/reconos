@@ -394,8 +394,8 @@ begin
           -- the icap fsm, otherwise we specify the size of half of our ram
           ---------------------------------------------------------------------
         when STATE_READ_CMPLEN =>
-          LenxD(0) <= '0';             -- DEBUG!!!
-          if LenxD  <= C_LOCAL_RAM_SIZE_IN_BYTES/2 then
+          LenxD(0) <= '0';              -- DEBUG!!!
+          if LenxD <= C_LOCAL_RAM_SIZE_IN_BYTES/2 then
             LastxS <= '1';
           else
             LastxS <= '0';
@@ -525,7 +525,6 @@ begin
   -- concurrent signal assignments
   -----------------------------------------------------------------------------
 
-  ICAPRamInxD  <= ICAPDataOutxD;
   ICAPDataInxD <= ICAPRamOutxD when ICAPRamLutMuxxS = '0'
                   else ICAPLutOutxD;
 
@@ -537,14 +536,18 @@ begin
     end generate bitSwapGen;
   end generate swapGen;
 
+  -- bit swapping of RAM input
+  swapRamInGen : for i in 0 to 3 generate
+    bitSwapRamInGen : for j in 0 to 7 generate
+      ICAPRamInxD(i * 8 + j) <= ICAPDataOutxD((i + 1) * 8 - 1 - j);
+    end generate bitSwapRamInGen;
+  end generate swapRamInGen;
+
 
   -----------------------------------------------------------------------------
   -- DEBUG
   -----------------------------------------------------------------------------
   DebugICAPOut  <= ICAPDataOutxD(24 to 31);
-  DebugICAPBusy <= ICAPBusyxS;
-  DebugICAPCE   <= ICAPCExSB;
-  DebugICAPWE   <= ICAPWExSB;
 
 end architecture;
 
