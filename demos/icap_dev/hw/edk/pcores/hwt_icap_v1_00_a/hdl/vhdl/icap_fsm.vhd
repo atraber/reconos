@@ -32,22 +32,23 @@ entity ICAPFsm is
     );
 
   port (
-    ClkxCI        : in  std_logic;
-    ResetxRI      : in  std_logic;
-    StartxSI      : in  std_logic;
-    AckxSI        : in  std_logic;
-    DonexSO       : out std_logic;
-    ErrorxSO      : out std_logic;
-    LenxDI        : in  std_logic_vector(0 to ADDR_WIDTH-1);
-    ModexSI       : in  std_logic;      -- 0 means write, 1 means read
-    UpperxSI      : in  std_logic;
-    RamAddrxDO    : out std_logic_vector(0 to ADDR_WIDTH-1);
-    RamWExSO      : out std_logic;
-    RamLutMuxxSO  : out std_logic;      -- 0 means Ram, 1 means Lut
-    ICAPCExSBO    : out std_logic;
-    ICAPWExSBO    : out std_logic;
-    ICAPStatusxDI : in  std_logic_vector(0 to 31);
-    ICAPBusyxSI   : in  std_logic
+    ClkxCI            : in  std_logic;
+    ResetxRI          : in  std_logic;
+    StartxSI          : in  std_logic;
+    AckxSI            : in  std_logic;
+    DonexSO           : out std_logic;
+    ErrorxSO          : out std_logic;
+    LenxDI            : in  std_logic_vector(0 to ADDR_WIDTH-1);
+    ModexSI           : in  std_logic;  -- 0 means write, 1 means read
+    UpperxSI          : in  std_logic;
+    RamAddrxDO        : out std_logic_vector(0 to ADDR_WIDTH-1);
+    RamWExSO          : out std_logic;
+    RamLutMuxxSO      : out std_logic;  -- 0 means Ram, 1 means Lut
+    ICAPCExSBO        : out std_logic;
+    ICAPWExSBO        : out std_logic;
+    ICAPStatusxDI     : in  std_logic_vector(0 to 7);
+    ICAPBusyxSI       : in  std_logic;
+    ICAPCacheValidxSI : in  std_logic
     );
 
 end ICAPFsm;
@@ -55,8 +56,7 @@ end ICAPFsm;
 
 architecture implementation of ICAPFsm is
   type state_t is (STATE_IDLE, STATE_WRITE_WAIT, STATE_WRITE, STATE_FINISH, STATE_ERROR,
-                   STATE_CRCCHECK, STATE_CRCRESET, STATE_CRCRESET_WAIT, STATE_READ,
-                   STATE_READ_INC, STATE_READ_SEL);
+                   STATE_CRCCHECK, STATE_CRCRESET, STATE_CRCRESET_WAIT, STATE_READ);
 
   -----------------------------------------------------------------------------
   -- signals
@@ -102,7 +102,7 @@ begin  -- implementation
   -- ICAP FSM
   -----------------------------------------------------------------------------
 
-  icapFSM : process (AckxSI, AddrxDN, AddrxDP, ICAPBusyxSI, ICAPErrorxS,
+  icapFSM : process (AckxSI, AddrxDN, AddrxDP, ICAPCacheValidxSI, ICAPErrorxS,
                      ICAPSyncxS, LenxDI, LenxDP, ModexSI, StartxSI, StatexDP,
                      UpperxSI, UpperxSP)
   begin  -- process icapFSM
@@ -152,12 +152,8 @@ begin  -- implementation
         ICAPWExSB <= '0';               -- active low
         AddrxDN   <= AddrxDP + 1;
 
-        if ICAPErrorxS = '1' then
+        if ICAPErrorxS = '1' or std_logic_vector(AddrxDP) = LenxDP then
           StatexDN <= STATE_CRCCHECK;
-        else
-          if std_logic_vector(AddrxDP) = LenxDP then
-            StatexDN <= STATE_CRCCHECK;
-          end if;
         end if;
 
         -----------------------------------------------------------------------
@@ -227,38 +223,16 @@ begin  -- implementation
         -- Read configuration data from ICAP
         -----------------------------------------------------------------------
       when STATE_READ =>
-        if ICAPBusyxSI = '0' then
-          RamWExS  <= '1';
-          StatexDN <= STATE_READ_INC;
-        else
-          StatexDN <= STATE_READ_SEL;
+        if ICAPCacheValidxSI = '1' then
+          RamWExS <= '1';
+          AddrxDN <= AddrxDP + 1;
         end if;
-
-        -----------------------------------------------------------------------
-        -- Activate ICAP interface, so that we can read in the next cycle
-        -----------------------------------------------------------------------
-      when STATE_READ_SEL =>
-        ICAPCExSB <= '0';               -- active low
-        ICAPWExSB <= '1';               -- active low, doing a read
-
-        StatexDN <= STATE_READ;
-
-
-
-        -----------------------------------------------------------------------
-        -- Increase counter
-        -- TODO: this should obviously be done in just one state, but because
-        -- of timing closure problems, we are moving to three states
-        -----------------------------------------------------------------------
-      when STATE_READ_INC =>
-        AddrxDN <= AddrxDP + 1;
 
         if std_logic_vector(AddrxDN) = LenxDP then
           StatexDN <= STATE_FINISH;
         else
           ICAPCExSB <= '0';             -- active low
           ICAPWExSB <= '1';             -- active low, doing a read
-          StatexDN  <= STATE_READ;
         end if;
 
         -------------------------------------------------------------------------
@@ -271,8 +245,8 @@ begin  -- implementation
   -----------------------------------------------------------------------------
   -- signal assignments
   -----------------------------------------------------------------------------
-  ICAPErrorxS <= not ICAPStatusxDI(24);
-  ICAPSyncxS  <= ICAPStatusxDI(25);
+  ICAPErrorxS <= not ICAPStatusxDI(0);
+  ICAPSyncxS  <= ICAPStatusxDI(1);
 
   -----------------------------------------------------------------------------
   -- output assignments

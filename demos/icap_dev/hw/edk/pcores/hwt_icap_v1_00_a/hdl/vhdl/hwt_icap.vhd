@@ -30,12 +30,6 @@ entity hwt_icap is
     FIFO32_S_Rd   : out std_logic;
     FIFO32_M_Wr   : out std_logic;
 
-    -- DEBUG
-    DebugICAPOut  : out std_logic_vector(0 to 7);
-    DebugICAPBusy : out std_logic;
-    DebugICAPCE   : out std_logic;
-    DebugICAPWE   : out std_logic;
-
     -- HWT reset and clock
     clk : in std_logic;
     rst : in std_logic
@@ -50,22 +44,23 @@ architecture implementation of hwt_icap is
     generic (
       ADDR_WIDTH : natural);
     port (
-      ClkxCI        : in  std_logic;
-      ResetxRI      : in  std_logic;
-      StartxSI      : in  std_logic;
-      AckxSI        : in  std_logic;
-      DonexSO       : out std_logic;
-      ErrorxSO      : out std_logic;
-      LenxDI        : in  std_logic_vector(0 to ADDR_WIDTH-1);
-      ModexSI       : in  std_logic;
-      UpperxSI      : in  std_logic;
-      RamAddrxDO    : out std_logic_vector(0 to ADDR_WIDTH-1);
-      RamWExSo      : out std_logic;
-      RamLutMuxxSO  : out std_logic;
-      ICAPCExSBO    : out std_logic;
-      ICAPWExSBO    : out std_logic;
-      ICAPStatusxDI : in  std_logic_vector(0 to 31);
-      ICAPBusyxSI   : in  std_logic
+      ClkxCI            : in  std_logic;
+      ResetxRI          : in  std_logic;
+      StartxSI          : in  std_logic;
+      AckxSI            : in  std_logic;
+      DonexSO           : out std_logic;
+      ErrorxSO          : out std_logic;
+      LenxDI            : in  std_logic_vector(0 to ADDR_WIDTH-1);
+      ModexSI           : in  std_logic;
+      UpperxSI          : in  std_logic;
+      RamAddrxDO        : out std_logic_vector(0 to ADDR_WIDTH-1);
+      RamWExSo          : out std_logic;
+      RamLutMuxxSO      : out std_logic;
+      ICAPCExSBO        : out std_logic;
+      ICAPWExSBO        : out std_logic;
+      ICAPStatusxDI     : in  std_logic_vector(0 to 7);
+      ICAPBusyxSI       : in  std_logic;
+      ICAPCacheValidxSI : in  std_logic
       );
   end component;
 
@@ -137,19 +132,23 @@ architecture implementation of hwt_icap is
   signal ignore : std_logic_vector(C_FSL_WIDTH-1 downto 0);
 
   -- registers
-  signal AddrxD  : std_logic_vector(31 downto 0);  -- in bytes
-  signal LenxD   : std_logic_vector(31 downto 0);  -- in bytes
-  signal LastxS  : std_logic;
-  signal FirstxS : std_logic;
-  signal UpperxS : std_logic;
+  signal AddrxD                               : std_logic_vector(31 downto 0);  -- in bytes
+  signal LenxD                                : std_logic_vector(31 downto 0);  -- in bytes
+  signal LastxS                               : std_logic;
+  signal FirstxS                              : std_logic;
+  signal UpperxS                              : std_logic;
+  signal ICAPCacheValidxSP, ICAPCacheValidxSN : std_logic;
+  signal ICAPCachexDP                         : std_logic_vector(0 to ICAP_WIDTH-1);
 
   -- icap signals
-  signal ICAPBusyxS      : std_logic;
-  signal ICAPCExSB       : std_logic;
-  signal ICAPWExSB       : std_logic;
-  signal ICAPDataOutxD   : std_logic_vector(0 to ICAP_WIDTH-1);
-  signal ICAPDataInxD    : std_logic_vector(0 to ICAP_WIDTH-1);
-  signal ICAPSwappedInxD : std_logic_vector(0 to ICAP_WIDTH-1);
+  signal ICAPBusyxS           : std_logic;
+  signal ICAPCExSB            : std_logic;
+  signal ICAPWExSB            : std_logic;
+  signal ICAPDataOutxD        : std_logic_vector(0 to ICAP_WIDTH-1);
+  signal ICAPDataOutSwappedxD : std_logic_vector(0 to ICAP_WIDTH-1);
+  signal ICAPDataInxD         : std_logic_vector(0 to ICAP_WIDTH-1);
+  signal ICAPSwappedInxD      : std_logic_vector(0 to ICAP_WIDTH-1);
+  signal ICAPCacheClearxS     : std_logic;
 
   signal ICAPLutOutxD : std_logic_vector(0 to ICAP_WIDTH-1);
 
@@ -222,10 +221,11 @@ begin
     elsif rising_edge(clk) then
 
       -- default assignments
-      ICAPFsmLenxD   <= conv_std_logic_vector(C_LOCAL_RAM_SIZE/2, C_LOCAL_RAM_ADDRESS_WIDTH);
-      ICAPFsmStartxS <= '0';
-      ICAPFsmAckxS   <= '0';
-      ICAPFsmModexS  <= '0';            -- write
+      ICAPFsmLenxD     <= conv_std_logic_vector(C_LOCAL_RAM_SIZE/2, C_LOCAL_RAM_ADDRESS_WIDTH);
+      ICAPFsmStartxS   <= '0';
+      ICAPFsmAckxS     <= '0';
+      ICAPFsmModexS    <= '0';          -- write
+      ICAPCacheClearxS <= '0';
 
       case state is
         -----------------------------------------------------------------------
@@ -257,7 +257,8 @@ begin
             else
               -- TODO: look for a better solution
               if LenxD(0) = '1' then
-                state <= STATE_READ_CMPLEN;
+                ICAPCacheClearxS <= '1';
+                state            <= STATE_READ_CMPLEN;
               else
                 state <= STATE_CMPLEN;
               end if;
@@ -486,7 +487,7 @@ begin
       rdwrb => ICAPWExSB,               -- active low
       i     => ICAPSwappedInxD,
       busy  => ICAPBusyxS,
-      o     => ICAPDataOutxD);
+      o     => ICAPDataOutSwappedxD);
 
   -----------------------------------------------------------------------------
   -- ICAPFsm
@@ -495,22 +496,23 @@ begin
     generic map (
       ADDR_WIDTH => C_LOCAL_RAM_ADDRESS_WIDTH)
     port map (
-      ClkxCI        => clk,
-      ResetxRI      => rst,
-      StartxSI      => ICAPFsmStartxS,
-      AckxSI        => ICAPFsmAckxS,
-      DonexSO       => ICAPFsmDonexS,
-      ErrorxSO      => ICAPFsmErrorxS,
-      LenxDI        => ICAPFsmLenxD,
-      ModexSI       => ICAPFsmModexS,
-      UpperxSI      => UpperxS,
-      RamAddrxDO    => ICAPRamAddrxD,
-      RamWExSO      => ICAPRamWExS,
-      RamLutMuxxSO  => ICAPRamLutMuxxS,
-      ICAPCExSBO    => ICAPCExSB,
-      ICAPWExSBO    => ICAPWExSB,
-      ICAPStatusxDI => ICAPDataOutxD,
-      ICAPBusyxSI   => ICAPBusyxS);
+      ClkxCI            => clk,
+      ResetxRI          => rst,
+      StartxSI          => ICAPFsmStartxS,
+      AckxSI            => ICAPFsmAckxS,
+      DonexSO           => ICAPFsmDonexS,
+      ErrorxSO          => ICAPFsmErrorxS,
+      LenxDI            => ICAPFsmLenxD,
+      ModexSI           => ICAPFsmModexS,
+      UpperxSI          => UpperxS,
+      RamAddrxDO        => ICAPRamAddrxD,
+      RamWExSO          => ICAPRamWExS,
+      RamLutMuxxSO      => ICAPRamLutMuxxS,
+      ICAPCExSBO        => ICAPCExSB,
+      ICAPWExSBO        => ICAPWExSB,
+      ICAPStatusxDI     => ICAPDataOutSwappedxD(24 to 31),
+      ICAPBusyxSI       => ICAPBusyxS,
+      ICAPCacheValidxSI => ICAPCacheValidxSP);
 
   -----------------------------------------------------------------------------
   -- ICAP Command Lookup-Table
@@ -520,6 +522,38 @@ begin
       ClkxCI  => clk,
       AddrxDI => ICAPRamAddrxD(ICAPRamAddrxD'length-4 to ICAPRamAddrxD'length-1),
       OutxDO  => ICAPLutOutxD);
+
+  -----------------------------------------------------------------------------
+  -- ICAP Output Cache, needed because otherwise we run into timing problems
+  -- between ICAPBusy and ICAPCE/ICAPWE
+  -----------------------------------------------------------------------------
+  outputCacheFF : process (clk, rst)
+  begin  -- process outputCacheFF
+    if rst = '1' then                   -- asynchronous reset (active high)
+      ICAPCacheValidxSP <= '0';
+      ICAPCachexDP      <= (others => '0');
+    elsif clk'event and clk = '1' then  -- rising clock edge
+      ICAPCacheValidxSP <= ICAPCacheValidxSN;
+
+      if ICAPBusyxS = '0' then
+        ICAPCachexDP <= ICAPDataOutxD;
+      end if;
+    end if;
+  end process outputCacheFF;
+
+  icapCacheComb : process (ICAPBusyxS, ICAPCacheClearxS, ICAPCacheValidxSP,
+                           ICAPRamWExS)
+  begin  -- process icapCacheComb
+    ICAPCacheValidxSN <= ICAPCacheValidxSP;
+
+    if ICAPRamWExS = '1' or ICAPCacheClearxS = '1' then
+      ICAPCacheValidxSN <= '0';
+    end if;
+
+    if ICAPBusyxS = '0' then
+      ICAPCacheValidxSN <= '1';
+    end if;
+  end process icapCacheComb;
 
   -----------------------------------------------------------------------------
   -- concurrent signal assignments
@@ -539,15 +573,12 @@ begin
   -- bit swapping of RAM input
   swapRamInGen : for i in 0 to 3 generate
     bitSwapRamInGen : for j in 0 to 7 generate
-      ICAPRamInxD(i * 8 + j) <= ICAPDataOutxD((i + 1) * 8 - 1 - j);
+      ICAPDataOutxD(i * 8 + j) <= ICAPDataOutSwappedxD((i + 1) * 8 - 1 - j);
     end generate bitSwapRamInGen;
   end generate swapRamInGen;
 
-
-  -----------------------------------------------------------------------------
-  -- DEBUG
-  -----------------------------------------------------------------------------
-  DebugICAPOut  <= ICAPDataOutxD(24 to 31);
+  -- ICAP Ram Input
+  ICAPRamInxD <= ICAPCachexDP;
 
 end architecture;
 
