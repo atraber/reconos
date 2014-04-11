@@ -26,6 +26,7 @@ struct pr_bitstream pr_bit[2];
 
 
 // load arbitrary cmd sequence via hardware icap thread
+// size must be in bytes
 int hw_icap_write(uint32_t* addr, unsigned int size)
 {
 	int ret;
@@ -252,3 +253,130 @@ int linux_icap_load(int thread_id)
   return ret;
 }
 
+
+uint32_t g_icap_read_cmd[] = {0xFFFFFFFF,
+                              0x000000BB,
+                              0x11220044,
+                              0xFFFFFFFF,
+                              0xAA995566, // sync
+                              0x20000000, // noop
+                              0x30008001, // write to cmd
+                              0x0000000B, // SHUTDOWN
+                              0x20000000, // noop
+                              0x30008001, // write to cmd
+                              0x00000007, // RCRC
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x30008001, // write to cmd
+                              0x00000004, // RCFG
+                              0x20000000, // noop
+                              0x00008A80, // write to FAR
+                              0x00400000, // FAR address
+                              0x28006000, // type 1 read 0 words from FDRO
+                              0x48010080, // type 2 read 128 words from FDRO
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000};// noop
+
+uint32_t g_icap_read_cmd2[] = {0x20000000, // noop
+                               0x30008001, // write to cmd
+                               0x00000005, // START
+                               0x20000000, // noop
+                               0x30008001, // write to cmd
+                               0x00000007, // RCRC
+                               0x20000000, // noop
+                               0x30008001, // write to cmd
+                               0x0000000D, // DESYNC
+                               0x20000000, // noop
+                               0x20000000};// noop
+
+int hw_icap_read() {
+  printf("Writing to ICAP\n");
+  hw_icap_write(g_icap_read_cmd, sizeof g_icap_read_cmd);
+
+  // read
+  uint32_t mem[128];
+  printf("Reading from ICAP\n");
+  hw_icap_write(mem, (sizeof mem) | 0x00000001);
+
+  printf("Finishing ICAP\n");
+  hw_icap_write(g_icap_read_cmd2, sizeof g_icap_read_cmd2);
+
+
+  unsigned int i;
+  for(i = 0; i < 128; i++) {
+    printf("%08X\n", mem[i]);
+  }
+
+  return 0;
+}
+
+uint32_t g_icap_read_stat[] = {0xFFFFFFFF,
+                              0x000000BB,
+                              0x11220044,
+                              0xFFFFFFFF,
+                              0xAA995566, // sync
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x2800E001, // read from STAT register
+                              0x20000000, // noop
+                              0x20000000};// noop
+
+uint32_t g_icap_read_stat2[] = {0x30008001, // write to cmd
+                               0x0000000D, // DESYNC
+                               0x20000000, // noop
+                               0x20000000};// noop
+
+int hw_icap_read_stat() {
+  printf("Writing to ICAP\n");
+  hw_icap_write(g_icap_read_stat, sizeof g_icap_read_stat);
+
+  // read
+  uint32_t mem[1];
+  printf("Reading from ICAP\n");
+  hw_icap_write(mem, (4) | 0x00000001);
+
+  printf("Finishing ICAP\n");
+  hw_icap_write(g_icap_read_stat2, sizeof g_icap_read_stat2);
+
+
+  unsigned int i;
+  for(i = 0; i < 1; i++) {
+    printf("%X\n", mem[i]);
+  }
+
+  return 0;
+}

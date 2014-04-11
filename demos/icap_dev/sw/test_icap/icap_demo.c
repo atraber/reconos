@@ -158,6 +158,9 @@ int main(int argc, char *argv[])
       break;
   }
 
+  hw_icap_read();
+  return 0;
+
 	while(1) {
 		// reconfigure partial hw slot and check thread
 		printf("[icap] Test no. %03d\n",cnt);

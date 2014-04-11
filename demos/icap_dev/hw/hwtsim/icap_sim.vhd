@@ -6,7 +6,7 @@
 -- Author     : atraber  <atraber@student.ethz.ch>
 -- Company    : Computer Engineering and Networks Laboratory, ETH Zurich
 -- Created    : 2014-04-04
--- Last update: 2014-04-07
+-- Last update: 2014-04-10
 -- Platform   : Xilinx ISIM (simulation), Xilinx (synthesis)
 -- Standard   : VHDL'87
 -------------------------------------------------------------------------------
@@ -195,16 +195,12 @@ begin  -- behavioral
         -- only output something every third cycle
         if (j mod 3) = 0 then
           BusyxS <= '0';
-        else
-          BusyxS <= '1';
-        end if;
-
-        if BusyxS = '0' then
           readline(file_read, line);
           hread(line, vec, read_ok);
 
           OutxD <= vec;                 -- swapped?
         else
+          BusyxS <= '1';
           OutxD <= StatusxD;            -- not sure if this is correct
         end if;
       else

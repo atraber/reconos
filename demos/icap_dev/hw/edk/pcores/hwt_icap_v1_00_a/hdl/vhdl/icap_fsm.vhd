@@ -39,12 +39,15 @@ entity ICAPFsm is
     DonexSO       : out std_logic;
     ErrorxSO      : out std_logic;
     LenxDI        : in  std_logic_vector(0 to ADDR_WIDTH-1);
+    ModexSI       : in  std_logic;      -- 0 means write, 1 means read
     UpperxSI      : in  std_logic;
     RamAddrxDO    : out std_logic_vector(0 to ADDR_WIDTH-1);
+    RamWExSO      : out std_logic;
     RamLutMuxxSO  : out std_logic;      -- 0 means Ram, 1 means Lut
     ICAPCExSBO    : out std_logic;
     ICAPWExSBO    : out std_logic;
-    ICAPStatusxDI : in  std_logic_vector(0 to 31)
+    ICAPStatusxDI : in  std_logic_vector(0 to 31);
+    ICAPBusyxSI   : in  std_logic
     );
 
 end ICAPFsm;
@@ -52,7 +55,7 @@ end ICAPFsm;
 
 architecture implementation of ICAPFsm is
   type state_t is (STATE_IDLE, STATE_WRITE_WAIT, STATE_WRITE, STATE_FINISH, STATE_ERROR,
-                   STATE_CRCCHECK, STATE_CRCRESET, STATE_CRCRESET_WAIT);
+                   STATE_CRCCHECK, STATE_CRCRESET, STATE_CRCRESET_WAIT, STATE_READ);
 
   -----------------------------------------------------------------------------
   -- signals
@@ -72,6 +75,7 @@ architecture implementation of ICAPFsm is
   signal ErrorxS     : std_logic;
   signal ICAPErrorxS : std_logic;  -- set to 1 if ICAPStatus indicates an error
   signal ICAPSyncxS  : std_logic;  -- set to 1 if ICAPStatus indicates that we are synced
+  signal RamWExS     : std_logic;
 begin  -- implementation
 
   -----------------------------------------------------------------------------
@@ -97,14 +101,16 @@ begin  -- implementation
   -- ICAP FSM
   -----------------------------------------------------------------------------
 
-  icapFSM : process (AckxSI, AddrxDN, AddrxDP, ICAPErrorxS, ICAPSyncxS, LenxDI,
-                     LenxDP, StartxSI, StatexDP, UpperxSI, UpperxSP)
+  icapFSM : process (AckxSI, AddrxDN, AddrxDP, ICAPBusyxSI, ICAPErrorxS,
+                     ICAPSyncxS, LenxDI, LenxDP, ModexSI, StartxSI, StatexDP,
+                     UpperxSI, UpperxSP)
   begin  -- process icapFSM
     StatexDN    <= StatexDP;
     AddrxDN     <= AddrxDP;
     LenxDN      <= LenxDP;
     UpperxSN    <= UpperxSP;
     RamLutMuxxS <= '0';                 -- RAM
+    RamWExS     <= '0';                 -- don't write to Ram
     ICAPCExSB   <= '1';                 -- active low, so not active here
     ICAPWExSB   <= '0';                 -- active low, doing a write
     DonexS      <= '0';
@@ -119,9 +125,14 @@ begin  -- implementation
         AddrxDN <= unsigned(conv_std_logic_vector(0, AddrxDP'length));
 
         if StartxSI = '1' then
-          StatexDN <= STATE_WRITE_WAIT;
           UpperxSN <= UpperxSI;
           LenxDN   <= LenxDI;
+
+          if ModexSI = '0' then
+            StatexDN <= STATE_WRITE_WAIT;
+          else
+            StatexDN <= STATE_READ;
+          end if;
         end if;
 
         -------------------------------------------------------------------------
@@ -211,6 +222,22 @@ begin  -- implementation
           StatexDN <= STATE_IDLE;
         end if;
 
+        -----------------------------------------------------------------------
+        -- Read configuration data from ICAP
+        -----------------------------------------------------------------------
+      when STATE_READ =>
+        ICAPCExSB <= '0';               -- active low
+        ICAPWExSB <= '1';               -- active low, doing a read
+
+        if ICAPBusyxSI = '0' then
+          AddrxDN <= AddrxDP + 1;
+          RamWExS <= '1';
+        end if;
+
+        if std_logic_vector(AddrxDN) = LenxDP then
+          StatexDN <= STATE_FINISH;
+        end if;
+
         -------------------------------------------------------------------------
         -- default case, will never be reached, do nothing
         -------------------------------------------------------------------------
@@ -234,5 +261,6 @@ begin  -- implementation
   RamLutMuxxSO <= RamLutMuxxS;
 
   RamAddrxDO <= std_logic_vector(UpperxSP & AddrxDP(ADDR_WIDTH-2 downto 0));
+  RamWExSO   <= RamWExS;
 
 end implementation;

@@ -33,6 +33,8 @@ entity hwt_icap is
     -- DEBUG
     DebugICAPOut  : out std_logic_vector(0 to 7);
     DebugICAPBusy : out std_logic;
+    DebugICAPCE   : out std_logic;
+    DebugICAPWE   : out std_logic;
 
     -- HWT reset and clock
     clk : in std_logic;
@@ -55,12 +57,16 @@ architecture implementation of hwt_icap is
       DonexSO       : out std_logic;
       ErrorxSO      : out std_logic;
       LenxDI        : in  std_logic_vector(0 to ADDR_WIDTH-1);
+      ModexSI       : in  std_logic;
       UpperxSI      : in  std_logic;
       RamAddrxDO    : out std_logic_vector(0 to ADDR_WIDTH-1);
+      RamWExSo      : out std_logic;
       RamLutMuxxSO  : out std_logic;
       ICAPCExSBO    : out std_logic;
       ICAPWExSBO    : out std_logic;
-      ICAPStatusxDI : in  std_logic_vector(0 to 31));
+      ICAPStatusxDI : in  std_logic_vector(0 to 31);
+      ICAPBusyxSI   : in  std_logic
+      );
   end component;
 
   component ICAPWrapper
@@ -88,7 +94,8 @@ architecture implementation of hwt_icap is
   type STATE_TYPE is (STATE_GET_BITSTREAM_ADDR, STATE_GET_BITSTREAM_SIZE, STATE_THREAD_EXIT,
                       STATE_FINISHED, STATE_ERROR, STATE_CMPLEN, STATE_FETCH_MEM,
                       STATE_ICAP_TRANSFER, STATE_ICAP_WAIT, STATE_ICAP_WAIT_LAST,
-                      STATE_MEM_CALC);
+                      STATE_MEM_CALC,
+                      STATE_READ_CMPLEN, STATE_READ_ICAP, STATE_PUT_MEM, STATE_READ_CALC);
 
   constant MBOX_RECV   : std_logic_vector(C_FSL_WIDTH-1 downto 0) := x"00000000";
   constant MBOX_SEND   : std_logic_vector(C_FSL_WIDTH-1 downto 0) := x"00000001";
@@ -113,7 +120,7 @@ architecture implementation of hwt_icap is
   -- local FSM RAM signals
   signal ICAPRamAddrxD : std_logic_vector(0 to C_LOCAL_RAM_ADDRESS_WIDTH-1);  -- in words
   signal ICAPRamOutxD  : std_logic_vector(0 to 31);
-  signal ICAPRamWExD   : std_logic;
+  signal ICAPRamWExS   : std_logic;
   signal ICAPRamInxD   : std_logic_vector(0 to 31);
 
   -- reconos RAM signals
@@ -148,6 +155,7 @@ architecture implementation of hwt_icap is
 
   signal ICAPFsmStartxS  : std_logic;
   signal ICAPFsmAckxS    : std_logic;
+  signal ICAPFsmModexS   : std_logic;
   signal ICAPRamLutMuxxS : std_logic;
   signal ICAPFsmDonexS   : std_logic;
   signal ICAPFsmErrorxS  : std_logic;
@@ -182,7 +190,7 @@ begin
   local_ram_ctrl_2 : process (clk) is
   begin
     if (rising_edge(clk)) then
-      if (ICAPRamWExD = '1') then
+      if (ICAPRamWExS = '1') then
         local_ram(conv_integer(unsigned(ICAPRamAddrxD))) := ICAPRamInxD;
       else
         ICAPRamOutxD <= local_ram(conv_integer(unsigned(ICAPRamAddrxD)));
@@ -217,6 +225,7 @@ begin
       ICAPFsmLenxD   <= conv_std_logic_vector(C_LOCAL_RAM_SIZE/2, C_LOCAL_RAM_ADDRESS_WIDTH);
       ICAPFsmStartxS <= '0';
       ICAPFsmAckxS   <= '0';
+      ICAPFsmModexS  <= '0';            -- write
 
       case state is
         -----------------------------------------------------------------------
@@ -246,7 +255,12 @@ begin
             if (LenxD = X"FFFFFFFF") then
               state <= STATE_THREAD_EXIT;
             else
-              state <= STATE_CMPLEN;
+              -- TODO: look for a better solution
+              if LenxD(0) = '1' then
+                state <= STATE_READ_CMPLEN;
+              else
+                state <= STATE_CMPLEN;
+              end if;
             end if;
           end if;
 
@@ -364,7 +378,7 @@ begin
           end if;
 
           ---------------------------------------------------------------------
-          -- We are finished, send message
+          -- We are finished, send a message
           ---------------------------------------------------------------------
         when STATE_FINISHED =>
           osif_mbox_put(i_osif, o_osif, MBOX_SEND, RESULT_OK, ignore, done);
@@ -372,6 +386,81 @@ begin
           if done then
             state <= STATE_GET_BITSTREAM_ADDR;
           end if;
+
+          ---------------------------------------------------------------------
+          -- Compare given length with the size of our local ram
+          -- If the length if smaller than the size of half of our ram, we are in
+          -- the final run and can give the actual remaining size as an argument
+          -- the icap fsm, otherwise we specify the size of half of our ram
+          ---------------------------------------------------------------------
+        when STATE_READ_CMPLEN =>
+          LenxD(0) <= '0';             -- DEBUG!!!
+          if LenxD  <= C_LOCAL_RAM_SIZE_IN_BYTES/2 then
+            LastxS <= '1';
+          else
+            LastxS <= '0';
+          end if;
+
+          state <= STATE_READ_ICAP;
+
+          ---------------------------------------------------------------------
+          -- Read from ICAP interface
+          -- TODO: this should also be double buffered!
+          ---------------------------------------------------------------------
+        when STATE_READ_ICAP =>
+          ICAPFsmModexS  <= '1';        -- read
+          ICAPFsmStartxS <= '1';
+          UpperxS        <= '0';
+
+          if LastxS = '1' then
+            -- convert the remaining size from bytes to words
+            ICAPFsmLenxD <= LenxD(C_LOCAL_RAM_ADDRESS_WIDTH-1 + 2 downto 2);
+          else
+            ICAPFsmLenxD <= conv_std_logic_vector(C_LOCAL_RAM_SIZE/2, C_LOCAL_RAM_ADDRESS_WIDTH);
+          end if;
+
+          if ICAPFsmDonexS = '1' then
+            -- we ack it already in this state as we do not need this signal when
+            -- we are not doing double buffering
+            ICAPFsmAckxS <= '1';
+            state        <= STATE_PUT_MEM;
+          end if;
+
+          ---------------------------------------------------------------------
+          -- Copy the content of the local RAM to the main memory
+          ---------------------------------------------------------------------
+        when STATE_PUT_MEM =>
+          if LastxS = '1' then
+            -- LenxD is smaller than the size of half the local memory, so we
+            -- only have to copy LenxD to the main memory
+            len := LenxD(23 downto 0);
+          else
+            -- Copy the whole content of half of the local memory
+            len := conv_std_logic_vector(C_LOCAL_RAM_SIZE_IN_BYTES/2, 24);
+          end if;
+
+          memif_write(i_ram, o_ram, i_memif, o_memif, X"00000000", AddrxD, len, done);
+
+          if Done then
+            if LastxS = '1' then
+              state <= STATE_FINISHED;
+            else
+              state <= STATE_READ_CALC;
+            end if;
+          end if;
+
+          ---------------------------------------------------------------------
+          -- Calculate the remaining length that we still have to fetch from
+          -- ICAP and the corresponding address in main memory
+          ---------------------------------------------------------------------
+        when STATE_READ_CALC =>
+          AddrxD <= AddrxD + (C_LOCAL_RAM_SIZE_IN_BYTES/2);
+          LenxD  <= LenxD - (C_LOCAL_RAM_SIZE_IN_BYTES/2);
+
+          -- TODO: not needed when not doing double buffering
+          -- UpperxS <= not UpperxS;
+
+          state <= STATE_READ_CMPLEN;
 
           ---------------------------------------------------------------------
           -- thread exit
@@ -413,12 +502,15 @@ begin
       DonexSO       => ICAPFsmDonexS,
       ErrorxSO      => ICAPFsmErrorxS,
       LenxDI        => ICAPFsmLenxD,
+      ModexSI       => ICAPFsmModexS,
       UpperxSI      => UpperxS,
       RamAddrxDO    => ICAPRamAddrxD,
+      RamWExSO      => ICAPRamWExS,
       RamLutMuxxSO  => ICAPRamLutMuxxS,
       ICAPCExSBO    => ICAPCExSB,
       ICAPWExSBO    => ICAPWExSB,
-      ICAPStatusxDI => ICAPDataOutxD);
+      ICAPStatusxDI => ICAPDataOutxD,
+      ICAPBusyxSI   => ICAPBusyxS);
 
   -----------------------------------------------------------------------------
   -- ICAP Command Lookup-Table
@@ -433,10 +525,7 @@ begin
   -- concurrent signal assignments
   -----------------------------------------------------------------------------
 
-  ICAPRamInxD <= (others => '0');
-  ICAPRamWExD <= '0';
-
-
+  ICAPRamInxD  <= ICAPDataOutxD;
   ICAPDataInxD <= ICAPRamOutxD when ICAPRamLutMuxxS = '0'
                   else ICAPLutOutxD;
 
@@ -454,6 +543,8 @@ begin
   -----------------------------------------------------------------------------
   DebugICAPOut  <= ICAPDataOutxD(24 to 31);
   DebugICAPBusy <= ICAPBusyxS;
+  DebugICAPCE   <= ICAPCExSB;
+  DebugICAPWE   <= ICAPWExSB;
 
 end architecture;
 

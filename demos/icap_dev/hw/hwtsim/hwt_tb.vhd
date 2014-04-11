@@ -1,8 +1,8 @@
-			--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Company: 
--- Eng		ineer:
-	--
-	-- Create Date:   11:24:17 01/20/2012
+-- Engineer:
+--
+-- Create Date:   11:24:17 01/20/2012
 -- Design Name:   
 -- Module Name:   hwtsim/hwt_tb.vhd
 -- Project Name:  hwtsim
@@ -310,7 +310,9 @@ BEGIN
 		wait for clk_period*10;
 
 
+    -- send address
 		MB_M_Write <= '1';
+    -- address must be zero because the testbench assumes that the address is zero
 		MB_M_Data <= x"00000000";
 		
 		wait for clk_period;
@@ -319,8 +321,9 @@ BEGIN
 
 		wait for clk_period*10;
 		
+    -- send size
 		MB_M_Write <= '1';
-		MB_M_Data <= x"00054AC8";
+		MB_M_Data <= x"00054AC9";
 		
 		wait for clk_period;
 		

@@ -48,5 +48,7 @@ PORT Clk="", DIR=I, SIGIS=Clk
 # DEBUG
 PORT DebugICAPOut  = "", DIR=O, VEC=[0:7]
 PORT DebugICAPBusy = "", DIR=O
+PORT DebugICAPCE   = "", DIR=O
+PORT DebugICAPWE   = "", DIR=O
 
 END
