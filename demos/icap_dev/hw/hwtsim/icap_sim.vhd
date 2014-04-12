@@ -198,12 +198,7 @@ begin  -- behavioral
           readline(file_read, line);
           hread(line, vec, read_ok);
 
-          -- ICAP output is bit swapped, so swap it back so that we can use it
-          swapGen : for k in 0 to 3 loop
-            bitSwapGen : for j in 0 to 7 loop
-              OutxD(k * 8 + j) <= vec((k + 1) * 8 - 1 - j);
-            end loop bitSwapGen;
-          end loop swapGen;
+          OutxD <= vec;
 
         else
           BusyxS <= '1';
@@ -223,12 +218,7 @@ begin  -- behavioral
   -- signal assignments
   -----------------------------------------------------------------------------
 
-  -- ICAP input is bit swapped, so swap it back so that we can use it
-  swapGen : for k in 0 to 3 generate
-    bitSwapGen : for j in 0 to 7 generate
-      DataInxD(k * 8 + j) <= i((k + 1) * 8 - 1 - j);
-    end generate bitSwapGen;
-  end generate swapGen;
+  DataInxD <= i;
 
 
   -----------------------------------------------------------------------------

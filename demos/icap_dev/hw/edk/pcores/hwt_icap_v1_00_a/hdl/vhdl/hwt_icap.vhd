@@ -145,9 +145,7 @@ architecture implementation of hwt_icap is
   signal ICAPCExSB            : std_logic;
   signal ICAPWExSB            : std_logic;
   signal ICAPDataOutxD        : std_logic_vector(0 to ICAP_WIDTH-1);
-  signal ICAPDataOutSwappedxD : std_logic_vector(0 to ICAP_WIDTH-1);
   signal ICAPDataInxD         : std_logic_vector(0 to ICAP_WIDTH-1);
-  signal ICAPSwappedInxD      : std_logic_vector(0 to ICAP_WIDTH-1);
   signal ICAPCacheClearxS     : std_logic;
 
   signal ICAPLutOutxD : std_logic_vector(0 to ICAP_WIDTH-1);
@@ -485,9 +483,9 @@ begin
       clk   => clk,
       csb   => ICAPCExSB,               -- active low
       rdwrb => ICAPWExSB,               -- active low
-      i     => ICAPSwappedInxD,
+      i     => ICAPDataInxD,
       busy  => ICAPBusyxS,
-      o     => ICAPDataOutSwappedxD);
+      o     => ICAPDataOutxD);
 
   -----------------------------------------------------------------------------
   -- ICAPFsm
@@ -510,7 +508,7 @@ begin
       RamLutMuxxSO      => ICAPRamLutMuxxS,
       ICAPCExSBO        => ICAPCExSB,
       ICAPWExSBO        => ICAPWExSB,
-      ICAPStatusxDI     => ICAPDataOutSwappedxD(24 to 31),
+      ICAPStatusxDI     => ICAPDataOutxD(24 to 31),
       ICAPBusyxSI       => ICAPBusyxS,
       ICAPCacheValidxSI => ICAPCacheValidxSP);
 
@@ -561,21 +559,6 @@ begin
 
   ICAPDataInxD <= ICAPRamOutxD when ICAPRamLutMuxxS = '0'
                   else ICAPLutOutxD;
-
-  -- bit swapping of RAM output so that it matches the input format of the ICAP
-  -- interface, see pg 43 of UG360 (v3.7)
-  swapGen : for i in 0 to 3 generate
-    bitSwapGen : for j in 0 to 7 generate
-      ICAPSwappedInxD(i * 8 + j) <= ICAPDataInxD((i + 1) * 8 - 1 - j);
-    end generate bitSwapGen;
-  end generate swapGen;
-
-  -- bit swapping of RAM input
-  swapRamInGen : for i in 0 to 3 generate
-    bitSwapRamInGen : for j in 0 to 7 generate
-      ICAPDataOutxD(i * 8 + j) <= ICAPDataOutSwappedxD((i + 1) * 8 - 1 - j);
-    end generate bitSwapRamInGen;
-  end generate swapRamInGen;
 
   -- ICAP Ram Input
   ICAPRamInxD <= ICAPCachexDP;

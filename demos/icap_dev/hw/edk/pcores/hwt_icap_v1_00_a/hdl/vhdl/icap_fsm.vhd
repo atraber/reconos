@@ -223,16 +223,18 @@ begin  -- implementation
         -- Read configuration data from ICAP
         -----------------------------------------------------------------------
       when STATE_READ =>
+        ICAPCExSB <= '0';               -- active low
+        ICAPWExSB <= '1';               -- active low, doing a read
+
+        -- BY USING ICAPCacheValidxSN instead of SP, we could split this state into three states, which could help here
         if ICAPCacheValidxSI = '1' then
           RamWExS <= '1';
           AddrxDN <= AddrxDP + 1;
-        end if;
 
-        if std_logic_vector(AddrxDN) = LenxDP then
-          StatexDN <= STATE_FINISH;
-        else
-          ICAPCExSB <= '0';             -- active low
-          ICAPWExSB <= '1';             -- active low, doing a read
+          if std_logic_vector(AddrxDN) = LenxDP then
+            ICAPCExSB <= '1';           -- deassert, we are finished for now
+            StatexDN  <= STATE_FINISH;
+          end if;
         end if;
 
         -------------------------------------------------------------------------
@@ -245,8 +247,8 @@ begin  -- implementation
   -----------------------------------------------------------------------------
   -- signal assignments
   -----------------------------------------------------------------------------
-  ICAPErrorxS <= not ICAPStatusxDI(0);
-  ICAPSyncxS  <= ICAPStatusxDI(1);
+  ICAPErrorxS <= not ICAPStatusxDI(7);
+  ICAPSyncxS  <= ICAPStatusxDI(6);
 
   -----------------------------------------------------------------------------
   -- output assignments
