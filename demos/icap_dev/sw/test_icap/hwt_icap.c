@@ -323,50 +323,10 @@ uint32_t g_icap_read_cmd2[] = {0x20000000, // noop
                                0x20000000, // noop
                                0x20000000};// noop
 
-#define get_bit(in, bit)    ((in & (1 << bit)) >> bit)
-uint32_t bitswap(uint32_t in) {
-  uint32_t out = 0;
-
-  out = (get_bit(in, 24) << 31) |
-        (get_bit(in, 25) << 30) |
-        (get_bit(in, 26) << 29) |
-        (get_bit(in, 27) << 28) |
-        (get_bit(in, 28) << 27) |
-        (get_bit(in, 29) << 26) |
-        (get_bit(in, 30) << 25) |
-        (get_bit(in, 31) << 24) |
-        (get_bit(in, 16) << 23) |
-        (get_bit(in, 17) << 22) |
-        (get_bit(in, 18) << 21) |
-        (get_bit(in, 19) << 20) |
-        (get_bit(in, 20) << 19) |
-        (get_bit(in, 21) << 18) |
-        (get_bit(in, 22) << 17) |
-        (get_bit(in, 23) << 16) |
-        (get_bit(in,  8) << 15) |
-        (get_bit(in,  9) << 14) |
-        (get_bit(in, 10) << 13) |
-        (get_bit(in, 11) << 12) |
-        (get_bit(in, 12) << 11) |
-        (get_bit(in, 13) << 10) |
-        (get_bit(in, 14) <<  9) |
-        (get_bit(in, 15) <<  8) |
-        (get_bit(in,  0) <<  7) |
-        (get_bit(in,  1) <<  6) |
-        (get_bit(in,  2) <<  5) |
-        (get_bit(in,  3) <<  4) |
-        (get_bit(in,  4) <<  3) |
-        (get_bit(in,  5) <<  2) |
-        (get_bit(in,  6) <<  1) |
-        (get_bit(in,  7) <<  0);
-
-        return out;
-}
-
 // size must be in words
 int hw_icap_read(uint32_t far, uint32_t size) {
   g_icap_read_cmd[21] = far;
-  g_icap_read_cmd[23] = size | 0x48000000;
+  g_icap_read_cmd[23] = (size+10) | 0x48000000;
 
 
   printf("Writing to ICAP\n");

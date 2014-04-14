@@ -234,6 +234,7 @@ begin
       ICAPFsmAckxS     <= '0';
       ICAPFsmModexS    <= '0';          -- write
       ICAPCacheClearxS <= '0';
+      ICAPWExSB        <= '0';          -- write
 
       case state is
         -----------------------------------------------------------------------
@@ -404,7 +405,8 @@ begin
           -- the icap fsm, otherwise we specify the size of half of our ram
           ---------------------------------------------------------------------
         when STATE_READ_CMPLEN =>
-          if LenxD <= C_LOCAL_RAM_SIZE_IN_BYTES/2 then
+          ICAPWExSB <= '1';             -- read
+          if LenxD  <= C_LOCAL_RAM_SIZE_IN_BYTES/2 then
             LastxS <= '1';
           else
             LastxS <= '0';
@@ -417,6 +419,7 @@ begin
           -- TODO: this should also be double buffered!
           ---------------------------------------------------------------------
         when STATE_READ_ICAP =>
+          ICAPWExSB      <= '1';        -- read
           ICAPFsmModexS  <= '1';        -- read
           ICAPFsmStartxS <= '1';
           UpperxS        <= '0';
@@ -439,6 +442,7 @@ begin
           -- Copy the content of the local RAM to the main memory
           ---------------------------------------------------------------------
         when STATE_PUT_MEM =>
+          ICAPWExSB <= '1';             -- read
           if LastxS = '1' then
             -- LenxD is smaller than the size of half the local memory, so we
             -- only have to copy LenxD to the main memory
@@ -463,8 +467,9 @@ begin
           -- ICAP and the corresponding address in main memory
           ---------------------------------------------------------------------
         when STATE_READ_CALC =>
-          AddrxD <= AddrxD + (C_LOCAL_RAM_SIZE_IN_BYTES/2);
-          LenxD  <= LenxD - (C_LOCAL_RAM_SIZE_IN_BYTES/2);
+          ICAPWExSB <= '1';             -- read
+          AddrxD    <= AddrxD + (C_LOCAL_RAM_SIZE_IN_BYTES/2);
+          LenxD     <= LenxD - (C_LOCAL_RAM_SIZE_IN_BYTES/2);
 
           -- TODO: not needed when not doing double buffering
           -- UpperxS <= not UpperxS;
@@ -517,7 +522,7 @@ begin
       RamWExSO          => ICAPRamWExS,
       RamLutMuxxSO      => ICAPRamLutMuxxS,
       ICAPCExSBO        => ICAPCExSB,
-      ICAPWExSBO        => ICAPWExSB,
+      ICAPWExSBO        => open,        -- TODO: remove
       ICAPStatusxDI     => ICAPDataOutxD(24 to 31),
       ICAPBusyxSI       => ICAPBusyxS,
       ICAPCacheValidxSI => ICAPCacheValidxSP);

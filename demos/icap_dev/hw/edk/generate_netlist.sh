@@ -17,7 +17,7 @@ echo "######################################################################"
 echo "######################################################################"
 
 # Make sure that we are really building the addition
-sed -i '67s/.*/\tresult1 <= val1 + val2;/' ./pcores/hwt_pr_block_v1_00_a/hdl/vhdl/hwt_pr_block.vhd
+sed -i '80s/.*/      RegistersxD(2) <= RegistersxD(0) + RegistersxD(1);/' ./pcores/hwt_pr_block_v1_00_a/hdl/vhdl/hwt_pr_block.vhd
 
 ################################################################################
 # Building netlist
@@ -51,7 +51,7 @@ echo "######################################################################"
 echo "######################################################################"
 
 # Make sure that we are really building the subtraction
-sed -i '67s/.*/\tresult1 <= val1 - val2;/' ./pcores/hwt_pr_block_v1_00_a/hdl/vhdl/hwt_pr_block.vhd
+sed -i '80s/.*/      RegistersxD(2) <= RegistersxD(0) - RegistersxD(1);/' ./pcores/hwt_pr_block_v1_00_a/hdl/vhdl/hwt_pr_block.vhd
 
 ################################################################################
 # Building netlist
@@ -72,4 +72,4 @@ echo "CONFIGURATION B FINISHED"
 
 # restore addition as this is what is on git, we do not want useless commits for
 # this stuff
-sed -i '67s/.*/\tresult1 <= val1 + val2;/' ./pcores/hwt_pr_block_v1_00_a/hdl/vhdl/hwt_pr_block.vhd
+sed -i '80s/.*/      RegistersxD(2) <= RegistersxD(0) + RegistersxD(1);/' ./pcores/hwt_pr_block_v1_00_a/hdl/vhdl/hwt_pr_block.vhd

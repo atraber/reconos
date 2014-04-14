@@ -40,12 +40,30 @@ unsigned int configured = ADD;
 
 int test_prblock(int thread_id)
 {
-	unsigned int ret, val=0x60003;
-	mbox_put(&mb_in[HWT_DPR],val);
+  unsigned int ret, counter;
+  // set register 0
+	mbox_put(&mb_in[HWT_DPR], 0x00000000);
+	mbox_put(&mb_in[HWT_DPR], 0x01003344);
+
+  // set register 1
+	mbox_put(&mb_in[HWT_DPR], 0x00000001);
+	mbox_put(&mb_in[HWT_DPR], 0x01001122);
+
+  // get result from register 2
+	mbox_put(&mb_in[HWT_DPR], 0x80000002);
 	ret = mbox_get(&mb_out[HWT_DPR]);
-	printf("  calc - input=%x, output=%d\n",val,ret);
-	if (thread_id==ADD && ret==(val/0x10000)+(val%0x10000)) return 1;
-	if (thread_id==SUB && ret==(val/0x10000)-(val%0x10000)) return 1;
+
+  printf("Result is %X\n", ret);
+
+  // get counter value from register 3
+	mbox_put(&mb_in[HWT_DPR], 0x80000003);
+	counter = mbox_get(&mb_out[HWT_DPR]);
+  
+  printf("Counter value is %u\n", counter);
+  
+
+	if (thread_id==ADD && ret==(0x01003344)+(0x01001122)) return 1;
+	if (thread_id==SUB && ret==(0x01003344)-(0x01001122)) return 1;
 	return 0;
 }
 
@@ -207,8 +225,7 @@ int main(int argc, char *argv[])
     }
   } else {
     printf("Readback mode, reading %d words from 0x%08X\n", read_words, read_far);
-    //hw_icap_read(read_far, read_words);
-    hw_icap_grestore();
+    hw_icap_read(read_far, read_words);
   }
 
 	return 0;
