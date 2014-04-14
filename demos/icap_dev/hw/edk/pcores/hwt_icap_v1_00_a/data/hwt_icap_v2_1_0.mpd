@@ -45,4 +45,11 @@ PORT FIFO32_M_Rem  = FIFO32_M_Rem,  DIR=I, VEC=[0:15], BUS=MFIFO32
 PORT Rst="", DIR=I, SIGIS=Rst
 PORT Clk="", DIR=I, SIGIS=Clk
 
+# DEBUG
+PORT DebugStatus   = "", DIR=O, VEC=[0:7]
+PORT DebugBusy     = "", DIR=O
+PORT DebugValid    = "", DIR=O
+PORT DebugReadICAP = "", DIR=O
+PORT DebugPutMem   = "", DIR=O
+
 END

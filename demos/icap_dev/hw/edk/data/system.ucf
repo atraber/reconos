@@ -345,7 +345,7 @@ INST "*/u_phy_rdclk_gen/gen_ck_cpt[3].u_odelay_cpt"
 
 
 ##############################################################################
-# hwicap
+# xps_hwicap
 ##############################################################################
 NET "xps_hwicap_0/xps_hwicap_0/HWICAP_CTRL_I/icap_statemachine_I1/Icap_datain<*>" MAXDELAY = 2ns;
 NET "xps_hwicap_0/xps_hwicap_0/HWICAP_CTRL_I/icap_statemachine_I1/Icap_ce" MAXDELAY = 2ns;

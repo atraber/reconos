@@ -435,7 +435,7 @@ INST "DDR3_SDRAM/DDR3_SDRAM/mpmc_core_0/gen_v6_ddr3_phy.mpmc_phy_if_0/u_phy_read
 
 
 ##############################################################################
-# hwicap
+# xps_hwicap
 ##############################################################################
 NET "xps_hwicap_0/xps_hwicap_0/HWICAP_CTRL_I/icap_statemachine_I1/Icap_datain[0]" MAXDELAY = 2 ns;
 NET "xps_hwicap_0/xps_hwicap_0/HWICAP_CTRL_I/icap_statemachine_I1/Icap_datain[1]" MAXDELAY = 2 ns;
@@ -472,10 +472,10 @@ NET "xps_hwicap_0/xps_hwicap_0/HWICAP_CTRL_I/icap_statemachine_I1/Icap_datain[31
 NET "xps_hwicap_0/xps_hwicap_0/HWICAP_CTRL_I/icap_statemachine_I1/Icap_ce" MAXDELAY = 2 ns;
 NET "xps_hwicap_0/xps_hwicap_0/HWICAP_CTRL_I/icap_statemachine_I1/Icap_we" MAXDELAY = 2 ns;
 
-#NET "clk_100_0000MHzMMCM0" TNM = "PLBCLK_GRP";
-#NET "clk_80_ICAP" TNM = "ICAPCLK_GRP";
-#TIMESPEC TS_TIG0 = FROM "PLBCLK_GRP" TO "ICAPCLK_GRP" TIG ;
-#TIMESPEC TS_TIG1 = FROM "ICAPCLK_GRP" TO "PLBCLK_GRP" TIG ;
+NET "clk_100_0000MHzMMCM0" TNM = "PLBCLK_GRP";
+NET "clk_80_ICAP" TNM = "ICAPCLK_GRP";
+TIMESPEC TS_TIG0 = FROM "PLBCLK_GRP" TO "ICAPCLK_GRP" TIG ;
+TIMESPEC TS_TIG1 = FROM "ICAPCLK_GRP" TO "PLBCLK_GRP" TIG ;
 
 
 ##############################################################################

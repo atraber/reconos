@@ -6,7 +6,7 @@
 -- Author     : atraber  <atraber@student.ethz.ch>
 -- Company    : Computer Engineering and Networks Laboratory, ETH Zurich
 -- Created    : 2014-04-07
--- Last update: 2014-04-11
+-- Last update: 2014-04-14
 -- Platform   : Xilinx ISIM (simulation), Xilinx (synthesis)
 -- Standard   : VHDL'87
 -------------------------------------------------------------------------------
@@ -56,7 +56,8 @@ end ICAPFsm;
 
 architecture implementation of ICAPFsm is
   type state_t is (STATE_IDLE, STATE_WRITE_WAIT, STATE_WRITE, STATE_FINISH, STATE_ERROR,
-                   STATE_CRCCHECK, STATE_CRCRESET, STATE_CRCRESET_WAIT, STATE_READ);
+                   STATE_CRCCHECK, STATE_CRCRESET, STATE_CRCRESET_WAIT, STATE_READ,
+                   STATE_CRCRESET_SYNC, STATE_CRCRESET_NOSYNC);
 
   -----------------------------------------------------------------------------
   -- signals
@@ -164,15 +165,29 @@ begin  -- implementation
       when STATE_CRCCHECK =>
         if ICAPErrorxS = '1' then
           if ICAPSyncxS = '1' then
-            AddrxDN <= unsigned(conv_std_logic_vector(5, AddrxDP'length));
+            StatexDN <= STATE_CRCRESET_SYNC;
           else
-            AddrxDN <= unsigned(conv_std_logic_vector(0, AddrxDP'length));
+            StatexDN <= STATE_CRCRESET_NOSYNC;
           end if;
 
           StatexDN <= STATE_CRCRESET_WAIT;
         else
           StatexDN <= STATE_FINISH;
         end if;
+
+        -----------------------------------------------------------------------
+        -- Set starting address to 0 for CRC check
+        -----------------------------------------------------------------------
+      when STATE_CRCRESET_SYNC =>
+        AddrxDN  <= unsigned(conv_std_logic_vector(0, AddrxDP'length));
+        StatexDN <= STATE_CRCRESET_WAIT;
+
+        -----------------------------------------------------------------------
+        -- Set starting address to 5 for CRC check
+        -----------------------------------------------------------------------
+      when STATE_CRCRESET_NOSYNC =>
+        AddrxDN  <= unsigned(conv_std_logic_vector(5, AddrxDP'length));
+        StatexDN <= STATE_CRCRESET_WAIT;
 
         -----------------------------------------------------------------------
         -- Wait one cycle for RAM before starting with CRC reset on ICAP interface
@@ -226,7 +241,6 @@ begin  -- implementation
         ICAPCExSB <= '0';               -- active low
         ICAPWExSB <= '1';               -- active low, doing a read
 
-        -- BY USING ICAPCacheValidxSN instead of SP, we could split this state into three states, which could help here
         if ICAPCacheValidxSI = '1' then
           RamWExS <= '1';
           AddrxDN <= AddrxDP + 1;

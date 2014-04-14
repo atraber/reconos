@@ -73,6 +73,11 @@ BEGIN hwt_icap
  BUS_INTERFACE MFIFO32 = fifo32_0a_mfifo32
  PORT Rst = proc_control_0_reset0
  PORT Clk = clk_100_0000MHzMMCM0
+ PORT DebugBusy = hwt_icap_0_DebugBusy_to_chipscope_ila_0
+ PORT DebugPutMem = hwt_icap_0_DebugPutMem_to_chipscope_ila_0
+ PORT DebugReadICAP = hwt_icap_0_DebugReadICAP_to_chipscope_ila_0
+ PORT DebugStatus = hwt_icap_0_DebugStatus_to_chipscope_ila_0
+ PORT DebugValid = hwt_icap_0_DebugValid_to_chipscope_ila_0
 END
 
 BEGIN plb_v46
@@ -554,5 +559,23 @@ BEGIN microblaze
  BUS_INTERFACE MFSL3 = fsl_v20_3b
  PORT MB_RESET = mb_reset
  PORT INTERRUPT = microblaze_0_Interrupt
+END
+
+BEGIN chipscope_ila
+ PARAMETER INSTANCE = chipscope_ila_0
+ PARAMETER HW_VER = 1.05.a
+ PARAMETER C_TRIG0_UNITS = 1
+ PARAMETER C_TRIG0_TRIGGER_IN_WIDTH = 12
+ PARAMETER C_NUM_DATA_SAMPLES = 2048
+ PORT chipscope_ila_control = chipscope_ila_0_icon_control
+ PORT TRIG0 = hwt_icap_0_DebugBusy_to_chipscope_ila_0 & hwt_icap_0_DebugPutMem_to_chipscope_ila_0 & hwt_icap_0_DebugReadICAP_to_chipscope_ila_0 & hwt_icap_0_DebugStatus_to_chipscope_ila_0 & hwt_icap_0_DebugValid_to_chipscope_ila_0
+ PORT CLK = clk_100_0000MHzMMCM0
+END
+
+BEGIN chipscope_icon
+ PARAMETER INSTANCE = chipscope_icon_0
+ PARAMETER HW_VER = 1.06.a
+ PARAMETER C_NUM_CONTROL_PORTS = 1
+ PORT control0 = chipscope_ila_0_icon_control
 END
 

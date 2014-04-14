@@ -30,6 +30,13 @@ entity hwt_icap is
     FIFO32_S_Rd   : out std_logic;
     FIFO32_M_Wr   : out std_logic;
 
+    -- Debug
+    DebugStatus   : out std_logic_vector(0 to 7);
+    DebugBusy     : out std_logic;
+    DebugValid    : out std_logic;
+    DebugReadICAP : out std_logic;
+    DebugPutMem   : out std_logic;
+
     -- HWT reset and clock
     clk : in std_logic;
     rst : in std_logic
@@ -141,12 +148,12 @@ architecture implementation of hwt_icap is
   signal ICAPCachexDP                         : std_logic_vector(0 to ICAP_WIDTH-1);
 
   -- icap signals
-  signal ICAPBusyxS           : std_logic;
-  signal ICAPCExSB            : std_logic;
-  signal ICAPWExSB            : std_logic;
-  signal ICAPDataOutxD        : std_logic_vector(0 to ICAP_WIDTH-1);
-  signal ICAPDataInxD         : std_logic_vector(0 to ICAP_WIDTH-1);
-  signal ICAPCacheClearxS     : std_logic;
+  signal ICAPBusyxS       : std_logic;
+  signal ICAPCExSB        : std_logic;
+  signal ICAPWExSB        : std_logic;
+  signal ICAPDataOutxD    : std_logic_vector(0 to ICAP_WIDTH-1);
+  signal ICAPDataInxD     : std_logic_vector(0 to ICAP_WIDTH-1);
+  signal ICAPCacheClearxS : std_logic;
 
   signal ICAPLutOutxD : std_logic_vector(0 to ICAP_WIDTH-1);
 
@@ -256,6 +263,7 @@ begin
               -- TODO: look for a better solution
               if LenxD(0) = '1' then
                 ICAPCacheClearxS <= '1';
+                LenxD(0)         <= '0';  -- DEBUG!!!
                 state            <= STATE_READ_CMPLEN;
               else
                 state <= STATE_CMPLEN;
@@ -393,7 +401,6 @@ begin
           -- the icap fsm, otherwise we specify the size of half of our ram
           ---------------------------------------------------------------------
         when STATE_READ_CMPLEN =>
-          LenxD(0) <= '0';              -- DEBUG!!!
           if LenxD <= C_LOCAL_RAM_SIZE_IN_BYTES/2 then
             LastxS <= '1';
           else
@@ -562,6 +569,17 @@ begin
 
   -- ICAP Ram Input
   ICAPRamInxD <= ICAPCachexDP;
+
+  -----------------------------------------------------------------------------
+  -- DEBUG
+  -----------------------------------------------------------------------------
+  DebugStatus   <= ICAPDataOutxD(24 to 31);
+  DebugBusy     <= ICAPBusyxS;
+  DebugValid    <= ICAPCacheValidxSP;
+  DebugReadICAP <= '1' when state = STATE_READ_ICAP
+                   else '0';
+  DebugPutMem <= '1' when state = STATE_PUT_MEM
+                 else '0';
 
 end architecture;
 
