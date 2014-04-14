@@ -326,7 +326,7 @@ uint32_t g_icap_read_cmd2[] = {0x20000000, // noop
 // size must be in words
 int hw_icap_read(uint32_t far, uint32_t size) {
   g_icap_read_cmd[21] = far;
-  g_icap_read_cmd[23] = (size+10) | 0x48000000;
+  g_icap_read_cmd[23] = (size+15) | 0x48000000;
 
 
   printf("Writing to ICAP\n");

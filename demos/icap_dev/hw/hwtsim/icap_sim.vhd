@@ -62,10 +62,15 @@ architecture behavioral of ICAPWrapper is
   -----------------------------------------------------------------------------
   -- signals
   -----------------------------------------------------------------------------
-  signal DataInxD : std_logic_vector(0 to 31);
-  signal OutxD    : std_logic_vector(0 to 31);
-  signal StatusxD : std_logic_vector(0 to 31);
-  signal BusyxS   : std_logic;
+  signal DataInxD  : std_logic_vector(0 to 31);
+  signal ReadOutxD : std_logic_vector(0 to 31);
+  signal StatusxD  : std_logic_vector(0 to 31);
+  signal BusyxS    : std_logic;
+
+  -----------------------------------------------------------------------------
+  -- registers
+  -----------------------------------------------------------------------------
+  signal BusyCounterxDP, BusyCounterxDN : natural;
 
   -----------------------------------------------------------------------------
   -- files
@@ -113,16 +118,13 @@ architecture behavioral of ICAPWrapper is
 begin  -- behavioral
 
   checkResp : process
-    variable j       : natural := 0;
     variable line    : line;
     variable vec     : std_logic_vector(0 to 31);
     variable read_ok : boolean;
 
     variable wasCmd : boolean := false;
   begin  -- process checkResp
-    BusyxS   <= '1';
     StatusxD <= STATUS_IDLE;
-    OutxD    <= StatusxD;
 
     L1 : loop
       wait until rising_edge(clk);
@@ -131,8 +133,6 @@ begin  -- behavioral
         -----------------------------------------------------------------------
         -- writing to ICAP
         -----------------------------------------------------------------------
-
-        BusyxS <= '0';
 
         -----------------------------------------------------------------------
         -- check responses
@@ -183,36 +183,58 @@ begin  -- behavioral
           end if;
           report "sync word received" severity note;
         end if;
-
-        OutxD <= StatusxD;
-      elsif csb = '0' and rdwrb = '1' then
-        -----------------------------------------------------------------------
-        -- reading from ICAP
-        -----------------------------------------------------------------------
-
-        j := j + 1;
-
-        -- only output something every third cycle
-        if (j mod 1) = 0 then
-          BusyxS <= '0';
-          readline(file_read, line);
-          hread(line, vec, read_ok);
-
-          OutxD <= vec;
-
-        else
-          BusyxS <= '1';
-          OutxD  <= StatusxD;           -- not sure if this is correct
-        end if;
-      else
-        BusyxS <= '1';
-
-        OutxD <= StatusxD;              -- not sure if this is correct
       end if;
-
       
     end loop;
   end process checkResp;
+
+  readStim : process
+    variable j       : natural := 0;
+    variable line    : line;
+    variable vec     : std_logic_vector(0 to 31);
+    variable read_ok : boolean;
+  begin  -- process readStim
+    L1 : loop
+      wait until falling_edge(clk);     -- HACK
+
+      if csb = '0' and rdwrb = '1' and BusyxS = '0' then
+        
+        readline(file_read, line);
+        hread(line, vec, read_ok);
+
+        ReadOutxD <= vec;
+
+        j := j + 1;
+      end if;
+    end loop;
+  end process readStim;
+
+  outComb : process (BusyCounterxDP, csb, rdwrb)
+  begin  -- process outComb
+    BusyCounterxDN <= 0;
+
+    if csb = '0' then
+      if rdwrb = '1' then
+        BusyCounterxDN <= BusyCounterxDP + 1;
+
+        if BusyCounterxDP > 2 then
+          BusyxS <= '0';
+        end if;
+      else
+        BusyxS <= '0';
+      end if;
+    else
+      BusyxS <= '1';
+    end if;
+    
+  end process outComb;
+
+  outSeq : process (clk)
+  begin  -- process outSeq
+    if clk'event and clk = '1' then     -- rising clock edge
+      BusyCounterxDP <= BusyCounterxDN;
+    end if;
+  end process outSeq;
 
   -----------------------------------------------------------------------------
   -- signal assignments
@@ -224,7 +246,8 @@ begin  -- behavioral
   -----------------------------------------------------------------------------
   -- output assignments
   -----------------------------------------------------------------------------
-  o    <= OutxD;
+  o <= StatusxD when BusyxS = '1'
+       else ReadOutxD;
   busy <= BusyxS;
 
 end behavioral;
