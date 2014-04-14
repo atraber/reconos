@@ -324,7 +324,7 @@ BEGIN
     -- send size
 		MB_M_Write <= '1';
 		--MB_M_Data <= x"00054AC9";
-		MB_M_Data <= x"00001001";
+		MB_M_Data <= x"00001005";
 		
 		wait for clk_period;
 		

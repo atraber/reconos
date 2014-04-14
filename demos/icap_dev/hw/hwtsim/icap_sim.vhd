@@ -6,7 +6,7 @@
 -- Author     : atraber  <atraber@student.ethz.ch>
 -- Company    : Computer Engineering and Networks Laboratory, ETH Zurich
 -- Created    : 2014-04-04
--- Last update: 2014-04-11
+-- Last update: 2014-04-14
 -- Platform   : Xilinx ISIM (simulation), Xilinx (synthesis)
 -- Standard   : VHDL'87
 -------------------------------------------------------------------------------
@@ -193,7 +193,7 @@ begin  -- behavioral
         j := j + 1;
 
         -- only output something every third cycle
-        if (j mod 3) = 0 then
+        if (j mod 1) = 0 then
           BusyxS <= '0';
           readline(file_read, line);
           hread(line, vec, read_ok);

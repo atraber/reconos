@@ -402,7 +402,7 @@ int hw_icap_read(uint32_t far, uint32_t size) {
   return 0;
 }
 
-uint32_t g_icap_read_stat[] = {0xFFFFFFFF,
+uint32_t g_icap_read_reg[] = {0xFFFFFFFF,
                               0x000000BB,
                               0x11220044,
                               0xFFFFFFFF,
@@ -413,29 +413,86 @@ uint32_t g_icap_read_stat[] = {0xFFFFFFFF,
                               0x20000000, // noop
                               0x20000000};// noop
 
-uint32_t g_icap_read_stat2[] = {0x30008001, // write to cmd
+uint32_t g_icap_read_reg2[] = {0x30008001, // write to cmd
                                0x0000000D, // DESYNC
                                0x20000000, // noop
                                0x20000000};// noop
 
 
-int hw_icap_read_stat() {
+// does not seem to work?
+int hw_icap_read_reg(uint8_t reg) {
+  // prepare command sequence
+  g_icap_read_reg[7] = 0x28000101 | ((reg & 0x1F) << 13);
+
+
   printf("Writing to ICAP\n");
-  hw_icap_write(g_icap_read_stat, sizeof g_icap_read_stat);
+  hw_icap_write(g_icap_read_reg, sizeof g_icap_read_reg);
 
   // read
   uint32_t mem[1];
   printf("Reading from ICAP\n");
-  hw_icap_write(mem, (4) | 0x00000001);
+  hw_icap_write(mem, (1) | 0x00000001);
 
   printf("Finishing ICAP\n");
-  hw_icap_write(g_icap_read_stat2, sizeof g_icap_read_stat2);
+  hw_icap_write(g_icap_read_reg2, sizeof g_icap_read_reg2);
 
 
   unsigned int i;
   for(i = 0; i < 1; i++) {
-    printf("%X\n", bitswap(mem[i]));
+    printf("%d: %08X\n", i, mem[i]);
   }
+
+  return 0;
+}
+
+uint32_t g_icap_gcapture[] = {0xFFFFFFFF,
+                              0x000000BB,
+                              0x11220044,
+                              0xFFFFFFFF,
+                              0xAA995566, // sync
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x30008001, // write to cmd
+                              0x0000000C, // gcapture
+                              0x20000000, // noop
+                              0x30002001, // write to FAR
+                              0x00000000, // FAR address
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x30008001, // write to cmd
+                              0x0000000D, // DESYNC
+                              0x20000000, // noop
+                              0x20000000};// noop
+
+int hw_icap_gcapture() {
+  printf("Writing to ICAP\n");
+  hw_icap_write(g_icap_gcapture, sizeof g_icap_gcapture);
+
+  return 0;
+}
+
+uint32_t g_icap_grestore[] = {0xFFFFFFFF,
+                              0x000000BB,
+                              0x11220044,
+                              0xFFFFFFFF,
+                              0xAA995566, // sync
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x30008001, // write to cmd
+                              0x0000000A, // gcapture
+                              0x20000000, // noop
+                              0x30002001, // write to FAR
+                              0x00000000, // FAR address
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x30008001, // write to cmd
+                              0x0000000D, // DESYNC
+                              0x20000000, // noop
+                              0x20000000};// noop
+
+int hw_icap_grestore() {
+  printf("Writing to ICAP\n");
+  hw_icap_write(g_icap_grestore, sizeof g_icap_grestore);
 
   return 0;
 }

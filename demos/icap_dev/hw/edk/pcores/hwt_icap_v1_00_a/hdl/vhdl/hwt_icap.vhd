@@ -36,6 +36,9 @@ entity hwt_icap is
     DebugValid    : out std_logic;
     DebugReadICAP : out std_logic;
     DebugPutMem   : out std_logic;
+    DebugCEB      : out std_logic;
+    DebugWEB      : out std_logic;
+    DebugRamWE    : out std_logic;
 
     -- HWT reset and clock
     clk : in std_logic;
@@ -580,6 +583,9 @@ begin
                    else '0';
   DebugPutMem <= '1' when state = STATE_PUT_MEM
                  else '0';
+  DebugCEB   <= ICAPCExSB;
+  DebugWEB   <= ICAPWExSB;
+  DebugRamWE <= ICAPRamWExS;
 
 end architecture;
 

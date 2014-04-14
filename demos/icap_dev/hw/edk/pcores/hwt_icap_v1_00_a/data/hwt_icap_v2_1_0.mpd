@@ -51,5 +51,8 @@ PORT DebugBusy     = "", DIR=O
 PORT DebugValid    = "", DIR=O
 PORT DebugReadICAP = "", DIR=O
 PORT DebugPutMem   = "", DIR=O
+PORT DebugCEB      = "", DIR=O
+PORT DebugWEB      = "", DIR=O
+PORT DebugRamWE    = "", DIR=O
 
 END

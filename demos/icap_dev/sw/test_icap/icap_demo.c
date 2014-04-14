@@ -207,7 +207,8 @@ int main(int argc, char *argv[])
     }
   } else {
     printf("Readback mode, reading %d words from 0x%08X\n", read_words, read_far);
-    hw_icap_read(read_far, read_words);
+    //hw_icap_read(read_far, read_words);
+    hw_icap_grestore();
   }
 
 	return 0;
