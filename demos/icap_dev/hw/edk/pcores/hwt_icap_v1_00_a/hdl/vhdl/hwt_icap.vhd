@@ -31,14 +31,15 @@ entity hwt_icap is
     FIFO32_M_Wr   : out std_logic;
 
     -- Debug
-    DebugStatus   : out std_logic_vector(0 to 7);
-    DebugBusy     : out std_logic;
-    DebugValid    : out std_logic;
-    DebugReadICAP : out std_logic;
-    DebugPutMem   : out std_logic;
-    DebugCEB      : out std_logic;
-    DebugWEB      : out std_logic;
-    DebugRamWE    : out std_logic;
+    DebugStatus      : out std_logic_vector(0 to 7);
+    DebugBusy        : out std_logic;
+    DebugValid       : out std_logic;
+    DebugReadICAP    : out std_logic;
+    DebugPutMem      : out std_logic;
+    DebugCEB         : out std_logic;
+    DebugWEB         : out std_logic;
+    DebugRamWE       : out std_logic;
+    DebugOut         : out std_logic_vector(0 to 31);
 
     -- HWT reset and clock
     clk : in std_logic;
@@ -100,7 +101,7 @@ architecture implementation of hwt_icap is
                       STATE_FINISHED, STATE_ERROR, STATE_CMPLEN, STATE_FETCH_MEM,
                       STATE_ICAP_TRANSFER, STATE_ICAP_WAIT, STATE_ICAP_WAIT_LAST,
                       STATE_MEM_CALC,
-                      STATE_READ_CMPLEN, STATE_READ_ICAP, STATE_PUT_MEM, STATE_READ_CALC);
+                      STATE_READ_CMPLEN, STATE_READ_ICAP, STATE_PUT_MEM, STATE_PUT_MEM_LAST, STATE_READ_CALC);
 
   constant MBOX_RECV   : std_logic_vector(C_FSL_WIDTH-1 downto 0) := x"00000000";
   constant MBOX_SEND   : std_logic_vector(C_FSL_WIDTH-1 downto 0) := x"00000001";
@@ -234,7 +235,6 @@ begin
       ICAPFsmAckxS     <= '0';
       ICAPFsmModexS    <= '0';          -- write
       ICAPCacheClearxS <= '0';
-      ICAPWExSB        <= '0';          -- write
 
       case state is
         -----------------------------------------------------------------------
@@ -405,8 +405,7 @@ begin
           -- the icap fsm, otherwise we specify the size of half of our ram
           ---------------------------------------------------------------------
         when STATE_READ_CMPLEN =>
-          ICAPWExSB <= '1';             -- read
-          if LenxD  <= C_LOCAL_RAM_SIZE_IN_BYTES/2 then
+          if LenxD <= C_LOCAL_RAM_SIZE_IN_BYTES/2 then
             LastxS <= '1';
           else
             LastxS <= '0';
@@ -419,7 +418,6 @@ begin
           -- TODO: this should also be double buffered!
           ---------------------------------------------------------------------
         when STATE_READ_ICAP =>
-          ICAPWExSB      <= '1';        -- read
           ICAPFsmModexS  <= '1';        -- read
           ICAPFsmStartxS <= '1';
           UpperxS        <= '0';
@@ -435,24 +433,33 @@ begin
             -- we ack it already in this state as we do not need this signal when
             -- we are not doing double buffering
             ICAPFsmAckxS <= '1';
-            state        <= STATE_PUT_MEM;
+            if LastxS = '1' then
+              state <= STATE_PUT_MEM_LAST;
+            else
+              state <= STATE_PUT_MEM;
+            end if;
           end if;
 
           ---------------------------------------------------------------------
           -- Copy the content of the local RAM to the main memory
           ---------------------------------------------------------------------
         when STATE_PUT_MEM =>
-          ICAPWExSB <= '1';             -- read
-          if LastxS = '1' then
-            -- LenxD is smaller than the size of half the local memory, so we
-            -- only have to copy LenxD to the main memory
-            len := LenxD(23 downto 0);
-          else
-            -- Copy the whole content of half of the local memory
-            len := conv_std_logic_vector(C_LOCAL_RAM_SIZE_IN_BYTES/2, 24);
-          end if;
+          memif_write(i_ram, o_ram, i_memif, o_memif, X"00000000", AddrxD,
+                      conv_std_logic_vector(C_LOCAL_RAM_SIZE_IN_BYTES/2, 24), done);
 
-          memif_write(i_ram, o_ram, i_memif, o_memif, X"00000000", AddrxD, len, done);
+          if Done then
+            if LastxS = '1' then
+              state <= STATE_FINISHED;
+            else
+              state <= STATE_READ_CALC;
+            end if;
+          end if;
+          ---------------------------------------------------------------------
+          -- Copy the content of the local RAM to the main memory
+          ---------------------------------------------------------------------
+        when STATE_PUT_MEM_LAST =>
+          memif_write(i_ram, o_ram, i_memif, o_memif, X"00000000", AddrxD,
+                      LenxD(23 downto 0), done);
 
           if Done then
             if LastxS = '1' then
@@ -467,9 +474,8 @@ begin
           -- ICAP and the corresponding address in main memory
           ---------------------------------------------------------------------
         when STATE_READ_CALC =>
-          ICAPWExSB <= '1';             -- read
-          AddrxD    <= AddrxD + (C_LOCAL_RAM_SIZE_IN_BYTES/2);
-          LenxD     <= LenxD - (C_LOCAL_RAM_SIZE_IN_BYTES/2);
+          AddrxD <= AddrxD + (C_LOCAL_RAM_SIZE_IN_BYTES/2);
+          LenxD  <= LenxD - (C_LOCAL_RAM_SIZE_IN_BYTES/2);
 
           -- TODO: not needed when not doing double buffering
           -- UpperxS <= not UpperxS;
@@ -522,7 +528,7 @@ begin
       RamWExSO          => ICAPRamWExS,
       RamLutMuxxSO      => ICAPRamLutMuxxS,
       ICAPCExSBO        => ICAPCExSB,
-      ICAPWExSBO        => open,        -- TODO: remove
+      ICAPWExSBO        => ICAPWExSB,
       ICAPStatusxDI     => ICAPDataOutxD(24 to 31),
       ICAPBusyxSI       => ICAPBusyxS,
       ICAPCacheValidxSI => ICAPCacheValidxSP);
@@ -582,15 +588,16 @@ begin
   -- DEBUG
   -----------------------------------------------------------------------------
   DebugStatus   <= ICAPDataOutxD(24 to 31);
+  DebugOut      <= ICAPDataOutxD(0 to 31);
   DebugBusy     <= ICAPBusyxS;
   DebugValid    <= ICAPCacheValidxSP;
   DebugReadICAP <= '1' when state = STATE_READ_ICAP
                    else '0';
   DebugPutMem <= '1' when state = STATE_PUT_MEM
                  else '0';
-  DebugCEB   <= ICAPCExSB;
-  DebugWEB   <= ICAPWExSB;
-  DebugRamWE <= ICAPRamWExS;
+  DebugCEB         <= ICAPCExSB;
+  DebugWEB         <= ICAPWExSB;
+  DebugRamWE       <= ICAPRamWExS;
 
 end architecture;
 

@@ -74,13 +74,14 @@ BEGIN hwt_icap
  PORT Rst = proc_control_0_reset0
  PORT Clk = clk_100_0000MHzMMCM0
  PORT DebugBusy = hwt_icap_0_DebugBusy_to_chipscope_ila_0
+ PORT DebugCEB = hwt_icap_0_DebugCEB_to_chipscope_ila_0
+ PORT DebugOut = hwt_icap_0_DebugOut_to_chipscope_ila_0
  PORT DebugPutMem = hwt_icap_0_DebugPutMem_to_chipscope_ila_0
+ PORT DebugRamWE = hwt_icap_0_DebugRamWE_to_chipscope_ila_0
  PORT DebugReadICAP = hwt_icap_0_DebugReadICAP_to_chipscope_ila_0
  PORT DebugStatus = hwt_icap_0_DebugStatus_to_chipscope_ila_0
  PORT DebugValid = hwt_icap_0_DebugValid_to_chipscope_ila_0
- PORT DebugCEB = hwt_icap_0_DebugCE_to_chipscope_ila_0
- PORT DebugRamWE = hwt_icap_0_DebugRamWE_to_chipscope_ila_0
- PORT DebugWEB = hwt_icap_0_DebugWE_to_chipscope_ila_0
+ PORT DebugWEB = hwt_icap_0_DebugWEB_to_chipscope_ila_0
 END
 
 BEGIN plb_v46
@@ -568,10 +569,10 @@ BEGIN chipscope_ila
  PARAMETER INSTANCE = chipscope_ila_0
  PARAMETER HW_VER = 1.05.a
  PARAMETER C_TRIG0_UNITS = 1
- PARAMETER C_TRIG0_TRIGGER_IN_WIDTH = 15
+ PARAMETER C_TRIG0_TRIGGER_IN_WIDTH = 47
  PARAMETER C_NUM_DATA_SAMPLES = 8192
  PORT chipscope_ila_control = chipscope_ila_0_icon_control
- PORT TRIG0 = hwt_icap_0_DebugBusy_to_chipscope_ila_0 & hwt_icap_0_DebugPutMem_to_chipscope_ila_0 & hwt_icap_0_DebugReadICAP_to_chipscope_ila_0 & hwt_icap_0_DebugStatus_to_chipscope_ila_0 & hwt_icap_0_DebugValid_to_chipscope_ila_0 & hwt_icap_0_DebugCE_to_chipscope_ila_0 & hwt_icap_0_DebugRamWE_to_chipscope_ila_0 & hwt_icap_0_DebugWE_to_chipscope_ila_0
+ PORT TRIG0 = hwt_icap_0_DebugBusy_to_chipscope_ila_0 & hwt_icap_0_DebugCEB_to_chipscope_ila_0 & hwt_icap_0_DebugOut_to_chipscope_ila_0 & hwt_icap_0_DebugPutMem_to_chipscope_ila_0 & hwt_icap_0_DebugRamWE_to_chipscope_ila_0 & hwt_icap_0_DebugReadICAP_to_chipscope_ila_0 & hwt_icap_0_DebugStatus_to_chipscope_ila_0 & hwt_icap_0_DebugValid_to_chipscope_ila_0 & hwt_icap_0_DebugWEB_to_chipscope_ila_0
  PORT CLK = clk_100_0000MHzMMCM0
 END
 

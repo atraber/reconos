@@ -21,7 +21,7 @@
          </top_modules>
       </db_ref>
    </db_ref_list>
-   <WVObjectSize size="38" />
+   <WVObjectSize size="37" />
    <wvobject fp_name="divider62" type="divider">
       <obj_property name="label">CLK and RST</obj_property>
       <obj_property name="DisplayName">label</obj_property>
@@ -89,10 +89,6 @@
       <obj_property name="ElementShortName">errorxso</obj_property>
       <obj_property name="ObjectShortName">errorxso</obj_property>
    </wvobject>
-   <wvobject fp_name="/hwt_tb/uut/ICAPFsmInst/lenxdi" type="array" db_ref_id="1">
-      <obj_property name="ElementShortName">lenxdi[0:10]</obj_property>
-      <obj_property name="ObjectShortName">lenxdi[0:10]</obj_property>
-   </wvobject>
    <wvobject fp_name="/hwt_tb/uut/ICAPFsmInst/ramaddrxdo" type="array" db_ref_id="1">
       <obj_property name="ElementShortName">ramaddrxdo[0:10]</obj_property>
       <obj_property name="ObjectShortName">ramaddrxdo[0:10]</obj_property>
@@ -101,18 +97,22 @@
    <wvobject fp_name="/hwt_tb/uut/ICAPFsmInst/addrxdp" type="array" db_ref_id="1">
       <obj_property name="ElementShortName">addrxdp[10:0]</obj_property>
       <obj_property name="ObjectShortName">addrxdp[10:0]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
    </wvobject>
    <wvobject fp_name="/hwt_tb/uut/ICAPFsmInst/addrxdn" type="array" db_ref_id="1">
       <obj_property name="ElementShortName">addrxdn[10:0]</obj_property>
       <obj_property name="ObjectShortName">addrxdn[10:0]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
    </wvobject>
    <wvobject fp_name="/hwt_tb/uut/ICAPFsmInst/lenxdn" type="array" db_ref_id="1">
       <obj_property name="ElementShortName">lenxdn[0:10]</obj_property>
       <obj_property name="ObjectShortName">lenxdn[0:10]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
    </wvobject>
    <wvobject fp_name="/hwt_tb/uut/ICAPFsmInst/lenxdp" type="array" db_ref_id="1">
       <obj_property name="ElementShortName">lenxdp[0:10]</obj_property>
       <obj_property name="ObjectShortName">lenxdp[0:10]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
    </wvobject>
    <wvobject fp_name="/hwt_tb/uut/ICAPFsmInst/statexdp" type="other" db_ref_id="1">
       <obj_property name="ElementShortName">statexdp</obj_property>
@@ -161,22 +161,10 @@
       <obj_property name="ElementShortName">ramwexs</obj_property>
       <obj_property name="ObjectShortName">ramwexs</obj_property>
    </wvobject>
-   <wvobject fp_name="/hwt_tb/uut/icaplutoutxd" type="array" db_ref_id="1">
-      <obj_property name="ElementShortName">icaplutoutxd[0:31]</obj_property>
-      <obj_property name="ObjectShortName">icaplutoutxd[0:31]</obj_property>
-      <obj_property name="Radix">HEXRADIX</obj_property>
-   </wvobject>
-   <wvobject fp_name="/hwt_tb/uut/icapramlutmuxxs" type="logic" db_ref_id="1">
-      <obj_property name="ElementShortName">icapramlutmuxxs</obj_property>
-      <obj_property name="ObjectShortName">icapramlutmuxxs</obj_property>
-   </wvobject>
-   <wvobject fp_name="/hwt_tb/uut/icapdataoutswappedxd" type="array" db_ref_id="1">
-      <obj_property name="ElementShortName">icapdataoutswappedxd[0:31]</obj_property>
-      <obj_property name="ObjectShortName">icapdataoutswappedxd[0:31]</obj_property>
-   </wvobject>
    <wvobject fp_name="/hwt_tb/uut/icapdataoutxd" type="array" db_ref_id="1">
       <obj_property name="ElementShortName">icapdataoutxd[0:31]</obj_property>
       <obj_property name="ObjectShortName">icapdataoutxd[0:31]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
    </wvobject>
    <wvobject fp_name="/hwt_tb/uut/icapcachevalidxsp" type="logic" db_ref_id="1">
       <obj_property name="ElementShortName">icapcachevalidxsp</obj_property>
@@ -191,5 +179,17 @@
       <obj_property name="DisplayName">label</obj_property>
       <obj_property name="BkColor">128 128 255</obj_property>
       <obj_property name="TextColor">230 230 230</obj_property>
+   </wvobject>
+   <wvobject fp_name="/hwt_tb/uut/icapWrapperInst/busycounterxdp" type="other" db_ref_id="1">
+      <obj_property name="ElementShortName">busycounterxdp</obj_property>
+      <obj_property name="ObjectShortName">busycounterxdp</obj_property>
+   </wvobject>
+   <wvobject fp_name="/hwt_tb/uut/icapWrapperInst/busycounterxdn" type="other" db_ref_id="1">
+      <obj_property name="ElementShortName">busycounterxdn</obj_property>
+      <obj_property name="ObjectShortName">busycounterxdn</obj_property>
+   </wvobject>
+   <wvobject fp_name="/hwt_tb/uut/icapWrapperInst/busyxs" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">busyxs</obj_property>
+      <obj_property name="ObjectShortName">busyxs</obj_property>
    </wvobject>
 </wave_config>

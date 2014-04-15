@@ -198,7 +198,6 @@ begin  -- behavioral
       wait until falling_edge(clk);     -- HACK
 
       if csb = '0' and rdwrb = '1' and BusyxS = '0' then
-        
         readline(file_read, line);
         hread(line, vec, read_ok);
 

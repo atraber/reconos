@@ -46,13 +46,14 @@ PORT Rst="", DIR=I, SIGIS=Rst
 PORT Clk="", DIR=I, SIGIS=Clk
 
 # DEBUG
-PORT DebugStatus   = "", DIR=O, VEC=[0:7]
-PORT DebugBusy     = "", DIR=O
-PORT DebugValid    = "", DIR=O
-PORT DebugReadICAP = "", DIR=O
-PORT DebugPutMem   = "", DIR=O
-PORT DebugCEB      = "", DIR=O
-PORT DebugWEB      = "", DIR=O
-PORT DebugRamWE    = "", DIR=O
+PORT DebugStatus      = "", DIR=O, VEC=[0:7]
+PORT DebugBusy        = "", DIR=O
+PORT DebugValid       = "", DIR=O
+PORT DebugReadICAP    = "", DIR=O
+PORT DebugPutMem      = "", DIR=O
+PORT DebugCEB         = "", DIR=O
+PORT DebugWEB         = "", DIR=O
+PORT DebugRamWE       = "", DIR=O
+PORT DebugOut         = "", DIR=O, VEC=[0:31]
 
 END

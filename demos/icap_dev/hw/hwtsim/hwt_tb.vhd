@@ -181,7 +181,7 @@ BEGIN
 	 
 	fifo32_a : entity fifo32_v1_00_a.fifo32
 	generic map (
-		C_FIFO32_DEPTH => 1024
+		C_FIFO32_DEPTH => 128
 	)
 	port map (
 		Rst => Rst,
@@ -197,7 +197,7 @@ BEGIN
 
 	fifo32_b : entity fifo32_v1_00_a.fifo32
 	generic map (
-		C_FIFO32_DEPTH => 1024
+		C_FIFO32_DEPTH => 128
 	)
 	port map (
 		Rst => Rst,
@@ -323,8 +323,8 @@ BEGIN
 		
     -- send size
 		MB_M_Write <= '1';
-		--MB_M_Data <= x"00054AC9";
-		MB_M_Data <= x"00001005";
+		MB_M_Data <= x"00054AC9";
+		--MB_M_Data <= x"00001005";
 		
 		wait for clk_period;
 		
