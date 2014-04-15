@@ -67,6 +67,27 @@ int test_prblock(int thread_id)
 	return 0;
 }
 
+int prblock_set(unsigned int reg, uint32_t value)
+{
+	mbox_put(&mb_in[HWT_DPR], reg);
+	mbox_put(&mb_in[HWT_DPR], value);
+
+	return 0;
+}
+
+int prblock_get(unsigned int reg)
+{
+  unsigned int ret;
+
+	mbox_put(&mb_in[HWT_DPR], reg | 0x80000000);
+
+	ret = mbox_get(&mb_out[HWT_DPR]);
+
+  printf("Result is %X\n", ret);
+
+	return ret;
+}
+
 int reconfigure_prblock(int thread_id)
 {
 	timing_t t_start, t_stop;
@@ -225,9 +246,28 @@ int main(int argc, char *argv[])
       cnt++;
     }
   } else {
+    //hw_icap_read_reg(0x9);
+
+    //prblock_set(0, 0xAA00BB00);
+    //prblock_get(0);
+
     printf("Readback mode, reading %d words from 0x%08X\n", read_words, read_far);
     hw_icap_read(read_far, read_words);
-    //hw_icap_read_reg(0x1);
+
+    //printf("Performing gcapture\n");
+    //hw_icap_gcapture();
+    //sleep(1);
+
+    //prblock_set(0, 0x00CC00DD);
+    //prblock_get(0);
+
+    //printf("Performing grestore\n");
+    //hw_icap_grestore();
+    //sleep(1);
+    //prblock_get(0);
+
+    //printf("Readback mode, reading %d words from 0x%08X\n", read_words, read_far);
+    //hw_icap_read(read_far, read_words);
   }
 
 	return 0;

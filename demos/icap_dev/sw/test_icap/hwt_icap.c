@@ -325,8 +325,11 @@ uint32_t g_icap_read_cmd2[] = {0x20000000, // noop
 
 // size must be in words
 int hw_icap_read(uint32_t far, uint32_t size) {
+
+  // account for the padframe and dummy words
+  size = size + 82;
+
   g_icap_read_cmd[21] = far;
-  g_icap_read_cmd[23] = (size+3*((size-1) / 1024)) | 0x48000000;
   g_icap_read_cmd[23] = (size) | 0x48000000;
 
 
@@ -353,12 +356,8 @@ int hw_icap_read(uint32_t far, uint32_t size) {
   hw_icap_write(g_icap_read_cmd2, sizeof g_icap_read_cmd2);
 
   unsigned int i;
-  for(i = 0; i < size; i++) {
-    if(i == 81 + 1) { 
-      // the first 81 words are probably rubish, because they are from the pad frame
-      printf("This was the pad frame + dummy words, now real data should be available\n");
-    }
-
+  // the first 82 words are rubish, because they are from the pad frame and a dummy word
+  for(i = 82; i < size; i++) {
     printf("%08X\n", mem[i]);
   }
 
@@ -447,7 +446,7 @@ uint32_t g_icap_grestore[] = {0xFFFFFFFF,
                               0x20000000, // noop
                               0x20000000, // noop
                               0x30008001, // write to cmd
-                              0x0000000A, // gcapture
+                              0x0000000A, // grestore
                               0x20000000, // noop
                               0x30002001, // write to FAR
                               0x00000000, // FAR address
