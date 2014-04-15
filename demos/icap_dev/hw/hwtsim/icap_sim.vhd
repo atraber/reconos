@@ -6,7 +6,7 @@
 -- Author     : atraber  <atraber@student.ethz.ch>
 -- Company    : Computer Engineering and Networks Laboratory, ETH Zurich
 -- Created    : 2014-04-04
--- Last update: 2014-04-14
+-- Last update: 2014-04-15
 -- Platform   : Xilinx ISIM (simulation), Xilinx (synthesis)
 -- Standard   : VHDL'87
 -------------------------------------------------------------------------------
@@ -62,10 +62,11 @@ architecture behavioral of ICAPWrapper is
   -----------------------------------------------------------------------------
   -- signals
   -----------------------------------------------------------------------------
-  signal DataInxD  : std_logic_vector(0 to 31);
-  signal ReadOutxD : std_logic_vector(0 to 31);
-  signal StatusxD  : std_logic_vector(0 to 31);
-  signal BusyxS    : std_logic;
+  signal DataInxD     : std_logic_vector(0 to 31);
+  signal ReadOutxD    : std_logic_vector(0 to 31);
+  signal StatusxD     : std_logic_vector(0 to 31);
+  signal BusyxS       : std_logic;
+  signal ReadActivexS : std_logic := '0';
 
   -----------------------------------------------------------------------------
   -- registers
@@ -189,21 +190,33 @@ begin  -- behavioral
   end process checkResp;
 
   readStim : process
-    variable j       : natural := 0;
-    variable line    : line;
-    variable vec     : std_logic_vector(0 to 31);
-    variable read_ok : boolean;
+    variable j               : natural := 0;
+    variable line            : line;
+    variable vec             : std_logic_vector(0 to 31);
+    variable read_ok         : boolean;
+    variable latency_counter : natural := 100;
   begin  -- process readStim
     L1 : loop
-      wait until falling_edge(clk);     -- HACK
+      wait until rising_edge(clk);
+      wait for 0.1ns;                   -- HACK
 
-      if csb = '0' and rdwrb = '1' and BusyxS = '0' then
+      if (csb = '0' and rdwrb = '1' and BusyxS = '0') or latency_counter < 3 then
         readline(file_read, line);
         hread(line, vec, read_ok);
 
         ReadOutxD <= vec;
 
         j := j + 1;
+
+        if csb = '0' then
+          latency_counter := 0;
+        else
+          latency_counter := latency_counter + 1;
+        end if;
+
+        ReadActivexS <= '1';
+      else
+        ReadActivexS <= '0';
       end if;
     end loop;
   end process readStim;
@@ -245,7 +258,7 @@ begin  -- behavioral
   -----------------------------------------------------------------------------
   -- output assignments
   -----------------------------------------------------------------------------
-  o <= StatusxD when BusyxS = '1'
+  o <= StatusxD when ReadActivexS = '0'
        else ReadOutxD;
   busy <= BusyxS;
 

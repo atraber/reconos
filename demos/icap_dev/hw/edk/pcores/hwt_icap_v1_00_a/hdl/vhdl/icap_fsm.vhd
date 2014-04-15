@@ -6,7 +6,7 @@
 -- Author     : atraber  <atraber@student.ethz.ch>
 -- Company    : Computer Engineering and Networks Laboratory, ETH Zurich
 -- Created    : 2014-04-07
--- Last update: 2014-04-14
+-- Last update: 2014-04-15
 -- Platform   : Xilinx ISIM (simulation), Xilinx (synthesis)
 -- Standard   : VHDL'87
 -------------------------------------------------------------------------------
@@ -47,8 +47,7 @@ entity ICAPFsm is
     ICAPCExSBO        : out std_logic;
     ICAPWExSBO        : out std_logic;
     ICAPStatusxDI     : in  std_logic_vector(0 to 7);
-    ICAPBusyxSI       : in  std_logic;
-    ICAPCacheValidxSI : in  std_logic
+    ICAPBusyxSI       : in  std_logic
     );
 
 end ICAPFsm;
@@ -57,6 +56,7 @@ end ICAPFsm;
 architecture implementation of ICAPFsm is
   type state_t is (STATE_IDLE, STATE_WRITE_WAIT, STATE_WRITE, STATE_FINISH, STATE_ERROR,
                    STATE_CRCCHECK, STATE_CRCRESET, STATE_CRCRESET_WAIT, STATE_READ,
+                   STATE_READ_LAST,
                    STATE_CRCRESET_SYNC, STATE_CRCRESET_NOSYNC);
 
   -----------------------------------------------------------------------------
@@ -103,7 +103,7 @@ begin  -- implementation
   -- ICAP FSM
   -----------------------------------------------------------------------------
 
-  icapFSM : process (AckxSI, AddrxDN, AddrxDP, ICAPCacheValidxSI, ICAPErrorxS,
+  icapFSM : process (AckxSI, AddrxDN, AddrxDP, ICAPBusyxSI, ICAPErrorxS,
                      ICAPSyncxS, LenxDI, LenxDP, ModexSI, StartxSI, StatexDP,
                      UpperxSI, UpperxSP)
   begin  -- process icapFSM
@@ -241,14 +241,32 @@ begin  -- implementation
         ICAPCExSB <= '0';               -- active low
         ICAPWExSB <= '1';               -- active low, doing a read
 
-        if ICAPCacheValidxSI = '1' then
+        if ICAPBusyxSI = '0' then
           RamWExS <= '1';
           AddrxDN <= AddrxDP + 1;
 
           if std_logic_vector(AddrxDN) = LenxDP then
-            ICAPCExSB <= '1';           -- deassert, we are finished for now
-            StatexDN  <= STATE_FINISH;
+            StatexDN <= STATE_FINISH;
+          elsif AddrxDP + 4 >= LenxDP then
+            StatexDN <= STATE_READ_LAST;
           end if;
+        end if;
+
+        -----------------------------------------------------------------------
+        -- Due to the 3 cycles latency between Busy going high and the last
+        -- word written out of the ICAP interface, we need this state to catch
+        -- those three words which are written after Busy went high
+        -----------------------------------------------------------------------
+      when STATE_READ_LAST =>
+        ICAPCExSB <= '1';               -- deassert, we are finished for now
+        ICAPWExSB <= '1';               -- active low, doing a read
+
+        RamWExS <= '1';
+
+        AddrxDN <= AddrxDP + 1;
+
+        if std_logic_vector(AddrxDN) = LenxDP then
+          StatexDN <= STATE_FINISH;
         end if;
 
         -------------------------------------------------------------------------

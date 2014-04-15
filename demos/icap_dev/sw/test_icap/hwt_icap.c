@@ -326,7 +326,8 @@ uint32_t g_icap_read_cmd2[] = {0x20000000, // noop
 // size must be in words
 int hw_icap_read(uint32_t far, uint32_t size) {
   g_icap_read_cmd[21] = far;
-  g_icap_read_cmd[23] = (size+15) | 0x48000000;
+  g_icap_read_cmd[23] = (size+3*((size-1) / 1024)) | 0x48000000;
+  g_icap_read_cmd[23] = (size) | 0x48000000;
 
 
   printf("Writing to ICAP\n");
@@ -334,18 +335,22 @@ int hw_icap_read(uint32_t far, uint32_t size) {
 
   // read
   uint32_t* mem = (uint32_t*)malloc(size * sizeof(uint32_t));
-
   if(mem == NULL) {
     printf("Could not allocate buffer\n");
     return 1;
   }
 
-  printf("Reading %lu bytes from ICAP\n", size * sizeof(uint32_t));
+  memset(mem, 0xAB, size * sizeof(uint32_t));
+
+  // AAARGH FUU ZOMFG RAGE!!!!
+  // we need to flush the cache here as otherwise we get a part of old data and a part of new data
+  reconos_cache_flush();
+
+  printf("Reading %lu bytes from ICAP to address %X\n", size * sizeof(uint32_t), (unsigned int)mem);
   hw_icap_write(mem, (size * sizeof(uint32_t)) | 0x00000001);
 
   printf("Finishing ICAP\n");
   hw_icap_write(g_icap_read_cmd2, sizeof g_icap_read_cmd2);
-
 
   unsigned int i;
   for(i = 0; i < size; i++) {
@@ -379,7 +384,7 @@ uint32_t g_icap_read_reg2[] = {0x30008001, // write to cmd
                                0x20000000};// noop
 
 
-// does not seem to work?
+// works!
 int hw_icap_read_reg(uint8_t reg) {
   // prepare command sequence
   g_icap_read_reg[7] = 0x28000101 | ((reg & 0x1F) << 13);
@@ -390,8 +395,11 @@ int hw_icap_read_reg(uint8_t reg) {
 
   // read
   uint32_t mem[1];
+  mem[0] = 0x00;
+  reconos_cache_flush();
+
   printf("Reading from ICAP\n");
-  hw_icap_write(mem, (1) | 0x00000001);
+  hw_icap_write(mem, ((1) * 4) | 0x00000001);
 
   printf("Finishing ICAP\n");
   hw_icap_write(g_icap_read_reg2, sizeof g_icap_read_reg2);
@@ -399,7 +407,7 @@ int hw_icap_read_reg(uint8_t reg) {
 
   unsigned int i;
   for(i = 0; i < 1; i++) {
-    printf("%d: %08X\n", i, mem[i]);
+    printf("%08X\n", mem[i]);
   }
 
   return 0;

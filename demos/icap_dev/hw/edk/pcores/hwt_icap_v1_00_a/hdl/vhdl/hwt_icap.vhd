@@ -33,7 +33,6 @@ entity hwt_icap is
     -- Debug
     DebugStatus      : out std_logic_vector(0 to 7);
     DebugBusy        : out std_logic;
-    DebugValid       : out std_logic;
     DebugReadICAP    : out std_logic;
     DebugPutMem      : out std_logic;
     DebugCEB         : out std_logic;
@@ -70,8 +69,7 @@ architecture implementation of hwt_icap is
       ICAPCExSBO        : out std_logic;
       ICAPWExSBO        : out std_logic;
       ICAPStatusxDI     : in  std_logic_vector(0 to 7);
-      ICAPBusyxSI       : in  std_logic;
-      ICAPCacheValidxSI : in  std_logic
+      ICAPBusyxSI       : in  std_logic
       );
   end component;
 
@@ -148,8 +146,6 @@ architecture implementation of hwt_icap is
   signal LastxS                               : std_logic;
   signal FirstxS                              : std_logic;
   signal UpperxS                              : std_logic;
-  signal ICAPCacheValidxSP, ICAPCacheValidxSN : std_logic;
-  signal ICAPCachexDP                         : std_logic_vector(0 to ICAP_WIDTH-1);
 
   -- icap signals
   signal ICAPBusyxS       : std_logic;
@@ -157,7 +153,6 @@ architecture implementation of hwt_icap is
   signal ICAPWExSB        : std_logic;
   signal ICAPDataOutxD    : std_logic_vector(0 to ICAP_WIDTH-1);
   signal ICAPDataInxD     : std_logic_vector(0 to ICAP_WIDTH-1);
-  signal ICAPCacheClearxS : std_logic;
 
   signal ICAPLutOutxD : std_logic_vector(0 to ICAP_WIDTH-1);
 
@@ -234,7 +229,6 @@ begin
       ICAPFsmStartxS   <= '0';
       ICAPFsmAckxS     <= '0';
       ICAPFsmModexS    <= '0';          -- write
-      ICAPCacheClearxS <= '0';
 
       case state is
         -----------------------------------------------------------------------
@@ -266,7 +260,6 @@ begin
             else
               -- TODO: look for a better solution
               if LenxD(0) = '1' then
-                ICAPCacheClearxS <= '1';
                 LenxD(0)         <= '0';  -- DEBUG!!!
                 state            <= STATE_READ_CMPLEN;
               else
@@ -530,8 +523,8 @@ begin
       ICAPCExSBO        => ICAPCExSB,
       ICAPWExSBO        => ICAPWExSB,
       ICAPStatusxDI     => ICAPDataOutxD(24 to 31),
-      ICAPBusyxSI       => ICAPBusyxS,
-      ICAPCacheValidxSI => ICAPCacheValidxSP);
+      ICAPBusyxSI       => ICAPBusyxS
+      );
 
   -----------------------------------------------------------------------------
   -- ICAP Command Lookup-Table
@@ -543,38 +536,6 @@ begin
       OutxDO  => ICAPLutOutxD);
 
   -----------------------------------------------------------------------------
-  -- ICAP Output Cache, needed because otherwise we run into timing problems
-  -- between ICAPBusy and ICAPCE/ICAPWE
-  -----------------------------------------------------------------------------
-  outputCacheFF : process (clk, rst)
-  begin  -- process outputCacheFF
-    if rst = '1' then                   -- asynchronous reset (active high)
-      ICAPCacheValidxSP <= '0';
-      ICAPCachexDP      <= (others => '0');
-    elsif clk'event and clk = '1' then  -- rising clock edge
-      ICAPCacheValidxSP <= ICAPCacheValidxSN;
-
-      if ICAPBusyxS = '0' then
-        ICAPCachexDP <= ICAPDataOutxD;
-      end if;
-    end if;
-  end process outputCacheFF;
-
-  icapCacheComb : process (ICAPBusyxS, ICAPCacheClearxS, ICAPCacheValidxSP,
-                           ICAPRamWExS)
-  begin  -- process icapCacheComb
-    ICAPCacheValidxSN <= ICAPCacheValidxSP;
-
-    if ICAPRamWExS = '1' or ICAPCacheClearxS = '1' then
-      ICAPCacheValidxSN <= '0';
-    end if;
-
-    if ICAPBusyxS = '0' then
-      ICAPCacheValidxSN <= '1';
-    end if;
-  end process icapCacheComb;
-
-  -----------------------------------------------------------------------------
   -- concurrent signal assignments
   -----------------------------------------------------------------------------
 
@@ -582,7 +543,7 @@ begin
                   else ICAPLutOutxD;
 
   -- ICAP Ram Input
-  ICAPRamInxD <= ICAPCachexDP;
+  ICAPRamInxD <= ICAPDataOutxD;
 
   -----------------------------------------------------------------------------
   -- DEBUG
@@ -590,7 +551,6 @@ begin
   DebugStatus   <= ICAPDataOutxD(24 to 31);
   DebugOut      <= ICAPDataOutxD(0 to 31);
   DebugBusy     <= ICAPBusyxS;
-  DebugValid    <= ICAPCacheValidxSP;
   DebugReadICAP <= '1' when state = STATE_READ_ICAP
                    else '0';
   DebugPutMem <= '1' when state = STATE_PUT_MEM
