@@ -31,14 +31,14 @@ entity hwt_icap is
     FIFO32_M_Wr   : out std_logic;
 
     -- Debug
-    DebugStatus      : out std_logic_vector(0 to 7);
-    DebugBusy        : out std_logic;
-    DebugReadICAP    : out std_logic;
-    DebugPutMem      : out std_logic;
-    DebugCEB         : out std_logic;
-    DebugWEB         : out std_logic;
-    DebugRamWE       : out std_logic;
-    DebugOut         : out std_logic_vector(0 to 31);
+    DebugStatus   : out std_logic_vector(0 to 7);
+    DebugBusy     : out std_logic;
+    DebugReadICAP : out std_logic;
+    DebugPutMem   : out std_logic;
+    DebugCEB      : out std_logic;
+    DebugWEB      : out std_logic;
+    DebugRamWE    : out std_logic;
+    DebugOut      : out std_logic_vector(0 to 31);
 
     -- HWT reset and clock
     clk : in std_logic;
@@ -54,22 +54,22 @@ architecture implementation of hwt_icap is
     generic (
       ADDR_WIDTH : natural);
     port (
-      ClkxCI            : in  std_logic;
-      ResetxRI          : in  std_logic;
-      StartxSI          : in  std_logic;
-      AckxSI            : in  std_logic;
-      DonexSO           : out std_logic;
-      ErrorxSO          : out std_logic;
-      LenxDI            : in  std_logic_vector(0 to ADDR_WIDTH-1);
-      ModexSI           : in  std_logic;
-      UpperxSI          : in  std_logic;
-      RamAddrxDO        : out std_logic_vector(0 to ADDR_WIDTH-1);
-      RamWExSo          : out std_logic;
-      RamLutMuxxSO      : out std_logic;
-      ICAPCExSBO        : out std_logic;
-      ICAPWExSBO        : out std_logic;
-      ICAPStatusxDI     : in  std_logic_vector(0 to 7);
-      ICAPBusyxSI       : in  std_logic
+      ClkxCI        : in  std_logic;
+      ResetxRI      : in  std_logic;
+      StartxSI      : in  std_logic;
+      AckxSI        : in  std_logic;
+      DonexSO       : out std_logic;
+      ErrorxSO      : out std_logic;
+      LenxDI        : in  std_logic_vector(0 to ADDR_WIDTH-1);
+      ModexSI       : in  std_logic;
+      UpperxSI      : in  std_logic;
+      RamAddrxDO    : out std_logic_vector(0 to ADDR_WIDTH-1);
+      RamWExSo      : out std_logic;
+      RamLutMuxxSO  : out std_logic;
+      ICAPCExSBO    : out std_logic;
+      ICAPWExSBO    : out std_logic;
+      ICAPStatusxDI : in  std_logic_vector(0 to 7);
+      ICAPBusyxSI   : in  std_logic
       );
   end component;
 
@@ -141,18 +141,20 @@ architecture implementation of hwt_icap is
   signal ignore : std_logic_vector(C_FSL_WIDTH-1 downto 0);
 
   -- registers
-  signal AddrxD                               : std_logic_vector(31 downto 0);  -- in bytes
-  signal LenxD                                : std_logic_vector(31 downto 0);  -- in bytes
-  signal LastxS                               : std_logic;
-  signal FirstxS                              : std_logic;
-  signal UpperxS                              : std_logic;
+  signal AddrxD            : std_logic_vector(31 downto 0);  -- in bytes
+  signal LenxD             : std_logic_vector(31 downto 0);  -- in bytes
+  signal LastxS            : std_logic;
+  signal FirstxS           : std_logic;
+  signal UpperxS           : std_logic;
+  signal ICAPDataOutRegxDP : std_logic_vector(0 to ICAP_WIDTH-1);
+  signal ICAPBusyRegxSP    : std_logic;
 
   -- icap signals
-  signal ICAPBusyxS       : std_logic;
-  signal ICAPCExSB        : std_logic;
-  signal ICAPWExSB        : std_logic;
-  signal ICAPDataOutxD    : std_logic_vector(0 to ICAP_WIDTH-1);
-  signal ICAPDataInxD     : std_logic_vector(0 to ICAP_WIDTH-1);
+  signal ICAPBusyxS    : std_logic;
+  signal ICAPCExSB     : std_logic;
+  signal ICAPWExSB     : std_logic;
+  signal ICAPDataOutxD : std_logic_vector(0 to ICAP_WIDTH-1);
+  signal ICAPDataInxD  : std_logic_vector(0 to ICAP_WIDTH-1);
 
   signal ICAPLutOutxD : std_logic_vector(0 to ICAP_WIDTH-1);
 
@@ -225,10 +227,10 @@ begin
     elsif rising_edge(clk) then
 
       -- default assignments
-      ICAPFsmLenxD     <= conv_std_logic_vector(C_LOCAL_RAM_SIZE/2, C_LOCAL_RAM_ADDRESS_WIDTH);
-      ICAPFsmStartxS   <= '0';
-      ICAPFsmAckxS     <= '0';
-      ICAPFsmModexS    <= '0';          -- write
+      ICAPFsmLenxD   <= conv_std_logic_vector(C_LOCAL_RAM_SIZE/2, C_LOCAL_RAM_ADDRESS_WIDTH);
+      ICAPFsmStartxS <= '0';
+      ICAPFsmAckxS   <= '0';
+      ICAPFsmModexS  <= '0';            -- write
 
       case state is
         -----------------------------------------------------------------------
@@ -260,8 +262,8 @@ begin
             else
               -- TODO: look for a better solution
               if LenxD(0) = '1' then
-                LenxD(0)         <= '0';  -- DEBUG!!!
-                state            <= STATE_READ_CMPLEN;
+                LenxD(0) <= '0';        -- DEBUG!!!
+                state    <= STATE_READ_CMPLEN;
               else
                 state <= STATE_CMPLEN;
               end if;
@@ -502,28 +504,39 @@ begin
       o     => ICAPDataOutxD);
 
   -----------------------------------------------------------------------------
+  -- ICAP Registers
+  -----------------------------------------------------------------------------
+  icapFF : process (clk)
+  begin  -- process icapFF
+    if clk'event and clk = '1' then     -- rising clock edge
+      ICAPDataOutRegxDP <= ICAPDataOutxD;
+      ICAPBusyRegxSP    <= ICAPBusyxS;
+    end if;
+  end process icapFF;
+
+  -----------------------------------------------------------------------------
   -- ICAPFsm
   -----------------------------------------------------------------------------
   ICAPFsmInst : ICAPFsm
     generic map (
       ADDR_WIDTH => C_LOCAL_RAM_ADDRESS_WIDTH)
     port map (
-      ClkxCI            => clk,
-      ResetxRI          => rst,
-      StartxSI          => ICAPFsmStartxS,
-      AckxSI            => ICAPFsmAckxS,
-      DonexSO           => ICAPFsmDonexS,
-      ErrorxSO          => ICAPFsmErrorxS,
-      LenxDI            => ICAPFsmLenxD,
-      ModexSI           => ICAPFsmModexS,
-      UpperxSI          => UpperxS,
-      RamAddrxDO        => ICAPRamAddrxD,
-      RamWExSO          => ICAPRamWExS,
-      RamLutMuxxSO      => ICAPRamLutMuxxS,
-      ICAPCExSBO        => ICAPCExSB,
-      ICAPWExSBO        => ICAPWExSB,
-      ICAPStatusxDI     => ICAPDataOutxD(24 to 31),
-      ICAPBusyxSI       => ICAPBusyxS
+      ClkxCI        => clk,
+      ResetxRI      => rst,
+      StartxSI      => ICAPFsmStartxS,
+      AckxSI        => ICAPFsmAckxS,
+      DonexSO       => ICAPFsmDonexS,
+      ErrorxSO      => ICAPFsmErrorxS,
+      LenxDI        => ICAPFsmLenxD,
+      ModexSI       => ICAPFsmModexS,
+      UpperxSI      => UpperxS,
+      RamAddrxDO    => ICAPRamAddrxD,
+      RamWExSO      => ICAPRamWExS,
+      RamLutMuxxSO  => ICAPRamLutMuxxS,
+      ICAPCExSBO    => ICAPCExSB,
+      ICAPWExSBO    => ICAPWExSB,
+      ICAPStatusxDI => ICAPDataOutxD(24 to 31),
+      ICAPBusyxSI   => ICAPBusyRegxSP
       );
 
   -----------------------------------------------------------------------------
@@ -543,7 +556,7 @@ begin
                   else ICAPLutOutxD;
 
   -- ICAP Ram Input
-  ICAPRamInxD <= ICAPDataOutxD;
+  ICAPRamInxD <= ICAPDataOutRegxDP;
 
   -----------------------------------------------------------------------------
   -- DEBUG
@@ -555,9 +568,9 @@ begin
                    else '0';
   DebugPutMem <= '1' when state = STATE_PUT_MEM
                  else '0';
-  DebugCEB         <= ICAPCExSB;
-  DebugWEB         <= ICAPWExSB;
-  DebugRamWE       <= ICAPRamWExS;
+  DebugCEB   <= ICAPCExSB;
+  DebugWEB   <= ICAPWExSB;
+  DebugRamWE <= ICAPRamWExS;
 
 end architecture;
 

@@ -6,7 +6,7 @@
 -- Author     : atraber  <atraber@student.ethz.ch>
 -- Company    : Computer Engineering and Networks Laboratory, ETH Zurich
 -- Created    : 2014-04-07
--- Last update: 2014-04-15
+-- Last update: 2014-04-16
 -- Platform   : Xilinx ISIM (simulation), Xilinx (synthesis)
 -- Standard   : VHDL'87
 -------------------------------------------------------------------------------
@@ -247,7 +247,7 @@ begin  -- implementation
 
           if std_logic_vector(AddrxDN) = LenxDP then
             StatexDN <= STATE_FINISH;
-          elsif AddrxDP + 4 >= LenxDP then
+          elsif AddrxDP + 5 >= LenxDP then
             StatexDN <= STATE_READ_LAST;
           end if;
         end if;

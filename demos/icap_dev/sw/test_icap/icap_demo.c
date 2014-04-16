@@ -83,7 +83,7 @@ int prblock_get(unsigned int reg)
 
 	ret = mbox_get(&mb_out[HWT_DPR]);
 
-  printf("Result is %X\n", ret);
+  printf("Register %X has value %X\n", reg, ret);
 
 	return ret;
 }
@@ -141,7 +141,7 @@ int main(int argc, char *argv[])
 {
 	int i, ret,cnt=1;
   int max_cnt = 10;
-  unsigned int read_far = 0x00008A80;
+  unsigned int read_far = 0x00208100;//0x00008A80;
   unsigned int read_words = 1;
 
 	printf( "-------------------------------------------------------\n"
@@ -173,6 +173,10 @@ int main(int argc, char *argv[])
   cache_bitstream(ADD, "partial_bitstreams/partial_add.bit");
   cache_bitstream(SUB, "partial_bitstreams/partial_sub.bit");
 
+  // print current register values
+  prblock_get(0);
+  prblock_get(1);
+
   // parse command line arguments
   for(i = 1; i < argc; i++) {
     if(strcmp(argv[i], "-sw") == 0)
@@ -199,8 +203,7 @@ int main(int argc, char *argv[])
       g_mode = MODE_READ;
 
       if(i + 1 < argc) {
-        // TODO: this should be hex!
-        read_far = atoi(argv[i + 1]);
+        sscanf(argv[i + 1], "0x%X", &read_far);
         i++; // skip one as we handle it already here
       }
     }
@@ -248,15 +251,28 @@ int main(int argc, char *argv[])
   } else {
     //hw_icap_read_reg(0x9);
 
-    //prblock_set(0, 0xAA00BB00);
-    //prblock_get(0);
+    // prblock_set(3, 0xAA00BB00);
+    // prblock_get(3);
+
+    // printf("Performing gcapture\n");
+    // hw_icap_gcapture();
+    // sleep(1);
+
+    // prblock_get(3);
+    // prblock_set(3, 0x00CC00DD);
+    // prblock_get(3);
+
+    // printf("Performing grestore\n");
+    // hw_icap_grestore();
+    // sleep(1);
+    // prblock_get(3);
 
     printf("Readback mode, reading %d words from 0x%08X\n", read_words, read_far);
     hw_icap_read(read_far, read_words);
 
-    //printf("Performing gcapture\n");
-    //hw_icap_gcapture();
-    //sleep(1);
+    // printf("Performing gcapture\n");
+    // hw_icap_gcapture();
+    // sleep(1);
 
     //prblock_set(0, 0x00CC00DD);
     //prblock_get(0);

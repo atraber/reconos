@@ -78,7 +78,6 @@ begin
 
       -- default assignment
       RegistersxD(2) <= RegistersxD(0) + RegistersxD(1);
-      RegistersxD(3) <= RegistersxD(3) + 1;
 
       case state is
         -----------------------------------------------------------------------

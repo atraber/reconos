@@ -438,6 +438,24 @@ int hw_icap_gcapture() {
   return 0;
 }
 
+// uint32_t g_icap_grestore[] = {0xFFFFFFFF,
+//                               0x000000BB,
+//                               0x11220044,
+//                               0xFFFFFFFF,
+//                               0xAA995566, // sync
+//                               0x20000000, // noop
+//                               0x20000000, // noop
+//                               0x30008001, // write to cmd
+//                               0x0000000A, // grestore
+//                               0x20000000, // noop
+//                               0x30002001, // write to FAR
+//                               0x00000000, // FAR address
+//                               0x20000000, // noop
+//                               0x20000000, // noop
+//                               0x30008001, // write to cmd
+//                               0x0000000D, // DESYNC
+//                               0x20000000, // noop
+//                               0x20000000};// noop
 uint32_t g_icap_grestore[] = {0xFFFFFFFF,
                               0x000000BB,
                               0x11220044,
@@ -445,17 +463,118 @@ uint32_t g_icap_grestore[] = {0xFFFFFFFF,
                               0xAA995566, // sync
                               0x20000000, // noop
                               0x20000000, // noop
-                              0x30008001, // write to cmd
-                              0x0000000A, // grestore
-                              0x20000000, // noop
-                              0x30002001, // write to FAR
-                              0x00000000, // FAR address
-                              0x20000000, // noop
-                              0x20000000, // noop
-                              0x30008001, // write to cmd
-                              0x0000000D, // DESYNC
-                              0x20000000, // noop
-                              0x20000000};// noop
+                              0x3000C001, // Type 1 packet, Write, MASK reg 1 packets follow
+                              0x00000400, //  belongs to previous packet, 0 packets follow   
+                              0x3000A001, // Type 1 packet, Write, CTL0 reg 1 packets follow
+                              0x00000400, //  belongs to previous packet, 0 packets follow   
+                              0x30008001, // Type 1 packet, Write, CMD reg 1 packets follow
+                              0x00000000, // NULL belongs to previous packet, 0 packets follow   
+                              0x30002001, // Type 1 packet, Write, FAR reg 1 packets follow
+                              0x00000000, //  belongs to previous packet, 0 packets follow   
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x30008001, //Type 1 packet, Write, CMD reg 1 packets follow
+                              0x0000000B, //SHUTDOWN belongs to previous packet, 0 packets follow
+                              0x20000000, //Type 1 packet, NOOP 0 packets follow
+                              0x20000000, //Type 1 packet, NOOP 0 packets follow
+                              0x20000000, //Type 1 packet, NOOP 0 packets follow
+                              0x20000000, //Type 1 packet, NOOP 0 packets follow
+                              0x20000000, //Type 1 packet, NOOP 0 packets follow
+                              0x30008001, //Type 1 packet, Write, CMD reg 1 packets follow
+                              0x00000000, //NULL belongs to previous packet, 0 packets follow
+                              0x30002001, //Type 1 packet, Write, FAR reg 1 packets follow
+                              0x00000000, // belongs to previous packet, 0 packets follow
+                              0x30008001, // Type 1 packet, Write, CMD reg 1 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x0000000A, // GRESTORE belongs to previous packet, 0 packets follow   
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x3000C001, // Type 1 packet, Write, MASK reg 1 packets follow
+                              0x00001000, //  belongs to previous packet, 0 packets follow   
+                              0x30030001, // Type 1 packet, Write, unknown reg 1 packets follow
+                              0x00000000, //  belongs to previous packet, 0 packets follow   
+                              0x30008001, // Type 1 packet, Write, CMD reg 1 packets follow
+                              0x00000003, // DGHIGH belongs to previous packet, 0 packets follow   
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x30008001, // Type 1 packet, Write, CMD reg 1 packets follow
+                              0x00000005, // START belongs to previous packet, 0 packets follow   
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x30002001, // Type 1 packet, Write, FAR reg 1 packets follow
+                              0x00EF8000, //  belongs to previous packet, 0 packets follow   
+                              0x30008001, // Type 1 packet, Write, CMD reg 1 packets follow
+                              0x0000000D, // DESYNC belongs to previous packet, 0 packets follow   DESYNCH
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x20000000};// Type 1 packet, NOOP 0 packets follow
+
 
 int hw_icap_grestore() {
   printf("Writing to ICAP\n");
