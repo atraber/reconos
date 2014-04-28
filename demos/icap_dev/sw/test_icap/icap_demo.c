@@ -23,10 +23,13 @@
 #define RECONF_HW    2
 #define RECONF_NULL  3
 
-unsigned int g_reconf_mode = RECONF_LINUX;
+unsigned int g_reconf_mode = RECONF_HW;
 
-#define MODE_WRITE  0
-#define MODE_READ   1
+#define MODE_WRITE      0
+#define MODE_READ       1
+#define MODE_WRITE_ADD  2
+#define MODE_WRITE_SUB  3
+#define MODE_CAPTURE    4
 
 unsigned int g_mode = MODE_WRITE;
 
@@ -35,7 +38,7 @@ struct reconos_hwt hwt[NUM_SLOTS];
 struct mbox mb_in[NUM_SLOTS];
 struct mbox mb_out[NUM_SLOTS];
 
-unsigned int configured = ADD;
+unsigned int configured = 0xFF; // invalid value...
 
 
 int test_prblock(int thread_id)
@@ -206,6 +209,12 @@ int main(int argc, char *argv[])
         sscanf(argv[i + 1], "0x%X", &read_far);
         i++; // skip one as we handle it already here
       }
+    } else if(strcmp(argv[i], "--add") == 0) {
+      g_mode = MODE_WRITE_ADD;
+    } else if(strcmp(argv[i], "--sub") == 0) {
+      g_mode = MODE_WRITE_SUB;
+    } else if(strcmp(argv[i], "--capture") == 0) {
+      g_mode = MODE_CAPTURE;
     }
   }
 
@@ -248,19 +257,24 @@ int main(int argc, char *argv[])
       sleep(1); 
       cnt++;
     }
-  } else {
-    //hw_icap_read_reg(0x9);
+  } else if(g_mode == MODE_WRITE_ADD) {
+    ret = reconfigure_prblock(ADD);
+    ret = test_prblock(ADD);
 
-    // prblock_set(3, 0xAA00BB00);
-    // prblock_get(3);
+    if (ret) printf("  # ADD: passed\n"); else printf("  # ADD: failed\n");
+  } else if(g_mode == MODE_WRITE_SUB) {
+    ret = reconfigure_prblock(SUB);
+    ret = test_prblock(SUB);
 
-    // printf("Performing gcapture\n");
-    // hw_icap_gcapture();
-    // sleep(1);
+    if (ret) printf("  # SUB: passed\n"); else printf("  # SUB: failed\n");
+  } else if(g_mode == MODE_CAPTURE) {
+    prblock_set(3, 0x00000000);
+    prblock_get(3);
 
-    // prblock_get(3);
-    // prblock_set(3, 0x00CC00DD);
-    // prblock_get(3);
+    printf("Performing gcapture\n");
+    hw_icap_gcapture();
+    sleep(1);
+
 
     // printf("Performing grestore\n");
     // hw_icap_grestore();
@@ -269,21 +283,23 @@ int main(int argc, char *argv[])
 
     printf("Readback mode, reading %d words from 0x%08X\n", read_words, read_far);
     hw_icap_read(read_far, read_words);
+/*
+    prblock_get(3);
+    prblock_set(3, 0x00000001);
+    prblock_get(3);
 
-    // printf("Performing gcapture\n");
-    // hw_icap_gcapture();
-    // sleep(1);
+    printf("Performing gcapture\n");
+    hw_icap_gcapture();
+    sleep(1);
 
-    //prblock_set(0, 0x00CC00DD);
-    //prblock_get(0);
+    printf("Readback mode, reading %d words from 0x%08X\n", read_words, read_far);
+    hw_icap_read(read_far, read_words);
+    */
+  } else {
+    printf("Readback mode, reading %d words from 0x%08X\n", read_words, read_far);
+    hw_icap_read(read_far, read_words);
 
-    //printf("Performing grestore\n");
-    //hw_icap_grestore();
-    //sleep(1);
-    //prblock_get(0);
-
-    //printf("Readback mode, reading %d words from 0x%08X\n", read_words, read_far);
-    //hw_icap_read(read_far, read_words);
+    //hw_icap_read_reg(0x9);
   }
 
 	return 0;
