@@ -260,9 +260,9 @@ uint32_t g_icap_read_cmd[] = {0xFFFFFFFF,
                               0xFFFFFFFF,
                               0xAA995566, // sync
                               0x20000000, // noop
-                              //0x30008001, // write to cmd
-                              //0x0000000B, // SHUTDOWN
-                              //0x20000000, // noop
+                              0x30008001, // write to cmd
+                              0x0000000B, // SHUTDOWN
+                              0x20000000, // noop
                               0x30008001, // write to cmd
                               0x00000007, // RCRC
                               0x20000000, // noop
@@ -312,9 +312,9 @@ uint32_t g_icap_read_cmd[] = {0xFFFFFFFF,
                               0x20000000};// noop
 
 uint32_t g_icap_read_cmd2[] = {0x20000000, // noop
-                              // 0x30008001, // write to cmd
-                              // 0x00000005, // START
-                              // 0x20000000, // noop
+                               0x30008001, // write to cmd
+                               0x00000005, // START
+                               0x20000000, // noop
                                0x30008001, // write to cmd
                                0x00000007, // RCRC
                                0x20000000, // noop

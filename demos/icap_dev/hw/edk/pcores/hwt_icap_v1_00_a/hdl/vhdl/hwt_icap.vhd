@@ -35,6 +35,8 @@ entity hwt_icap is
     DebugBusy     : out std_logic;
     DebugReadICAP : out std_logic;
     DebugPutMem   : out std_logic;
+    DebugIdle     : out std_logic;
+    DebugGetSize  : out std_logic;
     DebugCEB      : out std_logic;
     DebugWEB      : out std_logic;
     DebugRamWE    : out std_logic;
@@ -99,7 +101,7 @@ architecture implementation of hwt_icap is
                       STATE_FINISHED, STATE_ERROR, STATE_CMPLEN, STATE_FETCH_MEM,
                       STATE_ICAP_TRANSFER, STATE_ICAP_WAIT, STATE_ICAP_WAIT_LAST,
                       STATE_MEM_CALC,
-                      STATE_READ_CMPLEN, STATE_READ_ICAP, STATE_PUT_MEM, STATE_PUT_MEM_LAST, STATE_READ_CALC);
+                      STATE_READ_CMPLEN, STATE_READ_ICAP, STATE_PUT_MEM, STATE_READ_CALC);
 
   constant MBOX_RECV   : std_logic_vector(C_FSL_WIDTH-1 downto 0) := x"00000000";
   constant MBOX_SEND   : std_logic_vector(C_FSL_WIDTH-1 downto 0) := x"00000001";
@@ -428,33 +430,25 @@ begin
             -- we ack it already in this state as we do not need this signal when
             -- we are not doing double buffering
             ICAPFsmAckxS <= '1';
-            if LastxS = '1' then
-              state <= STATE_PUT_MEM_LAST;
-            else
-              state <= STATE_PUT_MEM;
-            end if;
+
+            state <= STATE_PUT_MEM;
           end if;
 
           ---------------------------------------------------------------------
           -- Copy the content of the local RAM to the main memory
           ---------------------------------------------------------------------
         when STATE_PUT_MEM =>
-          memif_write(i_ram, o_ram, i_memif, o_memif, X"00000000", AddrxD,
-                      conv_std_logic_vector(C_LOCAL_RAM_SIZE_IN_BYTES/2, 24), done);
-
-          if Done then
-            if LastxS = '1' then
-              state <= STATE_FINISHED;
-            else
-              state <= STATE_READ_CALC;
-            end if;
+          if LastxS = '1' then
+            -- LenxD is smaller than the size of half the local memory, so we
+            -- only fill it partially
+            len := LenxD(23 downto 0);
+          else
+            -- completely fill our half local memory
+            len := conv_std_logic_vector(C_LOCAL_RAM_SIZE_IN_BYTES/2, 24);
           end if;
-          ---------------------------------------------------------------------
-          -- Copy the content of the local RAM to the main memory
-          ---------------------------------------------------------------------
-        when STATE_PUT_MEM_LAST =>
+
           memif_write(i_ram, o_ram, i_memif, o_memif, X"00000000", AddrxD,
-                      LenxD(23 downto 0), done);
+                      len, done);
 
           if Done then
             if LastxS = '1' then
@@ -568,6 +562,10 @@ begin
                    else '0';
   DebugPutMem <= '1' when state = STATE_PUT_MEM
                  else '0';
+  DebugIdle <= '1' when state = STATE_GET_BITSTREAM_ADDR
+               else '0';
+  DebugGetSize <= '1' when state = STATE_GET_BITSTREAM_SIZE
+                  else '0';
   DebugCEB   <= ICAPCExSB;
   DebugWEB   <= ICAPWExSB;
   DebugRamWE <= ICAPRamWExS;

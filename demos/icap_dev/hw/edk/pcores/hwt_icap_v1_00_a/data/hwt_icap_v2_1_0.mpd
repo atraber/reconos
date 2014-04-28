@@ -50,6 +50,8 @@ PORT DebugStatus      = "", DIR=O, VEC=[0:7]
 PORT DebugBusy        = "", DIR=O
 PORT DebugReadICAP    = "", DIR=O
 PORT DebugPutMem      = "", DIR=O
+PORT DebugIdle        = "", DIR=O
+PORT DebugGetSize     = "", DIR=O
 PORT DebugCEB         = "", DIR=O
 PORT DebugWEB         = "", DIR=O
 PORT DebugRamWE       = "", DIR=O

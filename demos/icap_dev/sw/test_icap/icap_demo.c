@@ -30,6 +30,7 @@ unsigned int g_reconf_mode = RECONF_HW;
 #define MODE_WRITE_ADD  2
 #define MODE_WRITE_SUB  3
 #define MODE_CAPTURE    4
+#define MODE_TEST    5
 
 unsigned int g_mode = MODE_WRITE;
 
@@ -179,6 +180,8 @@ int main(int argc, char *argv[])
   // print current register values
   prblock_get(0);
   prblock_get(1);
+  prblock_get(2);
+  prblock_get(3);
 
   // parse command line arguments
   for(i = 1; i < argc; i++) {
@@ -215,6 +218,8 @@ int main(int argc, char *argv[])
       g_mode = MODE_WRITE_SUB;
     } else if(strcmp(argv[i], "--capture") == 0) {
       g_mode = MODE_CAPTURE;
+    } else if(strcmp(argv[i], "--test") == 0) {
+      g_mode = MODE_TEST;
     }
   }
 
@@ -295,6 +300,28 @@ int main(int argc, char *argv[])
     printf("Readback mode, reading %d words from 0x%08X\n", read_words, read_far);
     hw_icap_read(read_far, read_words);
     */
+  } else if(g_mode == MODE_TEST) {
+    prblock_set(3, 0x00000000);
+    prblock_get(3);
+
+    printf("Performing gcapture\n");
+    hw_icap_gcapture();
+    sleep(1);
+
+
+    printf("Performing grestore\n");
+    hw_icap_grestore();
+    sleep(1);
+    prblock_get(3);
+
+    printf("Setting it to different value\n");
+    prblock_set(3, 0x00000001);
+    prblock_get(3);
+
+    printf("Performing grestore\n");
+    hw_icap_grestore();
+    sleep(1);
+    prblock_get(3);
   } else {
     printf("Readback mode, reading %d words from 0x%08X\n", read_words, read_far);
     hw_icap_read(read_far, read_words);

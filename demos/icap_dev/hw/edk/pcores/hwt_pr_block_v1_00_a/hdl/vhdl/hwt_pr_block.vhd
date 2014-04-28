@@ -55,7 +55,7 @@ architecture implementation of hwt_pr_block is
   -- registers
   -----------------------------------------------------------------------------
   type   reg_t is array (0 to 3) of std_logic_vector(31 downto 0);
-  signal RegistersxD : reg_t;
+  signal RegistersxD : reg_t := (x"00000000", x"00000000", x"00000000", x"00000000");
 begin
 
   -- do not use memory interface (memif)
