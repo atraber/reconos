@@ -9,6 +9,10 @@ use proc_common_v3_00_a.proc_common_pkg.all;
 library reconos_v3_00_b;
 use reconos_v3_00_b.reconos_pkg.all;
 
+library unisim;
+use unisim.vcomponents.STARTUP_VIRTEX6;
+
+
 entity hwt_icap is
   port (
     -- OSIF FSL   
@@ -100,7 +104,7 @@ architecture implementation of hwt_icap is
   type STATE_TYPE is (STATE_GET_BITSTREAM_ADDR, STATE_GET_BITSTREAM_SIZE, STATE_THREAD_EXIT,
                       STATE_FINISHED, STATE_ERROR, STATE_CMPLEN, STATE_FETCH_MEM,
                       STATE_ICAP_TRANSFER, STATE_ICAP_WAIT, STATE_ICAP_WAIT_LAST,
-                      STATE_MEM_CALC,
+                      STATE_MEM_CALC, STATE_GSR,
                       STATE_READ_CMPLEN, STATE_READ_ICAP, STATE_PUT_MEM, STATE_READ_CALC);
 
   constant MBOX_RECV   : std_logic_vector(C_FSL_WIDTH-1 downto 0) := x"00000000";
@@ -168,6 +172,9 @@ architecture implementation of hwt_icap is
   signal ICAPFsmErrorxS  : std_logic;
   signal ICAPFsmLenxD    : std_logic_vector(0 to C_LOCAL_RAM_ADDRESS_WIDTH-1);  -- in words
 
+
+  signal GSRxS : std_logic := '0';
+
 begin
 
   -- setup osif, memif, local ram
@@ -233,6 +240,7 @@ begin
       ICAPFsmStartxS <= '0';
       ICAPFsmAckxS   <= '0';
       ICAPFsmModexS  <= '0';            -- write
+      GSRxS          <= '0';
 
       case state is
         -----------------------------------------------------------------------
@@ -263,14 +271,27 @@ begin
               state <= STATE_THREAD_EXIT;
             else
               -- TODO: look for a better solution
-              if LenxD(0) = '1' then
-                LenxD(0) <= '0';        -- DEBUG!!!
-                state    <= STATE_READ_CMPLEN;
+              if LenxD(1) = '1' then
+                LenxD(1) <= '0';
+                state    <= STATE_GSR;
               else
-                state <= STATE_CMPLEN;
+                if LenxD(0) = '1' then
+                  LenxD(0) <= '0';
+                  state    <= STATE_READ_CMPLEN;
+                else
+                  state <= STATE_CMPLEN;
+                end if;
               end if;
             end if;
           end if;
+
+          ---------------------------------------------------------------------
+          -- GSR
+          ---------------------------------------------------------------------
+        when STATE_GSR =>
+          GSRxS <= '1';
+
+          state <= STATE_FINISHED;
 
           ---------------------------------------------------------------------
           -- Compare the remaining length of the bitstream with the size of our
@@ -555,6 +576,28 @@ begin
   -----------------------------------------------------------------------------
   -- DEBUG
   -----------------------------------------------------------------------------
+  STARTUP_VIRTEX6Inst : STARTUP_VIRTEX6
+    generic map (
+      PROG_USR => false  -- Activate program event security feature
+      )
+    port map (
+      CFGCLK    => open,  -- 1-bit output Configuration main clock output
+      CFGMCLK   => open,  -- 1-bit output Configuration internal oscillator clock output
+      DINSPI    => open,  -- 1-bit output DIN SPI PROM access output
+      EOS       => open,  -- 1-bit output Active high output signal indicating the End Of Configuration.
+      PREQ      => open,  -- 1-bit output PROGRAM request to fabric output
+      TCKSPI    => open,  -- 1-bit output TCK configuration pin access output
+      CLK       => '0',  -- 1-bit input User start-up clock input
+      GSR       => GSRxS,  -- 1-bit input Global Set/Reset input (GSR cannot be used for the port name)
+      GTS       => '0',  -- 1-bit input Global 3-state input (GTS cannot be used for the port name)
+      KEYCLEARB => '0',  -- 1-bit input Clear AES Decrypter Key input from Battery-Backed RAM (BBRAM)
+      PACK      => '0',  -- 1-bit input PROGRAM acknowledge input
+      USRCCLKO  => '0',                 -- 1-bit input User CCLK input
+      USRCCLKTS => '0',  -- 1-bit input User CCLK 3-state enable input
+      USRDONEO  => '1',  -- 1-bit input User DONE pin output control
+      USRDONETS => '0'   -- 1-bit input User DONE 3-state enable output
+      );
+
   DebugStatus   <= ICAPDataOutxD(24 to 31);
   DebugOut      <= ICAPDataOutxD(0 to 31);
   DebugBusy     <= ICAPBusyxS;

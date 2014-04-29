@@ -309,17 +309,13 @@ int main(int argc, char *argv[])
     sleep(1);
 
 
-    printf("Performing grestore\n");
-    hw_icap_grestore();
-    sleep(1);
-    prblock_get(3);
-
     printf("Setting it to different value\n");
     prblock_set(3, 0x00000001);
     prblock_get(3);
 
     printf("Performing grestore\n");
-    hw_icap_grestore();
+    //hw_icap_grestore();
+    hw_icap_gsr();
     sleep(1);
     prblock_get(3);
   } else {

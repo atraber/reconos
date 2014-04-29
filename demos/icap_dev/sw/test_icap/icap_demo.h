@@ -32,5 +32,6 @@ int hw_icap_read(uint32_t far, uint32_t size);
 int hw_icap_read_reg(uint8_t reg);
 int hw_icap_gcapture();
 int hw_icap_grestore();
+int hw_icap_gsr();
 
 #endif

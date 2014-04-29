@@ -582,3 +582,10 @@ int hw_icap_grestore() {
 
   return 0;
 }
+
+int hw_icap_gsr() {
+  printf("Performing GSR\n");
+  hw_icap_write(0x0, 0x2);
+
+  return 0;
+}
