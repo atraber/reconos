@@ -2,7 +2,7 @@ CFLAGS=-O3 -g -Wall -I ../../../../linux/reconos/libreconos-us
 CC=microblaze-unknown-linux-gnu-gcc
 
 TARGET=icap_demo
-APP_OBJS = icap_demo.o timing.o hwt_icap.o
+APP_OBJS = icap_demo.o timing.o hwt_icap.o bitstream.o
 
 all: $(TARGET) 
 

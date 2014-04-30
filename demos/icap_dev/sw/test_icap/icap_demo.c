@@ -30,7 +30,8 @@ unsigned int g_reconf_mode = RECONF_HW;
 #define MODE_WRITE_ADD  2
 #define MODE_WRITE_SUB  3
 #define MODE_CAPTURE    4
-#define MODE_TEST    5
+#define MODE_RESTORE    5
+#define MODE_TEST       6
 
 unsigned int g_mode = MODE_WRITE;
 
@@ -57,17 +58,31 @@ int test_prblock(int thread_id)
 	mbox_put(&mb_in[HWT_DPR], 0x80000002);
 	ret = mbox_get(&mb_out[HWT_DPR]);
 
-  printf("Result is %X\n", ret);
+  //printf("Result is %X\n", ret);
 
   // get counter value from register 3
 	mbox_put(&mb_in[HWT_DPR], 0x80000003);
 	counter = mbox_get(&mb_out[HWT_DPR]);
   
-  printf("Counter value is %u\n", counter);
-  
+  switch(thread_id) {
+  case ADD:
+    if (ret==(0x01003344)+(0x01001122)) {
+      printf("  # ADD: passed\n");
+    } else {
+      printf("  # ADD: failed\n");
+    }
 
-	if (thread_id==ADD && ret==(0x01003344)+(0x01001122)) return 1;
-	if (thread_id==SUB && ret==(0x01003344)-(0x01001122)) return 1;
+    return 1;
+
+  case SUB:
+    if (ret==(0x01003344)-(0x01001122)) {
+      printf("  # SUB: passed\n");
+    } else {
+      printf("  # SUB: failed\n");
+    }
+    return 1;
+  }
+
 	return 0;
 }
 
@@ -174,8 +189,8 @@ int main(int argc, char *argv[])
 
 
   // cache partial bitstreams in memory
-  cache_bitstream(ADD, "partial_bitstreams/partial_add.bit");
-  cache_bitstream(SUB, "partial_bitstreams/partial_sub.bit");
+  bitstream_cache(ADD, "partial_bitstreams/partial_add.bit");
+  bitstream_cache(SUB, "partial_bitstreams/partial_sub.bit");
 
   // print current register values
   prblock_get(0);
@@ -185,13 +200,13 @@ int main(int argc, char *argv[])
 
   // parse command line arguments
   for(i = 1; i < argc; i++) {
-    if(strcmp(argv[i], "-sw") == 0)
+    if(strcmp(argv[i], "--sw") == 0)
       g_reconf_mode = RECONF_SW;
-    else if(strcmp(argv[i], "-hw") == 0)
+    else if(strcmp(argv[i], "--hw") == 0)
       g_reconf_mode = RECONF_HW;
-    else if(strcmp(argv[i], "-linux") == 0)
+    else if(strcmp(argv[i], "--linux") == 0)
       g_reconf_mode = RECONF_LINUX;
-    else if(strcmp(argv[i], "-null") == 0)
+    else if(strcmp(argv[i], "--null") == 0)
       g_reconf_mode = RECONF_NULL;
     else if(strcmp(argv[i], "-n") == 0) {
       if(i + 1 < argc) {
@@ -218,6 +233,8 @@ int main(int argc, char *argv[])
       g_mode = MODE_WRITE_SUB;
     } else if(strcmp(argv[i], "--capture") == 0) {
       g_mode = MODE_CAPTURE;
+    } else if(strcmp(argv[i], "--restore") == 0) {
+      g_mode = MODE_RESTORE;
     } else if(strcmp(argv[i], "--test") == 0) {
       g_mode = MODE_TEST;
     }
@@ -273,54 +290,35 @@ int main(int argc, char *argv[])
 
     if (ret) printf("  # SUB: passed\n"); else printf("  # SUB: failed\n");
   } else if(g_mode == MODE_CAPTURE) {
-    prblock_set(3, 0x00000000);
-    prblock_get(3);
-
     printf("Performing gcapture\n");
     hw_icap_gcapture();
-    sleep(1);
-
-
-    // printf("Performing grestore\n");
-    // hw_icap_grestore();
-    // sleep(1);
-    // prblock_get(3);
-
-    printf("Readback mode, reading %d words from 0x%08X\n", read_words, read_far);
-    hw_icap_read(read_far, read_words);
-/*
-    prblock_get(3);
-    prblock_set(3, 0x00000001);
-    prblock_get(3);
-
-    printf("Performing gcapture\n");
-    hw_icap_gcapture();
-    sleep(1);
-
-    printf("Readback mode, reading %d words from 0x%08X\n", read_words, read_far);
-    hw_icap_read(read_far, read_words);
-    */
-  } else if(g_mode == MODE_TEST) {
-    prblock_set(3, 0x00000000);
-    prblock_get(3);
-
-    printf("Performing gcapture\n");
-    hw_icap_gcapture();
-    sleep(1);
-
-
-    printf("Setting it to different value\n");
-    prblock_set(3, 0x00000001);
-    prblock_get(3);
-
-    printf("Performing grestore\n");
-    //hw_icap_grestore();
+  } else if(g_mode == MODE_RESTORE) {
     hw_icap_gsr();
-    sleep(1);
+  } else if(g_mode == MODE_TEST) {
+    reconfigure_prblock(ADD);
+    test_prblock(ADD);
+    prblock_get(3);
+
+    prblock_set(3, 0xAA00BBCC);
+    prblock_get(3);
+
+    struct pr_bitstream_t test_bit;
+
+    bitstream_capture(&pr_bit[ADD], &test_bit);
+
+    //bitstream_save("partial_bitstreams/test.bit", &test_bit);
+
+    prblock_set(3, 0x00DD0000);
+    test_prblock(ADD);
+    prblock_get(3);
+
+    bitstream_restore(&test_bit);
+
+    test_prblock(ADD);
     prblock_get(3);
   } else {
     printf("Readback mode, reading %d words from 0x%08X\n", read_words, read_far);
-    hw_icap_read(read_far, read_words);
+    hw_icap_read(read_far, read_words, NULL);
 
     //hw_icap_read_reg(0x9);
   }

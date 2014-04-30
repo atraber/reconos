@@ -17,14 +17,6 @@
 #include "icap_demo.h"
 
 
-struct pr_bitstream {
-  uint32_t* block;
-  unsigned int length; // in 32 bit words
-};
-
-struct pr_bitstream pr_bit[2];
-
-
 // load arbitrary cmd sequence via hardware icap thread
 // size must be in bytes
 int hw_icap_write(uint32_t* addr, unsigned int size)
@@ -144,73 +136,16 @@ void hwt_icap_clear_crc() {
   hw_icap_write(g_icap_crc_clear, sizeof g_icap_crc_clear);
 }
 
-
-// preload bitstream and save it in memory
-// Returns 1 if successfull, 0 otherwise
-int cache_bitstream(int thread_id, const char* path)
-{
-  int retval = 1;
-
-  FILE* fp = fopen(path, "r");
-  if(fp == NULL) {
-    printf("Could not open file %s\n", path);
-
-    retval = 0;
-    goto FAIL;
-  }
-
-  // determine file size
-  fseek(fp, 0L, SEEK_END);
-  pr_bit[thread_id].length = ftell(fp);
-
-  fseek(fp, 0L, SEEK_SET);
-
-  if((pr_bit[thread_id].length & 0x3) != 0) {
-    printf("File size is not a multiple of 4 bytes\n");
-
-    retval = 0;
-    goto FAIL;
-  }
-
-  // convert file size from bytes to 32 bit words
-  pr_bit[thread_id].length = pr_bit[thread_id].length / 4;
-
-  // allocate memory for file
-  pr_bit[thread_id].block = (uint32_t*)malloc(pr_bit[thread_id].length * sizeof(uint32_t));
-  if(pr_bit[thread_id].block == NULL) {
-    printf("Could not allocate memory\n");
-
-    retval = 0;
-    goto FAIL;
-  }
-
-  // read whole file in one command
-  if( fread(pr_bit[thread_id].block, sizeof(uint32_t), pr_bit[thread_id].length, fp) != pr_bit[thread_id].length) {
-    printf("Something went wrong while reading from file\n");
-
-    free(pr_bit[thread_id].block);
-
-    retval = 0;
-    goto FAIL;
-  }
-
-FAIL:
-  fclose(fp);
-
-  return retval;
-}
-
 // loads bitstream into ICAP
 // Returns 1 if successfull, 0 otherwise
 int sw_icap_load(int thread_id)
 {
-  int retval = 1;
+  int retval = 0;
 
   FILE* fp = fopen("/dev/icap0", "w");
   if(fp == NULL) {
     printf("Could not open icap\n");
 
-    retval = 0;
     goto FAIL;
   }
 
@@ -218,9 +153,10 @@ int sw_icap_load(int thread_id)
   if( fwrite(pr_bit[thread_id].block, sizeof(uint32_t), pr_bit[thread_id].length, fp) != pr_bit[thread_id].length) {
     printf("Something went wrong while writing to ICAP\n");
 
-    retval = 0;
     goto FAIL;
   }
+
+  retval = 1;
 
 FAIL:
   fclose(fp);
@@ -324,8 +260,8 @@ uint32_t g_icap_read_cmd2[] = {0x20000000, // noop
                                0x20000000};// noop
 
 // size must be in words
-int hw_icap_read(uint32_t far, uint32_t size) {
-
+int hw_icap_read(uint32_t far, uint32_t size, uint32_t* dst)
+{
   // account for the padframe and dummy words
   size = size + 82;
 
@@ -355,10 +291,14 @@ int hw_icap_read(uint32_t far, uint32_t size) {
   printf("Finishing ICAP\n");
   hw_icap_write(g_icap_read_cmd2, sizeof g_icap_read_cmd2);
 
-  unsigned int i;
-  // the first 82 words are rubish, because they are from the pad frame and a dummy word
-  for(i = 82; i < size; i++) {
-    printf("%08X\n", mem[i]);
+  if(dst == NULL) {
+    unsigned int i;
+    // the first 82 words are rubish, because they are from the pad frame and a dummy word
+    for(i = 82; i < size; i++) {
+      printf("%08X\n", mem[i]);
+    }
+  } else {
+    memcpy(dst, mem + 82, (size-82) * 4);
   }
 
   free(mem);
@@ -432,7 +372,7 @@ uint32_t g_icap_gcapture[] = {0xFFFFFFFF,
                               0x20000000};// noop
 
 int hw_icap_gcapture() {
-  printf("Writing to ICAP\n");
+  printf("Performing gcapture\n");
   hw_icap_write(g_icap_gcapture, sizeof g_icap_gcapture);
 
   return 0;
@@ -588,4 +528,27 @@ int hw_icap_gsr() {
   hw_icap_write(0x0, 0x2);
 
   return 0;
+}
+
+// addr points to an array in memory, size is in bytes
+int hw_icap_write_block(uint32_t far, uint32_t* addr, unsigned int size)
+{
+  printf("hw_icap_write_block: TODO\n");
+	int ret = 0;
+/*
+  // send address of bitfile in main memory to hwt
+	mbox_put(&mb_in[HWT_ICAP], (unsigned int)addr);
+
+  // send length of bitfile (in bytes) in main memory to hwt
+	mbox_put(&mb_in[HWT_ICAP], size);
+
+  // wait for response from hwt
+	ret = mbox_get(&mb_out[HWT_ICAP]);
+  if(ret == 0x1337)
+    printf("hwt_icap returned SUCCESS, code %X\n", ret);
+  else
+    printf("hwt_icap returned ERROR, code %X\n", ret);
+
+*/
+	return ret;
 }
