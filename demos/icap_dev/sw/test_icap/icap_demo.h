@@ -24,15 +24,16 @@ struct pr_bitstream_t {
 
 extern struct pr_bitstream_t pr_bit[2];
 
-int bitstream_cache(int thread_id, const char* path);
+int bitstream_open(const char* path, struct pr_bitstream_t* stream);
+int bitstream_save(const char* path, struct pr_bitstream_t* stream);
 int bitstream_capture(struct pr_bitstream_t* stream_in, struct pr_bitstream_t* stream_out);
 int bitstream_restore(struct pr_bitstream_t* stream);
-int bitstream_save(const char* path, struct pr_bitstream_t* stream);
 
 
 int hw_icap_write(uint32_t* addr, unsigned int size);
-int hw_icap_write_block(uint32_t far, uint32_t* addr, unsigned int size);
+int hw_icap_write_frame(uint32_t far, uint32_t* addr, unsigned int words);
 int sw_icap_write(uint32_t* addr, unsigned int size);
+
 int sw_icap_load(int thread_id);
 int hw_icap_load(int thread_id);
 int linux_icap_load(int thread_id);

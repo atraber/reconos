@@ -31,12 +31,12 @@ int hw_icap_write(uint32_t* addr, unsigned int size)
 
   // wait for response from hwt
 	ret = mbox_get(&mb_out[HWT_ICAP]);
-  if(ret == 0x1337)
-    printf("hwt_icap returned SUCCESS, code %X\n", ret);
-  else
+  if(ret != 0x1337) {
     printf("hwt_icap returned ERROR, code %X\n", ret);
+    return 0;
+  }
 
-	return ret;
+	return 1;
 }
 
 // load arbitrary cmd sequence via software icap
@@ -530,25 +530,137 @@ int hw_icap_gsr() {
   return 0;
 }
 
-// addr points to an array in memory, size is in bytes
-int hw_icap_write_block(uint32_t far, uint32_t* addr, unsigned int size)
+uint32_t g_icap_write_frame[] = {0xFFFFFFFF,
+                                 0x000000BB,
+                                 0x11220044,
+                                 0xFFFFFFFF,
+                                 0xAA995566, // sync
+                                 0x20000000, // noop
+                                 0x20000000, // noop
+                                 0x30008001, // write to cmd
+                                 0x00000001, // WCFG
+                                 0x20000000, // noop
+                                 0x30002001, // write to far
+                                 0x00400000, // FAR
+                                 0x20000000, // noop
+                                 0x30004000, // write to FDRI
+                                 0x5000C756};// type 2 packet, nr of packets
+
+uint32_t g_icap_write_frame2[] = {0x20000000, // 82 noops, don't know how many are really needed
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x30008001, // write to cmd
+                                  0x0000000D, // DESYNC
+                                  0x20000000, // noop
+                                  0x20000000};// noop
+
+
+
+// addr points to an array in memory
+int hw_icap_write_frame(uint32_t far, uint32_t* addr, unsigned int words)
 {
-  printf("hw_icap_write_block: TODO\n");
-	int ret = 0;
-/*
-  // send address of bitfile in main memory to hwt
-	mbox_put(&mb_in[HWT_ICAP], (unsigned int)addr);
+	int ret;
 
-  // send length of bitfile (in bytes) in main memory to hwt
-	mbox_put(&mb_in[HWT_ICAP], size);
+  // set FAR and size
+  g_icap_write_frame[11] = far;
+  g_icap_write_frame[14] = words | 0x50000000;
 
-  // wait for response from hwt
-	ret = mbox_get(&mb_out[HWT_ICAP]);
-  if(ret == 0x1337)
-    printf("hwt_icap returned SUCCESS, code %X\n", ret);
-  else
-    printf("hwt_icap returned ERROR, code %X\n", ret);
+  ret = hw_icap_write(g_icap_write_frame, sizeof g_icap_write_frame);
+  if(ret == 0) {
+    printf("hw_icap_write_frame: Write to ICAP has failed\n");
+    return 0;
+  }
 
-*/
-	return ret;
+  ret = hw_icap_write(addr, words * sizeof(uint32_t));
+  if(ret == 0) {
+    printf("hw_icap_write_frame: Write to ICAP has failed\n");
+    return 0;
+  }
+
+  ret = hw_icap_write(g_icap_write_frame2, sizeof g_icap_write_frame2);
+  if(ret == 0) {
+    printf("hw_icap_write_frame: Write to ICAP has failed\n");
+    return 0;
+  }
+
+	return 1;
 }

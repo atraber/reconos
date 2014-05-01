@@ -189,8 +189,8 @@ int main(int argc, char *argv[])
 
 
   // cache partial bitstreams in memory
-  bitstream_cache(ADD, "partial_bitstreams/partial_add.bit");
-  bitstream_cache(SUB, "partial_bitstreams/partial_sub.bit");
+  bitstream_open("partial_bitstreams/partial_add.bit", &pr_bit[ADD]);
+  bitstream_open("partial_bitstreams/partial_sub.bit", &pr_bit[SUB]);
 
   // print current register values
   prblock_get(0);
@@ -312,7 +312,17 @@ int main(int argc, char *argv[])
     test_prblock(ADD);
     prblock_get(3);
 
+    reconfigure_prblock(SUB);
+    test_prblock(SUB);
+
+    // send thread exit command
+    mbox_put(&mb_in[HWT_DPR],THREAD_EXIT_CMD);
+
+    sleep(1);
     bitstream_restore(&test_bit);
+    // reset hardware thread and start new delegate
+    reconos_hwt_setresources(&hwt[HWT_DPR],res[HWT_DPR],2);
+    reconos_hwt_create(&hwt[HWT_DPR],HWT_DPR,NULL);
 
     test_prblock(ADD);
     prblock_get(3);
