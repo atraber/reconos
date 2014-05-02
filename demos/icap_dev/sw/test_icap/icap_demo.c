@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <string.h>
 #include <math.h>
+#include <argp.h>
 
 // ReconOS
 #include "reconos.h"
@@ -18,12 +19,11 @@
 
 #include "icap_demo.h"
 
+
 #define RECONF_LINUX 0
 #define RECONF_SW    1
 #define RECONF_HW    2
 #define RECONF_NULL  3
-
-unsigned int g_reconf_mode = RECONF_HW;
 
 #define MODE_WRITE      0
 #define MODE_READ       1
@@ -33,7 +33,17 @@ unsigned int g_reconf_mode = RECONF_HW;
 #define MODE_RESTORE    5
 #define MODE_TEST       6
 
-unsigned int g_mode = MODE_WRITE;
+struct cmd_arguments_t {
+  unsigned int reconf_mode;
+  unsigned int mode;
+  unsigned int max_cnt;
+  unsigned int read_far;
+  unsigned int read_words;
+};
+
+struct cmd_arguments_t g_arguments;
+
+
 
 struct reconos_resource res[NUM_SLOTS][2];
 struct reconos_hwt hwt[NUM_SLOTS];
@@ -127,7 +137,7 @@ int reconfigure_prblock(int thread_id)
 	t_start = gettime();
 	
 	// reconfigure hardware slot
-  switch(g_reconf_mode) {
+  switch(g_arguments.reconf_mode) {
     case RECONF_LINUX:
       ret = linux_icap_load(thread_id);
       break;
@@ -146,7 +156,7 @@ int reconfigure_prblock(int thread_id)
 	t_stop = gettime();
 	t_check = calc_timediff_us(t_start, t_stop);
 
-  printf("Reconfiguration done in %lu us, reseting hardware thread\n", t_check);
+  printf("Reconfiguration done in %lu us, resetting hardware thread\n", t_check);
 
 	// reset hardware thread and start new delegate
 	reconos_hwt_setresources(&hwt[HWT_DPR],res[HWT_DPR],2);
@@ -155,19 +165,116 @@ int reconfigure_prblock(int thread_id)
 	return ret;
 }
 
+/* The options we understand. */
+static struct argp_option options[] = {
+  {"hw",    2400, 0,     0,  "Use hwt_icap for reconfiguration" },
+  {"sw",    2500, 0,     0,  "Use software for reconfiguration" },
+  {"linux", 2600, 0,     0,  "Use linux for reconfiguration" },
+  {"null",  2700, 0,     0,  "Use nothing for reconfiguration (just test)" },
+  {"write", 'w',  "nr",  0,  "Write to ICAP interface and test the slot, do this <nr> times" },
+  {"add",   3000, 0,     0,  "Write ADD to ICAP interface and test the slot" },
+  {"sub",   3100, 0,     0,  "Write SUB to ICAP interface and test the slot" },
+  {"read",  'r',  "nr",  0,
+   "Read from ICAP interface and dump its output to console, read <nr> words" },
+  {"far",     'f',  "FAR", 0,  "FAR to read from, must be in hex format (0xABCD)" },
+  {"capture", 4000, 0,     0,  "Capture current state using GCAPTURE" },
+  {"restore", 4100, 0,     0,  "Restore state using GSR" },
+  {"test",    't',  0,     0,  "Playground.. can be anything here" },
+  { 0 }
+};
+
+/* Parse a single option. */
+static error_t
+parse_opt (int key, char *arg, struct argp_state *state)
+{
+  /* Get the input argument from argp_parse, which we
+     know is a pointer to our arguments structure. */
+  struct cmd_arguments_t *arguments = &g_arguments;
+
+  switch (key)
+  {
+  case 2400:
+    arguments->reconf_mode = RECONF_HW;
+    break;
+
+  case 2500:
+    arguments->reconf_mode = RECONF_SW;
+    break;
+
+  case 2600:
+    arguments->reconf_mode = RECONF_LINUX;
+    break;
+
+  case 2700:
+    arguments->reconf_mode = RECONF_NULL;
+    break;
+
+  case 'w':
+    arguments->mode = MODE_WRITE;
+    arguments->max_cnt = atoi(arg);
+    break;
+
+  case 3000:
+    arguments->mode = MODE_WRITE_ADD;
+    break;
+
+  case 3100:
+    arguments->mode = MODE_WRITE_SUB;
+    break;
+
+  case 4000:
+    arguments->mode = MODE_CAPTURE;
+    break;
+
+  case 4100:
+    arguments->mode = MODE_RESTORE;
+    break;
+
+  case 't':
+    arguments->mode = MODE_TEST;
+    break;
+
+  case 'r':
+    arguments->mode = MODE_READ;
+    arguments->read_words = atoi(arg);
+    break;
+
+  case 'f':
+    sscanf(arg, "0x%X", &arguments->read_far);
+    break;
+
+  default:
+    return ARGP_ERR_UNKNOWN;
+  }
+  return 0;
+}
+
+static struct argp argp = { options, parse_opt, "", "" };
+
 // MAIN ////////////////////////////////////////////////////////////////////
 int main(int argc, char *argv[])
 {
 	int i, ret,cnt=1;
-  int max_cnt = 10;
-  unsigned int read_far = 0x00208100;//0x00008A80;
-  unsigned int read_words = 1;
 
 	printf( "-------------------------------------------------------\n"
 		    "ICAP DEMONSTRATOR\n"
 		    "(" __FILE__ ")\n"
 		    "Compiled on " __DATE__ ", " __TIME__ ".\n"
 		    "-------------------------------------------------------\n\n" );
+
+  //----------------------------------------------------------------------------
+  // command line parsing
+  //----------------------------------------------------------------------------
+     
+  // default values
+  g_arguments.reconf_mode = RECONF_HW;
+  g_arguments.mode = MODE_WRITE;
+  g_arguments.max_cnt = 10;
+  g_arguments.read_far = 0x8A80;
+  g_arguments.read_words = 1;
+
+  argp_parse (&argp, argc, argv, 0, 0, &g_arguments);
+ 
 
 	printf("[icap] Initialize ReconOS.\n");
 	reconos_init_autodetect();
@@ -198,50 +305,8 @@ int main(int argc, char *argv[])
   prblock_get(2);
   prblock_get(3);
 
-  // parse command line arguments
-  for(i = 1; i < argc; i++) {
-    if(strcmp(argv[i], "--sw") == 0)
-      g_reconf_mode = RECONF_SW;
-    else if(strcmp(argv[i], "--hw") == 0)
-      g_reconf_mode = RECONF_HW;
-    else if(strcmp(argv[i], "--linux") == 0)
-      g_reconf_mode = RECONF_LINUX;
-    else if(strcmp(argv[i], "--null") == 0)
-      g_reconf_mode = RECONF_NULL;
-    else if(strcmp(argv[i], "-n") == 0) {
-      if(i + 1 < argc) {
-        max_cnt = atoi(argv[i + 1]);
-        i++; // skip one as we handle it already here
-      }
-    } else if(strcmp(argv[i], "-r") == 0) {
-      g_mode = MODE_READ;
-
-      if(i + 1 < argc) {
-        read_words = atoi(argv[i + 1]);
-        i++; // skip one as we handle it already here
-      }
-    } else if(strcmp(argv[i], "-f") == 0) {
-      g_mode = MODE_READ;
-
-      if(i + 1 < argc) {
-        sscanf(argv[i + 1], "0x%X", &read_far);
-        i++; // skip one as we handle it already here
-      }
-    } else if(strcmp(argv[i], "--add") == 0) {
-      g_mode = MODE_WRITE_ADD;
-    } else if(strcmp(argv[i], "--sub") == 0) {
-      g_mode = MODE_WRITE_SUB;
-    } else if(strcmp(argv[i], "--capture") == 0) {
-      g_mode = MODE_CAPTURE;
-    } else if(strcmp(argv[i], "--restore") == 0) {
-      g_mode = MODE_RESTORE;
-    } else if(strcmp(argv[i], "--test") == 0) {
-      g_mode = MODE_TEST;
-    }
-  }
-
   // what configuration mode are we using?
-  switch(g_reconf_mode) {
+  switch(g_arguments.reconf_mode) {
     case RECONF_LINUX:
       printf("Using linux reconfiguration mode\n");
       break;
@@ -256,45 +321,40 @@ int main(int argc, char *argv[])
       break;
   }
 
-  if(g_mode == MODE_WRITE) {
+  if(g_arguments.mode == MODE_WRITE) {
     while(1) {
       // reconfigure partial hw slot and check thread
       printf("[icap] Test no. %03d\n",cnt);
 
-      ret = reconfigure_prblock(ADD);
-      ret = test_prblock(ADD);
+      reconfigure_prblock(ADD);
+      test_prblock(ADD);
 
-      if (ret) printf("  # ADD: passed\n"); else printf("  # ADD: failed\n");
 
-      ret = reconfigure_prblock(SUB);
-      ret = test_prblock(SUB);
-
-      if (ret) printf("  # SUB: passed\n"); else printf("  # SUB: failed\n");
+      reconfigure_prblock(SUB);
+      test_prblock(SUB);
 
 
       // stop after n reconfigurations
-      if(cnt == max_cnt)
+      if(cnt == g_arguments.max_cnt)
         break;
 
       sleep(1); 
       cnt++;
     }
-  } else if(g_mode == MODE_WRITE_ADD) {
+  } else if(g_arguments.mode == MODE_WRITE_ADD) {
     ret = reconfigure_prblock(ADD);
     ret = test_prblock(ADD);
 
-    if (ret) printf("  # ADD: passed\n"); else printf("  # ADD: failed\n");
-  } else if(g_mode == MODE_WRITE_SUB) {
+  } else if(g_arguments.mode == MODE_WRITE_SUB) {
     ret = reconfigure_prblock(SUB);
     ret = test_prblock(SUB);
 
-    if (ret) printf("  # SUB: passed\n"); else printf("  # SUB: failed\n");
-  } else if(g_mode == MODE_CAPTURE) {
+  } else if(g_arguments.mode == MODE_CAPTURE) {
     printf("Performing gcapture\n");
     hw_icap_gcapture();
-  } else if(g_mode == MODE_RESTORE) {
+  } else if(g_arguments.mode == MODE_RESTORE) {
     hw_icap_gsr();
-  } else if(g_mode == MODE_TEST) {
+  } else if(g_arguments.mode == MODE_TEST) {
     reconfigure_prblock(ADD);
     test_prblock(ADD);
     prblock_get(3);
@@ -327,10 +387,20 @@ int main(int argc, char *argv[])
     test_prblock(ADD);
     prblock_get(3);
   } else {
-    printf("Readback mode, reading %d words from 0x%08X\n", read_words, read_far);
-    hw_icap_read(read_far, read_words, NULL);
+    printf("Readback mode, reading %d words from 0x%08X\n", g_arguments.read_words, g_arguments.read_far);
 
-    //hw_icap_read_reg(0x9);
+    uint32_t* mem = (uint32_t*) malloc(g_arguments.read_words * sizeof(uint32_t));
+    if(mem == NULL) {
+      printf("Could not allocate memory\n");
+      return EXIT_FAILURE;
+    }
+
+    hw_icap_read(g_arguments.read_far, g_arguments.read_words, mem);
+
+    unsigned int i;
+    for(i = 0; i < g_arguments.read_words; i++) {
+      printf("%08X\n", mem[i]);
+    }
   }
 
 	return 0;

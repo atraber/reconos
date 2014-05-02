@@ -262,6 +262,7 @@ uint32_t g_icap_read_cmd2[] = {0x20000000, // noop
 // size must be in words
 int hw_icap_read(uint32_t far, uint32_t size, uint32_t* dst)
 {
+  int ret;
   // account for the padframe and dummy words
   size = size + 82;
 
@@ -269,8 +270,11 @@ int hw_icap_read(uint32_t far, uint32_t size, uint32_t* dst)
   g_icap_read_cmd[23] = (size) | 0x48000000;
 
 
-  printf("Writing to ICAP\n");
-  hw_icap_write(g_icap_read_cmd, sizeof g_icap_read_cmd);
+  ret = hw_icap_write(g_icap_read_cmd, sizeof g_icap_read_cmd);
+  if(ret == 0) {
+    printf("hw_icap_read: Writing first command sequence to ICAP has failed\n");
+    return 0;
+  }
 
   // read
   uint32_t* mem = (uint32_t*)malloc(size * sizeof(uint32_t));
@@ -285,25 +289,20 @@ int hw_icap_read(uint32_t far, uint32_t size, uint32_t* dst)
   // we need to flush the cache here as otherwise we get a part of old data and a part of new data
   reconos_cache_flush();
 
-  printf("Reading %lu bytes from ICAP to address %X\n", size * sizeof(uint32_t), (unsigned int)mem);
   hw_icap_write(mem, (size * sizeof(uint32_t)) | 0x00000001);
 
-  printf("Finishing ICAP\n");
-  hw_icap_write(g_icap_read_cmd2, sizeof g_icap_read_cmd2);
-
-  if(dst == NULL) {
-    unsigned int i;
-    // the first 82 words are rubish, because they are from the pad frame and a dummy word
-    for(i = 82; i < size; i++) {
-      printf("%08X\n", mem[i]);
-    }
-  } else {
-    memcpy(dst, mem + 82, (size-82) * 4);
+  ret = hw_icap_write(g_icap_read_cmd2, sizeof g_icap_read_cmd2);
+  if(ret == 0) {
+    printf("hw_icap_read: Writing first command sequence to ICAP has failed\n");
+    return 0;
   }
+
+  // the first 82 words are rubish, because they are from the pad frame and a dummy word
+  memcpy(dst, mem + 82, (size-82) * 4);
 
   free(mem);
 
-  return 0;
+  return 1;
 }
 
 uint32_t g_icap_read_reg[] = {0xFFFFFFFF,
@@ -536,6 +535,11 @@ uint32_t g_icap_write_frame[] = {0xFFFFFFFF,
                                  0xFFFFFFFF,
                                  0xAA995566, // sync
                                  0x20000000, // noop
+                                 0x30008001, // write to cmd
+                                 0x00000007, // RCRC
+                                 0x20000000, // noop
+                                 0x20000000, // noop
+                                 0x20000000, // noop
                                  0x20000000, // noop
                                  0x30008001, // write to cmd
                                  0x00000001, // WCFG
@@ -546,7 +550,25 @@ uint32_t g_icap_write_frame[] = {0xFFFFFFFF,
                                  0x30004000, // write to FDRI
                                  0x5000C756};// type 2 packet, nr of packets
 
-uint32_t g_icap_write_frame2[] = {0x20000000, // 82 noops, don't know how many are really needed
+uint32_t g_icap_write_frame2[] = {0x20000000, // 100 noops, don't know how many are really needed
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
+                                  0x20000000, // noop
                                   0x20000000, // noop
                                   0x20000000, // noop
                                   0x20000000, // noop
@@ -646,19 +668,19 @@ int hw_icap_write_frame(uint32_t far, uint32_t* addr, unsigned int words)
 
   ret = hw_icap_write(g_icap_write_frame, sizeof g_icap_write_frame);
   if(ret == 0) {
-    printf("hw_icap_write_frame: Write to ICAP has failed\n");
+    printf("hw_icap_write_frame: Write to ICAP has failed on first command sequence\n");
     return 0;
   }
 
   ret = hw_icap_write(addr, words * sizeof(uint32_t));
   if(ret == 0) {
-    printf("hw_icap_write_frame: Write to ICAP has failed\n");
+    printf("hw_icap_write_frame: Write to ICAP has failed on actual frame\n");
     return 0;
   }
 
   ret = hw_icap_write(g_icap_write_frame2, sizeof g_icap_write_frame2);
   if(ret == 0) {
-    printf("hw_icap_write_frame: Write to ICAP has failed\n");
+    printf("hw_icap_write_frame: Write to ICAP has failed on second command sequence\n");
     return 0;
   }
 
