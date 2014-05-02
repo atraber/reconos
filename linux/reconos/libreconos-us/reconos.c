@@ -22,24 +22,24 @@
 
 static struct reconos_process reconos_proc;
 
-static void reconos_slot_reset(int num, int reset)
+void reconos_slot_reset(int num, int reset)
 {
-	int i;
-	uint32_t cmd, mask = 0;
-	
-	if (reset)
-		reconos_proc.slot_flags[num] |= SLOT_FLAG_RESET;
-	else
-		reconos_proc.slot_flags[num] &= ~SLOT_FLAG_RESET;
-	
-	for (i = SLOTS_MAX - 1; i >= 0; i--) {
-		mask = mask << 1;
-		if ((reconos_proc.slot_flags[i] & SLOT_FLAG_RESET))
-			mask = mask | 1;
-	}
+  int i;
+  uint32_t cmd, mask = 0;
 
-	cmd = mask | 0x01000000;
-	fsl_write(reconos_proc.proc_control_fsl_b, cmd);
+  if (reset)
+    reconos_proc.slot_flags[num] |= SLOT_FLAG_RESET;
+    else
+      reconos_proc.slot_flags[num] &= ~SLOT_FLAG_RESET;
+
+      for (i = SLOTS_MAX - 1; i >= 0; i--) {
+        mask = mask << 1;
+        if ((reconos_proc.slot_flags[i] & SLOT_FLAG_RESET))
+          mask = mask | 1;
+      }
+
+      cmd = mask | 0x01000000;
+      fsl_write(reconos_proc.proc_control_fsl_b, cmd);
 }
 
 static uint32_t reconos_getpgd(void)
@@ -203,29 +203,33 @@ static inline void reconos_assert_type_and_res(struct reconos_hwt *hwt,
 
 static void reconos_delegate_process_mbox_get(struct reconos_hwt *hwt)
 {
-	uint32_t handle = fsl_read(hwt->slot);
+  uint32_t handle = fsl_read(hwt->slot);
+  uint32_t ret = 0; // try
 
-	reconos_assert_type_and_res(hwt, handle, RECONOS_TYPE_MBOX);
+  reconos_assert_type_and_res(hwt, handle, RECONOS_TYPE_MBOX);
 
-	fsl_write(hwt->slot, mbox_get(hwt->resources[handle].ptr));
+  ret = mbox_get(hwt->resources[handle].ptr); // try
+  if (ret!=0xFFFFFFFF) fsl_write(hwt->slot, ret); // try
+
+    //fsl_write(hwt->slot, mbox_get(hwt->resources[handle].ptr));
 }
 
 static void reconos_delegate_process_mbox_put(struct reconos_hwt *hwt)
 {
-	//uint32_t handle = fsl_read(hwt->slot);
-	//uint32_t arg0 = fsl_read(hwt->slot);
+  //uint32_t handle = fsl_read(hwt->slot);
+  //uint32_t arg0 = fsl_read(hwt->slot);
 
-	struct {
-		uint32_t handle;
-		uint32_t arg0;
-	} params;
+  struct {
+    uint32_t handle;
+    uint32_t arg0;
+  } params;
 
-	fsl_read_block(hwt->slot, &params, 2*sizeof(uint32_t));
+  fsl_read_block(hwt->slot, &params, 2*sizeof(uint32_t));
 
-	reconos_assert_type_and_res(hwt, params.handle, RECONOS_TYPE_MBOX);
+  reconos_assert_type_and_res(hwt, params.handle, RECONOS_TYPE_MBOX);
 
-	mbox_put(hwt->resources[params.handle].ptr, params.arg0);
-	fsl_write(hwt->slot, 0);
+  mbox_put(hwt->resources[params.handle].ptr, params.arg0);
+  fsl_write(hwt->slot, 0);
 }
 
 static void reconos_delegate_process_sem_wait(struct reconos_hwt *hwt)

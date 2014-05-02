@@ -129,7 +129,9 @@ int reconfigure_prblock(int thread_id)
 	// send thread exit command
 	mbox_put(&mb_in[HWT_DPR],THREAD_EXIT_CMD);
 
-  sleep(1);
+  usleep(100);
+
+  reconos_slot_reset(HWT_DPR, 1);
 
   printf("Starting reconfiguration\n");
   fflush(stdout);
@@ -158,9 +160,8 @@ int reconfigure_prblock(int thread_id)
 
   printf("Reconfiguration done in %lu us, resetting hardware thread\n", t_check);
 
-	// reset hardware thread and start new delegate
-	reconos_hwt_setresources(&hwt[HWT_DPR],res[HWT_DPR],2);
-	reconos_hwt_create(&hwt[HWT_DPR],HWT_DPR,NULL);
+	// reset hardware thread
+  reconos_slot_reset(HWT_DPR,0);
 
 	return ret;
 }
@@ -380,6 +381,8 @@ int main(int argc, char *argv[])
 
     // send thread exit command
     mbox_put(&mb_in[HWT_DPR],THREAD_EXIT_CMD);
+    usleep(100);
+    reconos_slot_reset(HWT_DPR, 1);
 
     sleep(1);
     printf("Performing restore now...\n");
@@ -390,9 +393,8 @@ int main(int argc, char *argv[])
     printf("Restore done\n");
     fflush(stdout);
 
-    // reset hardware thread and start new delegate
-    reconos_hwt_setresources(&hwt[HWT_DPR],res[HWT_DPR],2);
-    reconos_hwt_create(&hwt[HWT_DPR],HWT_DPR,NULL);
+    // reset hardware thread
+    reconos_slot_reset(HWT_DPR,0);
 
     test_prblock(ADD);
     prblock_get(3);
