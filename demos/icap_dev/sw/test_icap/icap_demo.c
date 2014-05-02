@@ -366,6 +366,9 @@ int main(int argc, char *argv[])
 
     bitstream_capture(&pr_bit[ADD], &test_bit);
 
+    printf("Capturing current state completed\n");
+    fflush(stdout);
+
     //bitstream_save("partial_bitstreams/test.bit", &test_bit);
 
     prblock_set(3, 0x00DD0000);
@@ -379,7 +382,14 @@ int main(int argc, char *argv[])
     mbox_put(&mb_in[HWT_DPR],THREAD_EXIT_CMD);
 
     sleep(1);
+    printf("Performing restore now...\n");
+    fflush(stdout);
+
     bitstream_restore(&test_bit);
+
+    printf("Restore done\n");
+    fflush(stdout);
+
     // reset hardware thread and start new delegate
     reconos_hwt_setresources(&hwt[HWT_DPR],res[HWT_DPR],2);
     reconos_hwt_create(&hwt[HWT_DPR],HWT_DPR,NULL);

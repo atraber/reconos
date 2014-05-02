@@ -226,9 +226,13 @@ int bitstream_capture(struct pr_bitstream_t* stream_in, struct pr_bitstream_t* s
   }
 
   // DEBUG CODE
+  printf("The following frames have been found in the bitstream:\n");
   for(i = 0; i < numFrames; i++) {
     printf("FAR: %X, Size: %d, Offset: %d\n", arrFrames[i].far, arrFrames[i].words, arrFrames[i].offset);
   }
+
+
+  fflush(stdout);
 
   //----------------------------------------------------------------------------
   // write CFG_CLB to FPGA
@@ -252,9 +256,13 @@ int bitstream_capture(struct pr_bitstream_t* stream_in, struct pr_bitstream_t* s
   // readback of data
   //----------------------------------------------------------------------------
 
-  // TODO: remove -1
   // the first frame is ignored as this is the CFG_CLB frame which we have just wrote to the FPGA
-  for(i = 1; i < numFrames-1; i++) {
+  for(i = 1; i < numFrames; i++) {
+    if((arrFrames[i].far & 0xFFE00000) == 0x00200000) {
+      printf("FAR %08X points to RAM region, skipping it as we cannot handle it reliably\n", arrFrames[i].far);
+      continue;
+    }
+
     hw_icap_read(arrFrames[i].far, arrFrames[i].words, stream_out->block + arrFrames[i].offset);
   }
 
@@ -293,7 +301,7 @@ int bitstream_restore(struct pr_bitstream_t* stream)
 {
   hw_icap_write(stream->block, stream->length * 4);
 
-  hw_icap_gsr();
+  hw_icap_grestore();
 
   return 1;
 }

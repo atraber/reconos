@@ -371,30 +371,11 @@ uint32_t g_icap_gcapture[] = {0xFFFFFFFF,
                               0x20000000};// noop
 
 int hw_icap_gcapture() {
-  printf("Performing gcapture\n");
   hw_icap_write(g_icap_gcapture, sizeof g_icap_gcapture);
 
   return 0;
 }
 
-// uint32_t g_icap_grestore[] = {0xFFFFFFFF,
-//                               0x000000BB,
-//                               0x11220044,
-//                               0xFFFFFFFF,
-//                               0xAA995566, // sync
-//                               0x20000000, // noop
-//                               0x20000000, // noop
-//                               0x30008001, // write to cmd
-//                               0x0000000A, // grestore
-//                               0x20000000, // noop
-//                               0x30002001, // write to FAR
-//                               0x00000000, // FAR address
-//                               0x20000000, // noop
-//                               0x20000000, // noop
-//                               0x30008001, // write to cmd
-//                               0x0000000D, // DESYNC
-//                               0x20000000, // noop
-//                               0x20000000};// noop
 uint32_t g_icap_grestore[] = {0xFFFFFFFF,
                               0x000000BB,
                               0x11220044,
@@ -516,14 +497,26 @@ uint32_t g_icap_grestore[] = {0xFFFFFFFF,
 
 
 int hw_icap_grestore() {
-  printf("Writing to ICAP\n");
-  hw_icap_write(g_icap_grestore, sizeof g_icap_grestore);
+  int ret;
+  
+  ret = hw_icap_write(g_icap_grestore, 32 * 4);
+  if(ret == 0) {
+    printf("Writing first restore sequence failed\n");
+  }
+
+  // GRESTORE does not work for some unknown reason, but GSR on STARTUP_VIRTEX6 does,
+  // so we are using GSR instead
+  hw_icap_gsr();
+
+  ret = hw_icap_write(g_icap_grestore, sizeof(g_icap_grestore) - 32 * 4);
+  if(ret == 0) {
+    printf("Writing second restore sequence failed\n");
+  }
 
   return 0;
 }
 
 int hw_icap_gsr() {
-  printf("Performing GSR\n");
   hw_icap_write(0x0, 0x2);
 
   return 0;
