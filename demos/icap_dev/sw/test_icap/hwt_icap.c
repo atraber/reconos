@@ -264,10 +264,10 @@ int hw_icap_read(uint32_t far, uint32_t size, uint32_t* dst)
 {
   int ret;
   // account for the padframe and dummy words
-  size = size + 82;
+  uint32_t real_size = size + 82;
 
   g_icap_read_cmd[21] = far;
-  g_icap_read_cmd[23] = (size) | 0x48000000;
+  g_icap_read_cmd[23] = (real_size) | 0x48000000;
 
 
   ret = hw_icap_write(g_icap_read_cmd, sizeof g_icap_read_cmd);
@@ -277,19 +277,19 @@ int hw_icap_read(uint32_t far, uint32_t size, uint32_t* dst)
   }
 
   // read
-  uint32_t* mem = (uint32_t*)malloc(size * sizeof(uint32_t));
+  uint32_t* mem = (uint32_t*)malloc(real_size * sizeof(uint32_t));
   if(mem == NULL) {
     printf("Could not allocate buffer\n");
     return 1;
   }
 
-  memset(mem, 0xAB, size * sizeof(uint32_t));
+  memset(mem, 0xAB, real_size * sizeof(uint32_t));
 
   // AAARGH FUU ZOMFG RAGE!!!!
   // we need to flush the cache here as otherwise we get a part of old data and a part of new data
   reconos_cache_flush();
 
-  hw_icap_write(mem, (size * sizeof(uint32_t)) | 0x00000001);
+  hw_icap_write(mem, (real_size * sizeof(uint32_t)) | 0x00000001);
 
   ret = hw_icap_write(g_icap_read_cmd2, sizeof g_icap_read_cmd2);
   if(ret == 0) {
@@ -298,7 +298,7 @@ int hw_icap_read(uint32_t far, uint32_t size, uint32_t* dst)
   }
 
   // the first 82 words are rubish, because they are from the pad frame and a dummy word
-  memcpy(dst, mem + 82, (size-82) * 4);
+  memcpy(dst, mem + 82, (size) * 4);
 
   free(mem);
 

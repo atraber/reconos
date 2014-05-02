@@ -407,10 +407,32 @@ int main(int argc, char *argv[])
 
     hw_icap_read(g_arguments.read_far, g_arguments.read_words, mem);
 
+
+    unsigned int block_size = 300;
+    uint32_t* cmp_mem = (uint32_t*)malloc(block_size * sizeof(uint32_t));
+
+    for(i = 0; i*81 + block_size < g_arguments.read_words; i++ ) {
+      hw_icap_read(g_arguments.read_far + i, block_size, cmp_mem);
+
+      printf("FAR is %08X, run %d\n", g_arguments.read_far + i, i);
+
+      unsigned int k;
+      if(i == 35) {
+        for(k = 0;k < block_size; k++)
+          printf("FAR %08X, Word %8d, %08X, %08X\n", g_arguments.read_far + i, k, cmp_mem[k], mem[i * 81 + k]);
+      }
+      for(k = 0; k < block_size; k++) {
+        if(mem[k + i*81] != cmp_mem[k]) {
+          printf("Failed at far %08X, word %d\nExpected %08X, is %08X\nWord: %d\n", g_arguments.read_far + i, k, mem[k + i * 81], cmp_mem[k], k + i*81);
+        }
+      }
+    }
+
     unsigned int i;
     for(i = 0; i < g_arguments.read_words; i++) {
       printf("%08X\n", mem[i]);
     }
+
   }
 
 	return 0;
