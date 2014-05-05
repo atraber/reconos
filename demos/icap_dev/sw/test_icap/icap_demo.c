@@ -297,8 +297,8 @@ int main(int argc, char *argv[])
 
 
   // cache partial bitstreams in memory
-  bitstream_open("partial_bitstreams/partial_add.bit", &pr_bit[ADD]);
-  bitstream_open("partial_bitstreams/partial_sub.bit", &pr_bit[SUB]);
+  bitstream_open("partial_bitstreams/partial_add.bin", &pr_bit[ADD]);
+  bitstream_open("partial_bitstreams/partial_sub.bin", &pr_bit[SUB]);
 
   // print current register values
   prblock_get(0);
