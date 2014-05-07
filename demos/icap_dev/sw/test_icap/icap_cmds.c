@@ -16,7 +16,6 @@
 
 #include "icap_demo.h"
 
-
 // load arbitrary cmd sequence via hardware icap thread
 // size must be in bytes
 int hw_icap_write(uint32_t* addr, unsigned int size)
@@ -39,26 +38,48 @@ int hw_icap_write(uint32_t* addr, unsigned int size)
 	return 1;
 }
 
+// size must be in bytes
+int hw_icap_read(uint32_t* addr, unsigned int size)
+{
+	int ret;
+
+  // send address of bitfile in main memory to hwt
+	mbox_put(&mb_in[HWT_ICAP], (unsigned int)addr);
+
+  // send length of bitfile (in bytes) in main memory to hwt
+	mbox_put(&mb_in[HWT_ICAP], size | 0x00000001);
+
+  // wait for response from hwt
+	ret = mbox_get(&mb_out[HWT_ICAP]);
+  if(ret != 0x1337) {
+    printf("hwt_icap returned ERROR, code %X\n", ret);
+    return 0;
+  }
+
+	return 1;
+}
+
 // load arbitrary cmd sequence via software icap
+// size must be in bytes
 int sw_icap_write(uint32_t* addr, unsigned int size)
 {
-  int retval = 1;
+  int retval = 0;
 
   FILE* fp = fopen("/dev/icap0", "w");
   if(fp == NULL) {
-    printf("Could not open icap\n");
+    printf("sw_icap_write: Could not open icap\n");
 
-    retval = 0;
     goto FAIL;
   }
 
   // write whole file in one command
   if( fwrite(addr, sizeof(uint32_t), size/4, fp) != (size / 4)) {
-    printf("Something went wrong while writing to ICAP\n");
+    printf("sw_icap_write: Something went wrong while writing to ICAP\n");
 
-    retval = 0;
     goto FAIL;
   }
+
+  retval = 1;
 
 FAIL:
   if(fp != NULL)
@@ -67,6 +88,32 @@ FAIL:
   return retval;
 }
 
+// size must be in bytes
+int sw_icap_read(uint32_t* addr, unsigned int size)
+{
+  int retval = 0;
+
+  FILE* fp = fopen("/dev/icap0", "r");
+  if(fp == NULL) {
+    printf("sw_icap_read: Could not open icap\n");
+
+    goto FAIL;
+  }
+  int ret = fread(addr, sizeof(uint32_t), size/4, fp);
+  if( ret != (size / 4)) {
+    printf("sw_icap_read: Something went wrong while reading from ICAP, read only %d words instead of %d\n", ret, size/4);
+
+    goto FAIL;
+  }
+
+  retval = 1;
+
+FAIL:
+  if(fp != NULL)
+    fclose(fp);
+
+  return retval;
+}
 
 
 // untested
@@ -122,6 +169,8 @@ uint32_t g_icap_switch_top[] = {0xFFFFFFFF,
 
 // switches to bottom icap using hwt_icap
 void icap_switch_bot() {
+  // has to be done two times, don't know why?
+  hw_icap_write(g_icap_switch_bot, sizeof g_icap_switch_bot);
   hw_icap_write(g_icap_switch_bot, sizeof g_icap_switch_bot);
 }
 
@@ -138,53 +187,38 @@ void hwt_icap_clear_crc() {
 
 // loads bitstream into ICAP
 // Returns 1 if successfull, 0 otherwise
-int sw_icap_load(int thread_id)
+int sw_icap_load(int slot, int thread_id)
 {
-  int retval = 0;
+  if( sw_icap_write(pr_bit[slot][thread_id].block, pr_bit[slot][thread_id].length * 4) == 0) {
+    printf("Could not write to ICAP using XPS_HWICAP controller\n");
 
-  FILE* fp = fopen("/dev/icap0", "w");
-  if(fp == NULL) {
-    printf("Could not open icap\n");
-
-    goto FAIL;
+    return 0;
   }
 
-  // write whole file in one command
-  if( fwrite(pr_bit[thread_id].block, sizeof(uint32_t), pr_bit[thread_id].length, fp) != pr_bit[thread_id].length) {
-    printf("Something went wrong while writing to ICAP\n");
-
-    goto FAIL;
-  }
-
-  retval = 1;
-
-FAIL:
-  fclose(fp);
-
-  return retval;
+  return 1;
 }
 
 // load partial bitfile via hardware icap thread
-int hw_icap_load(int thread_id)
+int hw_icap_load(int slot, int thread_id)
 {
 	int ret;
 
-  uint32_t* addr = pr_bit[thread_id].block;
-  unsigned int size = (unsigned int)pr_bit[thread_id].length * 4;
+  uint32_t* addr = pr_bit[slot][thread_id].block;
+  unsigned int size = (unsigned int)pr_bit[slot][thread_id].length * 4;
 
   ret = hw_icap_write(addr, size);
 
 	return ret;
 }
 
-int linux_icap_load(int thread_id)
+int linux_icap_load(int slot, int thread_id)
 {
   int ret = -2;
 
   if(thread_id == ADD)
-    ret = system("cat partial_bitstreams/partial_add.bit > /dev/icap0");
+    ret = system("cat partial_bitstreams/partial_add.bin > /dev/icap0");
   else if(thread_id == SUB)
-    ret = system("cat partial_bitstreams/partial_sub.bit > /dev/icap0");
+    ret = system("cat partial_bitstreams/partial_sub.bin > /dev/icap0");
 
   return ret;
 }
@@ -260,7 +294,7 @@ uint32_t g_icap_read_cmd2[] = {0x20000000, // noop
                                0x20000000};// noop
 
 // size must be in words
-int hw_icap_read(uint32_t far, uint32_t size, uint32_t* dst)
+int hw_icap_read_frame(uint32_t far, uint32_t size, uint32_t* dst)
 {
   int ret;
   // account for the padframe and dummy words
@@ -272,7 +306,7 @@ int hw_icap_read(uint32_t far, uint32_t size, uint32_t* dst)
 
   ret = hw_icap_write(g_icap_read_cmd, sizeof g_icap_read_cmd);
   if(ret == 0) {
-    printf("hw_icap_read: Writing first command sequence to ICAP has failed\n");
+    printf("hw_icap_read_frame: Writing first command sequence to ICAP has failed\n");
     return 0;
   }
 
@@ -280,7 +314,7 @@ int hw_icap_read(uint32_t far, uint32_t size, uint32_t* dst)
   uint32_t* mem = (uint32_t*)malloc(real_size * sizeof(uint32_t));
   if(mem == NULL) {
     printf("Could not allocate buffer\n");
-    return 1;
+    return 0;
   }
 
   memset(mem, 0xAB, real_size * sizeof(uint32_t));
@@ -289,11 +323,15 @@ int hw_icap_read(uint32_t far, uint32_t size, uint32_t* dst)
   // we need to flush the cache here as otherwise we get a part of old data and a part of new data
   reconos_cache_flush();
 
-  hw_icap_write(mem, (real_size * sizeof(uint32_t)) | 0x00000001);
+  ret = hw_icap_read(mem, real_size * sizeof(uint32_t));
+  if(ret == 0) {
+    printf("hw_icap_read_frame: Reading from ICAP has failed\n");
+    return 0;
+  }
 
   ret = hw_icap_write(g_icap_read_cmd2, sizeof g_icap_read_cmd2);
   if(ret == 0) {
-    printf("hw_icap_read: Writing first command sequence to ICAP has failed\n");
+    printf("hw_icap_read_frame: Writing first command sequence to ICAP has failed\n");
     return 0;
   }
 
@@ -301,6 +339,90 @@ int hw_icap_read(uint32_t far, uint32_t size, uint32_t* dst)
   memcpy(dst, mem + 82, (size) * 4);
 
   free(mem);
+
+  return 1;
+}
+
+// size must be in words
+int sw_icap_read_frame(uint32_t far, uint32_t size, uint32_t* dst)
+{
+  int retval = 0;
+  int ret;
+  uint32_t* mem = NULL;
+
+  // account for the padframe and dummy words
+  uint32_t real_size = size + 82;
+
+  g_icap_read_cmd[21] = far;
+  g_icap_read_cmd[23] = (real_size + real_size / 1024 + 3) | 0x48000000;
+
+
+  // open ICAP interface
+  int fd = open("/dev/icap0", O_RDWR);
+  if(fd == -1) {
+    printf("sw_icap_read_frame: Could not open icap\n");
+
+    goto FAIL;
+  }
+
+  // write whole file in one command
+  uint32_t* addr = g_icap_read_cmd;
+  size_t words = sizeof(g_icap_read_cmd) / 4; 
+  if( write(fd, addr, words * 4) != words * 4) {
+    printf("sw_icap_read_frame: Writing first command sequence to ICAP has failed\n");
+
+    goto FAIL;
+  }
+
+  // read
+  mem = (uint32_t*)malloc(real_size * sizeof(uint32_t));
+  if(mem == NULL) {
+    printf("sw_icap_read_frame: Could not allocate buffer\n");
+
+    goto FAIL;
+  }
+
+  memset(mem, 0xAB, real_size * sizeof(uint32_t));
+
+  // AAARGH FUU ZOMFG RAGE!!!!
+  // we need to flush the cache here as otherwise we get a part of old data and a part of new data
+  // TODO: not needed for sw driver?
+  reconos_cache_flush();
+
+  size_t words_read = 0;
+  while(words_read < real_size) {
+    printf("sw_icap_read_frame: read(fd, mem + words_read, 4 * (%d - %d)\n", real_size, (int)words_read);
+    ret = read(fd, mem + words_read, 4 * (real_size - words_read));
+
+    if(ret == -1) {
+      printf("sw_icap_read_frame: Reading from ICAP has failed after %d words\n", (int)words_read);
+      break;
+    }
+
+    printf("sw_icap_read_frame: we have read %d bytes\n", ret);
+
+    words_read += ret/4;
+  }
+
+  addr = g_icap_read_cmd2;
+  words = sizeof(g_icap_read_cmd2) / 4; 
+  if( write(fd, addr, 4 * words) != words * 4) {
+    printf("sw_icap_read_frame: Writing second command sequence to ICAP has failed\n");
+
+    goto FAIL;
+  }
+
+  // the first 82 words are rubish, because they are from the pad frame and a dummy word
+  memcpy(dst, mem + 82, (size) * 4);
+
+  retval = 1;
+
+FAIL:
+  if(fd != -1)
+    close(fd);
+
+  if(mem != NULL)
+    free(mem);
 
   return 1;
 }
@@ -371,9 +493,11 @@ uint32_t g_icap_gcapture[] = {0xFFFFFFFF,
                               0x20000000};// noop
 
 int hw_icap_gcapture() {
-  hw_icap_write(g_icap_gcapture, sizeof g_icap_gcapture);
+  return hw_icap_write(g_icap_gcapture, sizeof g_icap_gcapture);
+}
 
-  return 0;
+int sw_icap_gcapture() {
+  return sw_icap_write(g_icap_gcapture, sizeof g_icap_gcapture);
 }
 
 uint32_t g_icap_grestore[] = {0xFFFFFFFF,
@@ -513,7 +637,27 @@ int hw_icap_grestore() {
     printf("Writing second restore sequence failed\n");
   }
 
-  return 0;
+  return 1;
+}
+
+int sw_icap_grestore() {
+  int ret;
+  
+  ret = sw_icap_write(g_icap_grestore, 32 * 4);
+  if(ret == 0) {
+    printf("Writing first restore sequence failed\n");
+  }
+
+  // GRESTORE does not work for some unknown reason, but GSR on STARTUP_VIRTEX6 does,
+  // so we are using GSR instead
+  hw_icap_gsr();
+
+  ret = sw_icap_write(g_icap_grestore, sizeof(g_icap_grestore) - 32 * 4);
+  if(ret == 0) {
+    printf("Writing second restore sequence failed\n");
+  }
+
+  return 1;
 }
 
 int hw_icap_gsr() {
@@ -679,3 +823,34 @@ int hw_icap_write_frame(uint32_t far, uint32_t* addr, unsigned int words)
 
 	return 1;
 }
+
+// addr points to an array in memory
+int sw_icap_write_frame(uint32_t far, uint32_t* addr, unsigned int words)
+{
+	int ret;
+
+  // set FAR and size
+  g_icap_write_frame[11] = far;
+  g_icap_write_frame[14] = words | 0x50000000;
+
+  ret = sw_icap_write(g_icap_write_frame, sizeof g_icap_write_frame);
+  if(ret == 0) {
+    printf("sw_icap_write_frame: Write to ICAP has failed on first command sequence\n");
+    return 0;
+  }
+
+  ret = sw_icap_write(addr, words * sizeof(uint32_t));
+  if(ret == 0) {
+    printf("sw_icap_write_frame: Write to ICAP has failed on actual frame\n");
+    return 0;
+  }
+
+  ret = sw_icap_write(g_icap_write_frame2, sizeof g_icap_write_frame2);
+  if(ret == 0) {
+    printf("sw_icap_write_frame: Write to ICAP has failed on second command sequence\n");
+    return 0;
+  }
+
+	return 1;
+}
+

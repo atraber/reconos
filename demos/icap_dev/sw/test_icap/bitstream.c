@@ -18,7 +18,6 @@
 
 #include "icap_demo.h"
 
-struct pr_bitstream_t pr_bit[2];
 
 // preload bitstream and save it in memory
 // Returns 1 if successfull, 0 otherwise
@@ -244,13 +243,13 @@ int bitstream_capture(struct pr_bitstream_t* stream_in, struct pr_bitstream_t* s
     return 0;
   }
 
-  hw_icap_write_frame(arrFrames[0].far, stream_out->block + arrFrames[0].offset, arrFrames[0].words);
+  icap_write_frame(arrFrames[0].far, stream_out->block + arrFrames[0].offset, arrFrames[0].words);
 
   //----------------------------------------------------------------------------
   // do gcapture
   //----------------------------------------------------------------------------
 
-  hw_icap_gcapture();
+  icap_gcapture();
 
   //----------------------------------------------------------------------------
   // readback of data
@@ -263,7 +262,7 @@ int bitstream_capture(struct pr_bitstream_t* stream_in, struct pr_bitstream_t* s
       continue;
     }
 
-    hw_icap_read(arrFrames[i].far, arrFrames[i].words, stream_out->block + arrFrames[i].offset);
+    icap_read_frame(arrFrames[i].far, arrFrames[i].words, stream_out->block + arrFrames[i].offset);
   }
 
   return 1;
@@ -299,9 +298,9 @@ FAIL:
 
 int bitstream_restore(struct pr_bitstream_t* stream)
 {
-  hw_icap_write(stream->block, stream->length * 4);
+  icap_write(stream->block, stream->length * 4);
 
-  hw_icap_grestore();
+  icap_grestore();
 
   return 1;
 }

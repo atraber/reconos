@@ -32,6 +32,8 @@
 #define MODE_CAPTURE    4
 #define MODE_RESTORE    5
 #define MODE_TEST       6
+#define MODE_SWITCH_BOT 7
+#define MODE_TEST2      8
 
 struct cmd_arguments_t {
   unsigned int reconf_mode;
@@ -39,6 +41,7 @@ struct cmd_arguments_t {
   unsigned int max_cnt;
   unsigned int read_far;
   unsigned int read_words;
+  int slot;
 };
 
 struct cmd_arguments_t g_arguments;
@@ -50,29 +53,45 @@ struct reconos_hwt hwt[NUM_SLOTS];
 struct mbox mb_in[NUM_SLOTS];
 struct mbox mb_out[NUM_SLOTS];
 
-unsigned int configured = 0xFF; // invalid value...
+struct pr_bitstream_t pr_bit[NUM_SLOTS][2];
 
-
-int test_prblock(int thread_id)
+int prblock_set(int slot, unsigned int reg, uint32_t value)
 {
-  unsigned int ret, counter;
-  // set register 0
-	mbox_put(&mb_in[HWT_DPR], 0x00000000);
-	mbox_put(&mb_in[HWT_DPR], 0x01003344);
+	mbox_put(&mb_in[slot], reg);
+	mbox_put(&mb_in[slot], value);
 
-  // set register 1
-	mbox_put(&mb_in[HWT_DPR], 0x00000001);
-	mbox_put(&mb_in[HWT_DPR], 0x01001122);
+	return 0;
+}
+
+int prblock_get(int slot, unsigned int reg)
+{
+  unsigned int ret;
+
+	mbox_put(&mb_in[slot], reg | 0x80000000);
+
+	ret = mbox_get(&mb_out[slot]);
+
+  printf("In slot %d, register %X has value %08X\n", slot, reg, ret);
+
+	return ret;
+}
+
+int test_prblock(int slot, int thread_id)
+{
+  if(slot == 0 || slot >= NUM_SLOTS) {
+    printf("Slot %d does not contain a reconfigurable module\n", slot);
+    return 0;
+  }
+
+  unsigned int ret, counter;
+  prblock_set(slot, 0, 0x01003344);
+  prblock_set(slot, 1, 0x01001122);
 
   // get result from register 2
-	mbox_put(&mb_in[HWT_DPR], 0x80000002);
-	ret = mbox_get(&mb_out[HWT_DPR]);
-
-  //printf("Result is %X\n", ret);
+  ret = prblock_get(slot, 2);
 
   // get counter value from register 3
-	mbox_put(&mb_in[HWT_DPR], 0x80000003);
-	counter = mbox_get(&mb_out[HWT_DPR]);
+  counter = prblock_get(slot, 3);
   
   switch(thread_id) {
   case ADD:
@@ -96,42 +115,19 @@ int test_prblock(int thread_id)
 	return 0;
 }
 
-int prblock_set(unsigned int reg, uint32_t value)
-{
-	mbox_put(&mb_in[HWT_DPR], reg);
-	mbox_put(&mb_in[HWT_DPR], value);
-
-	return 0;
-}
-
-int prblock_get(unsigned int reg)
-{
-  unsigned int ret;
-
-	mbox_put(&mb_in[HWT_DPR], reg | 0x80000000);
-
-	ret = mbox_get(&mb_out[HWT_DPR]);
-
-  printf("Register %X has value %X\n", reg, ret);
-
-	return ret;
-}
-
-int reconfigure_prblock(int thread_id)
+int reconfigure_prblock(int slot, int thread_id)
 {
 	timing_t t_start, t_stop;
   us_t t_check;
 
 	int ret = -2;
 
-	if (thread_id==configured) return 0;
-
 	// send thread exit command
-	mbox_put(&mb_in[HWT_DPR],THREAD_EXIT_CMD);
+	mbox_put(&mb_in[slot],THREAD_EXIT_CMD);
 
   usleep(100);
 
-  reconos_slot_reset(HWT_DPR, 1);
+  reconos_slot_reset(slot, 1);
 
   printf("Starting reconfiguration\n");
   fflush(stdout);
@@ -141,19 +137,18 @@ int reconfigure_prblock(int thread_id)
 	// reconfigure hardware slot
   switch(g_arguments.reconf_mode) {
     case RECONF_LINUX:
-      ret = linux_icap_load(thread_id);
+      ret = linux_icap_load(slot, thread_id); // DOES NOT YET ACCEPT the second slot
       break;
     case RECONF_SW:
-      ret = sw_icap_load(thread_id);
+      ret = sw_icap_load(slot, thread_id);
       break;
     case RECONF_HW:
-      ret = hw_icap_load(thread_id);
+      ret = hw_icap_load(slot, thread_id);
       break;
     default:
       break;
   }
 
-  configured = thread_id;
 
 	t_stop = gettime();
 	t_check = calc_timediff_us(t_start, t_stop);
@@ -161,7 +156,7 @@ int reconfigure_prblock(int thread_id)
   printf("Reconfiguration done in %lu us, resetting hardware thread\n", t_check);
 
 	// reset hardware thread
-  reconos_slot_reset(HWT_DPR,0);
+  reconos_slot_reset(slot,0);
 
 	return ret;
 }
@@ -177,10 +172,12 @@ static struct argp_option options[] = {
   {"sub",   3100, 0,     0,  "Write SUB to ICAP interface and test the slot" },
   {"read",  'r',  "nr",  0,
    "Read from ICAP interface and dump its output to console, read <nr> words" },
-  {"far",     'f',  "FAR", 0,  "FAR to read from, must be in hex format (0xABCD)" },
-  {"capture", 4000, 0,     0,  "Capture current state using GCAPTURE" },
-  {"restore", 4100, 0,     0,  "Restore state using GSR" },
-  {"test",    't',  0,     0,  "Playground.. can be anything here" },
+  {"far",     'f',  "FAR",  0,  "FAR to read from, must be in hex format (0xABCD)" },
+  {"capture", 4000, 0,      0,  "Capture current state using GCAPTURE" },
+  {"restore", 4100, 0,      0,  "Restore state using GSR" },
+  {"test",    't',  "slot", OPTION_ARG_OPTIONAL, "Playground.. can be anything here" },
+  {"test2",   6000, 0,      0,  "Playground.. can be anything here" },
+  {"switch_bot", 5000, 0,   0,  "Change to bottom ICAP interface" },
   { 0 }
 };
 
@@ -231,8 +228,19 @@ parse_opt (int key, char *arg, struct argp_state *state)
     arguments->mode = MODE_RESTORE;
     break;
 
+  case 5000:
+    arguments->mode = MODE_SWITCH_BOT;
+    break;
+
   case 't':
     arguments->mode = MODE_TEST;
+
+    if(arg)
+      arguments->slot = atoi(arg);
+    break;
+
+  case 6000:
+    arguments->mode = MODE_TEST2;
     break;
 
   case 'r':
@@ -255,7 +263,7 @@ static struct argp argp = { options, parse_opt, "", "" };
 // MAIN ////////////////////////////////////////////////////////////////////
 int main(int argc, char *argv[])
 {
-	int i, ret,cnt=1;
+	int i, cnt=1;
 
 	printf( "-------------------------------------------------------\n"
 		    "ICAP DEMONSTRATOR\n"
@@ -273,8 +281,14 @@ int main(int argc, char *argv[])
   g_arguments.max_cnt = 10;
   g_arguments.read_far = 0x8A80;
   g_arguments.read_words = 1;
+  g_arguments.slot = HWT_DPR;
 
   argp_parse (&argp, argc, argv, 0, 0, &g_arguments);
+
+  if(g_arguments.reconf_mode == RECONF_HW)
+    icap_set(ICAP_HW);
+  else if(g_arguments.reconf_mode == RECONF_SW)
+    icap_set(ICAP_SW);
  
 
 	printf("[icap] Initialize ReconOS.\n");
@@ -297,14 +311,21 @@ int main(int argc, char *argv[])
 
 
   // cache partial bitstreams in memory
-  bitstream_open("partial_bitstreams/partial_add.bin", &pr_bit[ADD]);
-  bitstream_open("partial_bitstreams/partial_sub.bin", &pr_bit[SUB]);
+  bitstream_open("partial_bitstreams/partial_add.bin", &pr_bit[HWT_DPR][ADD]);
+  bitstream_open("partial_bitstreams/partial_sub.bin", &pr_bit[HWT_DPR][SUB]);
+  bitstream_open("partial_bitstreams/partial_add2.bin", &pr_bit[HWT_DPR2][ADD]);
+  bitstream_open("partial_bitstreams/partial_sub2.bin", &pr_bit[HWT_DPR2][SUB]);
 
   // print current register values
-  prblock_get(0);
-  prblock_get(1);
-  prblock_get(2);
-  prblock_get(3);
+  prblock_get(HWT_DPR, 0);
+  prblock_get(HWT_DPR, 1);
+  prblock_get(HWT_DPR, 2);
+  prblock_get(HWT_DPR, 3);
+
+  prblock_get(HWT_DPR2, 0);
+  prblock_get(HWT_DPR2, 1);
+  prblock_get(HWT_DPR2, 2);
+  prblock_get(HWT_DPR2, 3);
 
   // what configuration mode are we using?
   switch(g_arguments.reconf_mode) {
@@ -327,12 +348,12 @@ int main(int argc, char *argv[])
       // reconfigure partial hw slot and check thread
       printf("[icap] Test no. %03d\n",cnt);
 
-      reconfigure_prblock(ADD);
-      test_prblock(ADD);
+      reconfigure_prblock(HWT_DPR, ADD);
+      test_prblock(HWT_DPR, ADD);
 
 
-      reconfigure_prblock(SUB);
-      test_prblock(SUB);
+      reconfigure_prblock(HWT_DPR, SUB);
+      test_prblock(HWT_DPR, SUB);
 
 
       // stop after n reconfigurations
@@ -343,12 +364,18 @@ int main(int argc, char *argv[])
       cnt++;
     }
   } else if(g_arguments.mode == MODE_WRITE_ADD) {
-    ret = reconfigure_prblock(ADD);
-    ret = test_prblock(ADD);
+    reconfigure_prblock(HWT_DPR, ADD);
+    test_prblock(HWT_DPR, ADD);
+
+    reconfigure_prblock(HWT_DPR2, ADD);
+    test_prblock(HWT_DPR2, ADD);
 
   } else if(g_arguments.mode == MODE_WRITE_SUB) {
-    ret = reconfigure_prblock(SUB);
-    ret = test_prblock(SUB);
+    reconfigure_prblock(HWT_DPR, SUB);
+    test_prblock(HWT_DPR, SUB);
+
+    reconfigure_prblock(HWT_DPR2, SUB);
+    test_prblock(HWT_DPR2, SUB);
 
   } else if(g_arguments.mode == MODE_CAPTURE) {
     printf("Performing gcapture\n");
@@ -356,33 +383,35 @@ int main(int argc, char *argv[])
   } else if(g_arguments.mode == MODE_RESTORE) {
     hw_icap_gsr();
   } else if(g_arguments.mode == MODE_TEST) {
-    reconfigure_prblock(ADD);
-    test_prblock(ADD);
-    prblock_get(3);
+    int slot = g_arguments.slot;
 
-    prblock_set(3, 0xAA00BBCC);
-    prblock_get(3);
+    reconfigure_prblock(slot, ADD);
+    test_prblock(slot, ADD);
+    prblock_get(slot, 3);
+
+    prblock_set(slot, 3, 0xAA00BBCC);
+    prblock_get(slot, 3);
 
     struct pr_bitstream_t test_bit;
 
-    bitstream_capture(&pr_bit[ADD], &test_bit);
+    bitstream_capture(&pr_bit[slot][ADD], &test_bit);
 
     printf("Capturing current state completed\n");
     fflush(stdout);
 
-    //bitstream_save("partial_bitstreams/test.bit", &test_bit);
+    bitstream_save("partial_bitstreams/test.bit", &test_bit);
 
-    prblock_set(3, 0x00DD0000);
-    test_prblock(ADD);
-    prblock_get(3);
+    prblock_set(slot, 3, 0x00DD0000);
+    test_prblock(slot, ADD);
+    prblock_get(slot, 3);
 
-    reconfigure_prblock(SUB);
-    test_prblock(SUB);
+    reconfigure_prblock(slot, SUB);
+    test_prblock(slot, SUB);
 
     // send thread exit command
-    mbox_put(&mb_in[HWT_DPR],THREAD_EXIT_CMD);
+    mbox_put(&mb_in[slot],THREAD_EXIT_CMD);
     usleep(100);
-    reconos_slot_reset(HWT_DPR, 1);
+    reconos_slot_reset(slot, 1);
 
     sleep(1);
     printf("Performing restore now...\n");
@@ -394,11 +423,21 @@ int main(int argc, char *argv[])
     fflush(stdout);
 
     // reset hardware thread
-    reconos_slot_reset(HWT_DPR,0);
+    reconos_slot_reset(slot, 0);
 
-    test_prblock(ADD);
-    prblock_get(3);
-  } else {
+    sleep(1);
+
+    printf("reset done\n");
+    fflush(stdout);
+
+    test_prblock(slot, ADD);
+
+    sleep(1);
+
+    printf("test done\n");
+    fflush(stdout);
+    prblock_get(slot, 3);
+  } else if(g_arguments.mode == MODE_READ) {
     printf("Readback mode, reading %d words from 0x%08X\n", g_arguments.read_words, g_arguments.read_far);
 
     uint32_t* mem = (uint32_t*) malloc(g_arguments.read_words * sizeof(uint32_t));
@@ -407,8 +446,8 @@ int main(int argc, char *argv[])
       return EXIT_FAILURE;
     }
 
-    hw_icap_read(g_arguments.read_far, g_arguments.read_words, mem);
-
+    icap_read_frame(g_arguments.read_far, g_arguments.read_words, mem);
+/*
 
     unsigned int block_size = 300;
     uint32_t* cmp_mem = (uint32_t*)malloc(block_size * sizeof(uint32_t));
@@ -429,13 +468,36 @@ int main(int argc, char *argv[])
         }
       }
     }
+    */
 
     unsigned int i;
     for(i = 0; i < g_arguments.read_words; i++) {
       printf("%08X\n", mem[i]);
     }
 
+  } else if(g_arguments.mode == MODE_SWITCH_BOT) {
+    icap_switch_bot();
+  } else if(g_arguments.mode == MODE_TEST2) {
+    icap_gcapture();
+
+    sleep(1);
+
+    printf("capture done\n");
+    fflush(stdout);
+
+    sleep(1);
+
+    printf("restore started\n");
+    fflush(stdout);
+
+    icap_grestore();
+
+    sleep(1);
+
+    printf("restore done\n");
+    fflush(stdout);
   }
+
 
 	return 0;
 }
