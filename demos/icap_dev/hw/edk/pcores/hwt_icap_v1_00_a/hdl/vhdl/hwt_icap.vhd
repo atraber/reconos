@@ -38,8 +38,10 @@ entity hwt_icap is
     DebugStatus   : out std_logic_vector(0 to 7);
     DebugBusy     : out std_logic;
     DebugReadICAP : out std_logic;
+    DebugReadCalc : out std_logic;
     DebugPutMem   : out std_logic;
     DebugIdle     : out std_logic;
+    DebugFinished : out std_logic;
     DebugGetSize  : out std_logic;
     DebugCEB      : out std_logic;
     DebugWEB      : out std_logic;
@@ -603,12 +605,16 @@ begin
   DebugBusy     <= ICAPBusyxS;
   DebugReadICAP <= '1' when state = STATE_READ_ICAP
                    else '0';
+  DebugReadCalc <= '1' when state = STATE_READ_CALC
+                   else '0';
   DebugPutMem <= '1' when state = STATE_PUT_MEM
                  else '0';
   DebugIdle <= '1' when state = STATE_GET_BITSTREAM_ADDR
                else '0';
   DebugGetSize <= '1' when state = STATE_GET_BITSTREAM_SIZE
                   else '0';
+  DebugFinished <= '1' when state = STATE_FINISHED
+                   else '0';
   DebugCEB   <= ICAPCExSB;
   DebugWEB   <= ICAPWExSB;
   DebugRamWE <= ICAPRamWExS;

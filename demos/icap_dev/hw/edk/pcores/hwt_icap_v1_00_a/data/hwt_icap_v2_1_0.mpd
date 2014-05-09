@@ -49,9 +49,11 @@ PORT Clk="", DIR=I, SIGIS=Clk
 PORT DebugStatus      = "", DIR=O, VEC=[0:7]
 PORT DebugBusy        = "", DIR=O
 PORT DebugReadICAP    = "", DIR=O
+PORT DebugReadCalc    = "", DIR=O
 PORT DebugPutMem      = "", DIR=O
 PORT DebugIdle        = "", DIR=O
 PORT DebugGetSize     = "", DIR=O
+PORT DebugFinished    = "", DIR=O
 PORT DebugCEB         = "", DIR=O
 PORT DebugWEB         = "", DIR=O
 PORT DebugRamWE       = "", DIR=O

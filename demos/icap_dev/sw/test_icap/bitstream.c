@@ -257,10 +257,10 @@ int bitstream_capture(struct pr_bitstream_t* stream_in, struct pr_bitstream_t* s
 
   // the first frame is ignored as this is the CFG_CLB frame which we have just wrote to the FPGA
   for(i = 1; i < numFrames; i++) {
-    if((arrFrames[i].far & 0xFFE00000) == 0x00200000) {
-      printf("FAR 0x%08X points to RAM region, skipping it as we cannot handle it reliably\n", arrFrames[i].far);
-      continue;
-    }
+    // if((arrFrames[i].far & 0xFFE00000) == 0x00200000) {
+    //   printf("FAR 0x%08X points to RAM region, skipping it as we cannot handle it reliably\n", arrFrames[i].far);
+    //   continue;
+    // }
 
     icap_read_frame(arrFrames[i].far, arrFrames[i].words, stream_out->block + arrFrames[i].offset);
   }
