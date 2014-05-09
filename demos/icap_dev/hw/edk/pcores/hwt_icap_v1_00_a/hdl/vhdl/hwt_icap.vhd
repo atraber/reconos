@@ -68,7 +68,7 @@ architecture implementation of hwt_icap is
       AckxSI        : in  std_logic;
       DonexSO       : out std_logic;
       ErrorxSO      : out std_logic;
-      LenxDI        : in  std_logic_vector(0 to ADDR_WIDTH-1);
+      LenxDI        : in  std_logic_vector(0 to ADDR_WIDTH);
       ModexSI       : in  std_logic;
       UpperxSI      : in  std_logic;
       RamAddrxDO    : out std_logic_vector(0 to ADDR_WIDTH-1);
@@ -172,7 +172,7 @@ architecture implementation of hwt_icap is
   signal ICAPRamLutMuxxS : std_logic;
   signal ICAPFsmDonexS   : std_logic;
   signal ICAPFsmErrorxS  : std_logic;
-  signal ICAPFsmLenxD    : std_logic_vector(0 to C_LOCAL_RAM_ADDRESS_WIDTH-1);  -- in words
+  signal ICAPFsmLenxD    : std_logic_vector(0 to C_LOCAL_RAM_ADDRESS_WIDTH);  -- in words
 
 
   signal GSRxS : std_logic := '0';
@@ -238,7 +238,7 @@ begin
     elsif rising_edge(clk) then
 
       -- default assignments
-      ICAPFsmLenxD   <= conv_std_logic_vector(C_LOCAL_RAM_SIZE/2, C_LOCAL_RAM_ADDRESS_WIDTH);
+      ICAPFsmLenxD   <= conv_std_logic_vector(C_LOCAL_RAM_SIZE/2, C_LOCAL_RAM_ADDRESS_WIDTH + 1);
       ICAPFsmStartxS <= '0';
       ICAPFsmAckxS   <= '0';
       ICAPFsmModexS  <= '0';            -- write
@@ -375,12 +375,12 @@ begin
           if LastxS = '1' then
             -- the remaining size is less than half of our local memory size
             -- convert length from bytes to words here
-            ICAPFsmLenxD <= LenxD(C_LOCAL_RAM_ADDRESS_WIDTH-1 + 2 downto 2);
+            ICAPFsmLenxD <= LenxD(C_LOCAL_RAM_ADDRESS_WIDTH + 2 downto 2);
 
             state <= STATE_ICAP_WAIT_LAST;
           else
             -- transfer the content of the full memory to ICAP
-            ICAPFsmLenxD <= conv_std_logic_vector(C_LOCAL_RAM_SIZE/2, C_LOCAL_RAM_ADDRESS_WIDTH);
+            ICAPFsmLenxD <= conv_std_logic_vector(C_LOCAL_RAM_SIZE/2, C_LOCAL_RAM_ADDRESS_WIDTH + 1);
 
             state <= STATE_MEM_CALC;
           end if;
@@ -424,7 +424,7 @@ begin
           -- the icap fsm, otherwise we specify the size of half of our ram
           ---------------------------------------------------------------------
         when STATE_READ_CMPLEN =>
-          if LenxD <= C_LOCAL_RAM_SIZE_IN_BYTES/2 then
+          if LenxD <= C_LOCAL_RAM_SIZE_IN_BYTES then
             LastxS <= '1';
           else
             LastxS <= '0';
@@ -443,9 +443,9 @@ begin
 
           if LastxS = '1' then
             -- convert the remaining size from bytes to words
-            ICAPFsmLenxD <= LenxD(C_LOCAL_RAM_ADDRESS_WIDTH-1 + 2 downto 2);
+            ICAPFsmLenxD <= LenxD(C_LOCAL_RAM_ADDRESS_WIDTH + 2 downto 2);
           else
-            ICAPFsmLenxD <= conv_std_logic_vector(C_LOCAL_RAM_SIZE/2, C_LOCAL_RAM_ADDRESS_WIDTH);
+            ICAPFsmLenxD <= conv_std_logic_vector(C_LOCAL_RAM_SIZE, C_LOCAL_RAM_ADDRESS_WIDTH + 1);
           end if;
 
           if ICAPFsmDonexS = '1' then
@@ -461,12 +461,12 @@ begin
           ---------------------------------------------------------------------
         when STATE_PUT_MEM =>
           if LastxS = '1' then
-            -- LenxD is smaller than the size of half the local memory, so we
-            -- only fill it partially
+            -- LenxD is smaller than the size of our local memory, so we
+            -- only copy it partially
             len := LenxD(23 downto 0);
           else
-            -- completely fill our half local memory
-            len := conv_std_logic_vector(C_LOCAL_RAM_SIZE_IN_BYTES/2, 24);
+            -- completely copy our local memory to main memory
+            len := conv_std_logic_vector(C_LOCAL_RAM_SIZE_IN_BYTES, 24);
           end if;
 
           memif_write(i_ram, o_ram, i_memif, o_memif, X"00000000", AddrxD,
@@ -485,11 +485,8 @@ begin
           -- ICAP and the corresponding address in main memory
           ---------------------------------------------------------------------
         when STATE_READ_CALC =>
-          AddrxD <= AddrxD + (C_LOCAL_RAM_SIZE_IN_BYTES/2);
-          LenxD  <= LenxD - (C_LOCAL_RAM_SIZE_IN_BYTES/2);
-
-          -- TODO: not needed when not doing double buffering
-          -- UpperxS <= not UpperxS;
+          AddrxD <= AddrxD + C_LOCAL_RAM_SIZE_IN_BYTES;
+          LenxD  <= LenxD - C_LOCAL_RAM_SIZE_IN_BYTES;
 
           state <= STATE_READ_CMPLEN;
 

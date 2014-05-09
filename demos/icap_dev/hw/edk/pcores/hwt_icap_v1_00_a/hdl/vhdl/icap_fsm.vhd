@@ -6,7 +6,7 @@
 -- Author     : atraber  <atraber@student.ethz.ch>
 -- Company    : Computer Engineering and Networks Laboratory, ETH Zurich
 -- Created    : 2014-04-07
--- Last update: 2014-04-16
+-- Last update: 2014-05-09
 -- Platform   : Xilinx ISIM (simulation), Xilinx (synthesis)
 -- Standard   : VHDL'87
 -------------------------------------------------------------------------------
@@ -32,22 +32,22 @@ entity ICAPFsm is
     );
 
   port (
-    ClkxCI            : in  std_logic;
-    ResetxRI          : in  std_logic;
-    StartxSI          : in  std_logic;
-    AckxSI            : in  std_logic;
-    DonexSO           : out std_logic;
-    ErrorxSO          : out std_logic;
-    LenxDI            : in  std_logic_vector(0 to ADDR_WIDTH-1);
-    ModexSI           : in  std_logic;  -- 0 means write, 1 means read
-    UpperxSI          : in  std_logic;
-    RamAddrxDO        : out std_logic_vector(0 to ADDR_WIDTH-1);
-    RamWExSO          : out std_logic;
-    RamLutMuxxSO      : out std_logic;  -- 0 means Ram, 1 means Lut
-    ICAPCExSBO        : out std_logic;
-    ICAPWExSBO        : out std_logic;
-    ICAPStatusxDI     : in  std_logic_vector(0 to 7);
-    ICAPBusyxSI       : in  std_logic
+    ClkxCI        : in  std_logic;
+    ResetxRI      : in  std_logic;
+    StartxSI      : in  std_logic;
+    AckxSI        : in  std_logic;
+    DonexSO       : out std_logic;
+    ErrorxSO      : out std_logic;
+    LenxDI        : in  std_logic_vector(0 to ADDR_WIDTH);
+    ModexSI       : in  std_logic;      -- 0 means write, 1 means read
+    UpperxSI      : in  std_logic;
+    RamAddrxDO    : out std_logic_vector(0 to ADDR_WIDTH-1);
+    RamWExSO      : out std_logic;
+    RamLutMuxxSO  : out std_logic;      -- 0 means Ram, 1 means Lut
+    ICAPCExSBO    : out std_logic;
+    ICAPWExSBO    : out std_logic;
+    ICAPStatusxDI : in  std_logic_vector(0 to 7);
+    ICAPBusyxSI   : in  std_logic
     );
 
 end ICAPFsm;
@@ -64,9 +64,9 @@ architecture implementation of ICAPFsm is
   -----------------------------------------------------------------------------
 
   -- registers
-  signal AddrxDP, AddrxDN   : unsigned(ADDR_WIDTH-1 downto 0);
+  signal AddrxDP, AddrxDN   : unsigned(ADDR_WIDTH downto 0);
   signal StatexDP, StatexDN : state_t;
-  signal LenxDP, LenxDN     : std_logic_vector(0 to ADDR_WIDTH-1);
+  signal LenxDP, LenxDN     : std_logic_vector(0 to ADDR_WIDTH);
   signal UpperxSP, UpperxSN : std_logic;
   signal ICAPCExSB          : std_logic;
   signal ICAPWExSB          : std_logic;
@@ -291,7 +291,8 @@ begin  -- implementation
   ICAPWExSBO   <= ICAPWExSB;
   RamLutMuxxSO <= RamLutMuxxS;
 
-  RamAddrxDO <= std_logic_vector(UpperxSP & AddrxDP(ADDR_WIDTH-2 downto 0));
-  RamWExSO   <= RamWExS;
+  RamAddrxDO <= std_logic_vector(UpperxSP & AddrxDP(ADDR_WIDTH-2 downto 0)) when ModexSI = '0'
+                else std_logic_vector(AddrxDP(ADDR_WIDTH-1 downto 0));
+  RamWExSO <= RamWExS;
 
 end implementation;

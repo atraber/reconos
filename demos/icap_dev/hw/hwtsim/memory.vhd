@@ -97,7 +97,7 @@ begin
           readLoop : while not (endfile(file_stim)) and i < C_MEM_SIZE loop
             readline(file_stim, line);
             hread(line, vec, read_ok);
-            --mem(i) <= vec;
+            mem(i) <= vec;
 
             i := i + 1;
           end loop readLoop;
