@@ -661,9 +661,19 @@ int sw_icap_grestore() {
 }
 
 int hw_icap_gsr() {
-  hw_icap_write(0x0, 0x2);
+	int ret;
 
-  return 0;
+  // send GSR command (bit 0 of address must be 1)
+	mbox_put(&mb_in[HWT_ICAP], 0x1);
+
+  // wait for response from hwt
+	ret = mbox_get(&mb_out[HWT_ICAP]);
+  if(ret != 0x1337) {
+    printf("hwt_icap returned ERROR, code %X\n", ret);
+    return 0;
+  }
+
+	return 1;
 }
 
 uint32_t g_icap_write_frame[] = {0xFFFFFFFF,

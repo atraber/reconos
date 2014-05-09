@@ -255,7 +255,12 @@ begin
             if (AddrxD = X"FFFFFFFF") then
               state <= STATE_THREAD_EXIT;
             else
-              state <= STATE_GET_BITSTREAM_SIZE;
+              if AddrxD(0) = '1' then
+                AddrxD(0) <= '0';
+                state     <= STATE_GSR;
+              else
+                state <= STATE_GET_BITSTREAM_SIZE;
+              end if;
             end if;
           end if;
 
@@ -272,17 +277,11 @@ begin
             if (LenxD = X"FFFFFFFF") then
               state <= STATE_THREAD_EXIT;
             else
-              -- TODO: look for a better solution
-              if LenxD(1) = '1' then
-                LenxD(1) <= '0';
-                state    <= STATE_GSR;
+              if LenxD(0) = '1' then
+                LenxD(0) <= '0';
+                state    <= STATE_READ_CMPLEN;
               else
-                if LenxD(0) = '1' then
-                  LenxD(0) <= '0';
-                  state    <= STATE_READ_CMPLEN;
-                else
-                  state <= STATE_CMPLEN;
-                end if;
+                state <= STATE_CMPLEN;
               end if;
             end if;
           end if;
@@ -521,6 +520,32 @@ begin
       o     => ICAPDataOutxD);
 
   -----------------------------------------------------------------------------
+  -- STARTUP_VIRTEX6 interface, the grestore command does not work, so we need
+  -- to toggle the GSR signal manually
+  -----------------------------------------------------------------------------
+  STARTUP_VIRTEX6Inst : STARTUP_VIRTEX6
+    generic map (
+      PROG_USR => false  -- Activate program event security feature
+      )
+    port map (
+      CFGCLK    => open,  -- 1-bit output Configuration main clock output
+      CFGMCLK   => open,  -- 1-bit output Configuration internal oscillator clock output
+      DINSPI    => open,  -- 1-bit output DIN SPI PROM access output
+      EOS       => open,  -- 1-bit output Active high output signal indicating the End Of Configuration.
+      PREQ      => open,  -- 1-bit output PROGRAM request to fabric output
+      TCKSPI    => open,  -- 1-bit output TCK configuration pin access output
+      CLK       => '0',  -- 1-bit input User start-up clock input
+      GSR       => GSRxS,  -- 1-bit input Global Set/Reset input (GSR cannot be used for the port name)
+      GTS       => '0',  -- 1-bit input Global 3-state input (GTS cannot be used for the port name)
+      KEYCLEARB => '0',  -- 1-bit input Clear AES Decrypter Key input from Battery-Backed RAM (BBRAM)
+      PACK      => '0',  -- 1-bit input PROGRAM acknowledge input
+      USRCCLKO  => '0',                 -- 1-bit input User CCLK input
+      USRCCLKTS => '0',  -- 1-bit input User CCLK 3-state enable input
+      USRDONEO  => '1',  -- 1-bit input User DONE pin output control
+      USRDONETS => '1'   -- 1-bit input User DONE 3-state enable output
+      );
+
+  -----------------------------------------------------------------------------
   -- ICAP Registers
   -----------------------------------------------------------------------------
   icapFF : process (clk)
@@ -578,27 +603,6 @@ begin
   -----------------------------------------------------------------------------
   -- DEBUG
   -----------------------------------------------------------------------------
-  STARTUP_VIRTEX6Inst : STARTUP_VIRTEX6
-    generic map (
-      PROG_USR => false  -- Activate program event security feature
-      )
-    port map (
-      CFGCLK    => open,  -- 1-bit output Configuration main clock output
-      CFGMCLK   => open,  -- 1-bit output Configuration internal oscillator clock output
-      DINSPI    => open,  -- 1-bit output DIN SPI PROM access output
-      EOS       => open,  -- 1-bit output Active high output signal indicating the End Of Configuration.
-      PREQ      => open,  -- 1-bit output PROGRAM request to fabric output
-      TCKSPI    => open,  -- 1-bit output TCK configuration pin access output
-      CLK       => '0',  -- 1-bit input User start-up clock input
-      GSR       => GSRxS,  -- 1-bit input Global Set/Reset input (GSR cannot be used for the port name)
-      GTS       => '0',  -- 1-bit input Global 3-state input (GTS cannot be used for the port name)
-      KEYCLEARB => '0',  -- 1-bit input Clear AES Decrypter Key input from Battery-Backed RAM (BBRAM)
-      PACK      => '0',  -- 1-bit input PROGRAM acknowledge input
-      USRCCLKO  => '0',                 -- 1-bit input User CCLK input
-      USRCCLKTS => '0',  -- 1-bit input User CCLK 3-state enable input
-      USRDONEO  => '1',  -- 1-bit input User DONE pin output control
-      USRDONETS => '0'   -- 1-bit input User DONE 3-state enable output
-      );
 
   DebugStatus   <= ICAPDataOutxD(24 to 31);
   DebugOut      <= ICAPDataOutxD(0 to 31);
