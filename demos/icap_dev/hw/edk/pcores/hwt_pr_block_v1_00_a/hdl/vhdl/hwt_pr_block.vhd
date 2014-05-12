@@ -37,14 +37,36 @@ entity hwt_pr_block is
 end entity;
 
 architecture implementation of hwt_pr_block is
-  type STATE_TYPE is (STATE_GET_VALS, STATE_WRITE, STATE_READ, STATE_THREAD_EXIT);
+  type STATE_TYPE is (STATE_GET_VALS, STATE_WRITE, STATE_READ, STATE_THREAD_EXIT,
+                      STATE_MEM_READ, STATE_MEM_WRITE, STATE_FINISHED);
 
   constant MBOX_RECV : std_logic_vector(C_FSL_WIDTH-1 downto 0) := x"00000000";
   constant MBOX_SEND : std_logic_vector(C_FSL_WIDTH-1 downto 0) := x"00000001";
 
-  signal state  : STATE_TYPE;
-  signal i_osif : i_osif_t;
-  signal o_osif : o_osif_t;
+  constant C_LOCAL_RAM_SIZE          : integer := 2048;  -- in words
+  constant C_LOCAL_RAM_ADDRESS_WIDTH : integer := clog2(C_LOCAL_RAM_SIZE);
+  constant C_LOCAL_RAM_SIZE_IN_BYTES : integer := 4*C_LOCAL_RAM_SIZE;
+
+  type LOCAL_MEMORY_T is array (0 to C_LOCAL_RAM_SIZE-1) of std_logic_vector(31 downto 0);
+
+  signal state   : STATE_TYPE;
+  signal i_osif  : i_osif_t;
+  signal o_osif  : o_osif_t;
+  signal i_memif : i_memif_t;
+  signal o_memif : o_memif_t;
+  signal i_ram   : i_ram_t;
+  signal o_ram   : o_ram_t;
+
+  -- reconos RAM signals
+  signal o_RAMAddr_reconos   : std_logic_vector(0 to C_LOCAL_RAM_ADDRESS_WIDTH-1);
+  signal o_RAMAddr_reconos_2 : std_logic_vector(0 to 31);
+  signal o_RAMData_reconos   : std_logic_vector(0 to 31);
+  signal o_RAMWE_reconos     : std_logic;
+  signal i_RAMData_reconos   : std_logic_vector(0 to 31);
+
+  constant o_RAMAddr_max : std_logic_vector(0 to C_LOCAL_RAM_ADDRESS_WIDTH-1) := (others => '1');
+
+  shared variable local_ram : LOCAL_MEMORY_T := (others => x"10101010");
 
   signal ignore : std_logic_vector(C_FSL_WIDTH-1 downto 0);
 
@@ -58,12 +80,39 @@ architecture implementation of hwt_pr_block is
   signal RegistersxD : reg_t := (x"00000000", x"00000000", x"00000000", x"00000000");
 begin
 
-  -- do not use memory interface (memif)
-  FIFO32_M_Data <= (others => '0');
-  FIFO32_S_Rd   <= '0';
-  FIFO32_M_Wr   <= '0';
-
   fsl_setup(i_osif, o_osif, OSFSL_S_Data, OSFSL_S_Exists, OSFSL_M_Full, OSFSL_M_Data, OSFSL_S_Read, OSFSL_M_Write, OSFSL_M_Control);
+  memif_setup(i_memif, o_memif, FIFO32_S_Data, FIFO32_S_Fill, FIFO32_S_Rd, FIFO32_M_Data, FIFO32_M_Rem, FIFO32_M_Wr);
+  ram_setup(i_ram, o_ram, o_RAMAddr_reconos_2, o_RAMData_reconos, i_RAMData_reconos, o_RAMWE_reconos);
+
+  -----------------------------------------------------------------------------
+  -- local dual-port ram
+  -----------------------------------------------------------------------------
+
+  -- reconos port
+  local_ram_ctrl_1 : process (clk) is
+  begin
+    if (rising_edge(clk)) then
+      if (o_RAMWE_reconos = '1') then
+        local_ram(conv_integer(unsigned(o_RAMAddr_reconos))) := o_RAMData_reconos;
+      else
+        i_RAMData_reconos <= local_ram(conv_integer(unsigned(o_RAMAddr_reconos)));
+      end if;
+    end if;
+  end process;
+
+  o_RAMAddr_reconos(0 to C_LOCAL_RAM_ADDRESS_WIDTH-1) <= o_RAMAddr_reconos_2((32-C_LOCAL_RAM_ADDRESS_WIDTH) to 31);
+
+  -- local FSM port
+  -- local_ram_ctrl_2 : process (clk) is
+  --  begin
+  --    if (rising_edge(clk)) then
+  --      if (ICAPRamWExS = '1') then
+  --        local_ram(conv_integer(unsigned(ICAPRamAddrxD))) := ICAPRamInxD;
+  --      else
+  --        ICAPRamOutxD <= local_ram(conv_integer(unsigned(ICAPRamAddrxD)));
+  --      end if;
+  --    end if;
+  --  end process;
 
   -- os and memory synchronisation state machine
   reconos_fsm : process (clk, rst, o_osif) is
@@ -72,6 +121,8 @@ begin
     if rst = '1' then
       vals  <= (others => '0');
       osif_reset(o_osif);
+      memif_reset(o_memif);
+      ram_reset(o_ram);
       state <= STATE_GET_VALS;
       done  := false;
     elsif rising_edge(clk) then
@@ -89,14 +140,25 @@ begin
             if (vals = X"FFFFFFFF") then
               state <= STATE_THREAD_EXIT;
             else
-              if vals(31) = '1' then
-                -- read mode
-                state <= STATE_READ;
-              else
-                state <= STATE_WRITE;
-              end if;
+              case vals(31 downto 30) is
+                when "00" =>
+                  state <= STATE_WRITE;
+                when "01" =>
+                  state <= STATE_MEM_WRITE;
+                when "10" =>
+                  state <= STATE_READ;
+                when "11" =>
+                  state <= STATE_MEM_READ;
+                when others =>
+                  state <= STATE_GET_VALS;
+              end case;
             end if;
+
+            vals(31 downto 30) <= "00";  -- reset the last two bits, so that we
+                                         -- can use it as address
           end if;
+
+
           ---------------------------------------------------------------------
           -- get second message from OS
           ---------------------------------------------------------------------
@@ -122,6 +184,40 @@ begin
           if done then
             state <= STATE_GET_VALS;
           end if;
+
+          ---------------------------------------------------------------------
+          -- Copy main memory to local memory
+          ---------------------------------------------------------------------
+        when STATE_MEM_READ =>
+          memif_read(i_ram, o_ram, i_memif, o_memif, vals, X"00000000",
+                     conv_std_logic_vector(C_LOCAL_RAM_SIZE_IN_BYTES, 24), done);
+
+          if done then
+            state <= STATE_FINISHED;
+          end if;
+
+          ---------------------------------------------------------------------
+          -- Copy local memory to main memory
+          ---------------------------------------------------------------------
+        when STATE_MEM_WRITE =>
+          memif_write(i_ram, o_ram, i_memif, o_memif, X"00000000", vals,
+                      conv_std_logic_vector(C_LOCAL_RAM_SIZE_IN_BYTES, 24), done);
+
+          if done then
+            state <= STATE_FINISHED;
+          end if;
+
+          ---------------------------------------------------------------------
+          -- Send finished message
+          ---------------------------------------------------------------------
+        when STATE_FINISHED =>
+          osif_mbox_put(i_osif, o_osif, MBOX_SEND,
+                        X"00000001",
+                        ignore, done);
+          if done then
+            state <= STATE_GET_VALS;
+          end if;
+
           ---------------------------------------------------------------------
           -- thread exit
           ---------------------------------------------------------------------

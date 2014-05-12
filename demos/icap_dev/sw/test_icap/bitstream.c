@@ -87,11 +87,7 @@ FAIL:
   return retval;
 }
 
-struct pr_frame_t {
-  uint32_t far;
-  uint32_t offset; // offset from start in bitstream in words
-  uint32_t words; // in words
-};
+
 
 #define MAX_PR_FRAMES 64
 
@@ -255,14 +251,38 @@ int bitstream_capture(struct pr_bitstream_t* stream_in, struct pr_bitstream_t* s
   // readback of data
   //----------------------------------------------------------------------------
 
+  struct pr_frame_t readFrames[MAX_PR_FRAMES];
+  unsigned int numReadFrames = 0;
+
   // the first frame is ignored as this is the CFG_CLB frame which we have just wrote to the FPGA
   for(i = 1; i < numFrames; i++) {
-    if((arrFrames[i].far & 0xFFE00000) == 0x00200000) {
-      printf("FAR 0x%08X points to RAM region, skipping it as we cannot handle it reliably\n", arrFrames[i].far);
-      continue;
-    }
+    // if((arrFrames[i].far & 0xFFE00000) == 0x00200000) {
+    //   printf("FAR 0x%08X points to RAM region, skipping it as we cannot handle it reliably\n", arrFrames[i].far);
+    //   continue;
+    // }
 
-    icap_read_frame(arrFrames[i].far, arrFrames[i].words, stream_out->block + arrFrames[i].offset);
+    readFrames[numReadFrames].far = arrFrames[i].far;
+    readFrames[numReadFrames].words = arrFrames[i].words;
+    readFrames[numReadFrames].offset = arrFrames[i].offset;
+    numReadFrames++;
+  }
+
+  icap_read_frame_multiple(readFrames, numReadFrames, stream_out->block);
+
+  // try to set all 0x00020000 to zero in block ram regions
+  // this is WRONG! but I did not yet find a better solution...
+  for(i = 0; i < numReadFrames; i++) {
+    if((readFrames[i].far & 0xFFE00000) != 0x00200000)
+      continue;
+
+    printf("FAR 0x%08X points to RAM region, trying to clean it up\n", readFrames[i].far);
+    uint32_t* mem = stream_out->block + readFrames[i].offset;
+
+    unsigned int k;
+    for(k = 0; k < readFrames[i].words; k++) {
+      if(mem[k] == 0x00020000)
+        mem[k] = 0;
+    }
   }
 
   return 1;

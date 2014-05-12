@@ -10,6 +10,7 @@
 #include <string.h>
 #include <math.h>
 #include <argp.h>
+#include <signal.h>
 
 // ReconOS
 #include "reconos.h"
@@ -34,6 +35,7 @@
 #define MODE_TEST       6
 #define MODE_SWITCH_BOT 7
 #define MODE_TEST2      8
+#define MODE_TEST3      9
 
 struct cmd_arguments_t {
   unsigned int reconf_mode;
@@ -76,6 +78,73 @@ int prblock_get(int slot, unsigned int reg)
 	return ret;
 }
 
+int prblock_mem_set(int slot, uint32_t value)
+{
+  if(slot == 0 || slot >= NUM_SLOTS) {
+    printf("Slot %d does not contain a reconfigurable module\n", slot);
+    return 0;
+  }
+
+  uint32_t* mem = (uint32_t*)malloc(PRBLOCK_MEM_SIZE * sizeof(uint32_t));
+  if(mem == NULL) {
+    printf("Memory alloc has failed\n");
+    return 0;
+  }
+
+  unsigned int i;
+  for(i = 0; i < PRBLOCK_MEM_SIZE; i++)
+    mem[i] = value;
+
+	mbox_put(&mb_in[slot], ((unsigned int)mem) | 0xC0000000);
+
+  // copy has finished
+	mbox_get(&mb_out[slot]);
+
+  free(mem);
+
+	return 0;
+}
+
+int prblock_mem_get(int slot, uint32_t value)
+{
+  if(slot == 0 || slot >= NUM_SLOTS) {
+    printf("Slot %d does not contain a reconfigurable module\n", slot);
+    return 0;
+  }
+
+  // test memory
+  uint32_t* mem = (uint32_t*)malloc(PRBLOCK_MEM_SIZE * sizeof(uint32_t));
+  if(mem == NULL) {
+    printf("Memory alloc has failed\n");
+    return 0;
+  }
+
+  // set to different value
+  unsigned int i;
+  for(i = 0; i < PRBLOCK_MEM_SIZE; i++)
+    mem[i] = 0x00000000;
+
+  // flush our local cache, otherwise the values we get are probably invalid
+  reconos_cache_flush();
+
+	mbox_put(&mb_in[slot], ((unsigned int)mem) | 0x40000000);
+
+  // copy has finished
+	mbox_get(&mb_out[slot]);
+
+  // check
+  for(i = 0; i < PRBLOCK_MEM_SIZE; i++) {
+    if(mem[i] != value) {
+      printf("Memory contents different at index %d, expected %08X, actual %08X\n", i, value, mem[i]);
+      return 0;
+    }
+  }
+
+  free(mem);
+
+	return 1;
+}
+
 int test_prblock(int slot, int thread_id)
 {
   if(slot == 0 || slot >= NUM_SLOTS) {
@@ -99,20 +168,31 @@ int test_prblock(int slot, int thread_id)
       printf("  # ADD: passed\n");
     } else {
       printf("  # ADD: failed\n");
+      return 0;
     }
-
-    return 1;
+    break;
 
   case SUB:
     if (ret==(0x01003344)-(0x01001122)) {
       printf("  # SUB: passed\n");
     } else {
       printf("  # SUB: failed\n");
+      return 0;
     }
-    return 1;
+    break;
+
+  default:
+    printf("Unknown thread_id %d\n", thread_id);
+    return 0;
   }
 
-	return 0;
+  // test memory
+  prblock_mem_set(slot, 0x11223344);
+
+  if(prblock_mem_get(slot, 0x11223344) == 0)
+    printf("  # PRBLOCK: memory failed\n");
+
+	return 1;
 }
 
 int reconfigure_prblock(int slot, int thread_id)
@@ -143,7 +223,10 @@ int reconfigure_prblock(int slot, int thread_id)
       ret = sw_icap_load(slot, thread_id);
       break;
     case RECONF_HW:
-      ret = hw_icap_load(slot, thread_id);
+      //ret = hw_icap_load(slot, thread_id);
+      icap_write(pr_bit[slot][thread_id].block, pr_bit[slot][thread_id].length * 4);
+      // TODO: DAFUQ???
+      //bitstream_restore(&pr_bit[slot][thread_id]);
       break;
     default:
       break;
@@ -177,6 +260,7 @@ static struct argp_option options[] = {
   {"restore", 4100, 0,      0,  "Restore state using GSR" },
   {"test",    't',  "slot", OPTION_ARG_OPTIONAL, "Playground.. can be anything here" },
   {"test2",   6000, 0,      0,  "Playground.. can be anything here" },
+  {"test3",   6003, 0,      0,  "Playground.. can be anything here" },
   {"switch_bot", 5000, 0,   0,  "Change to bottom ICAP interface" },
   { 0 }
 };
@@ -243,6 +327,10 @@ parse_opt (int key, char *arg, struct argp_state *state)
     arguments->mode = MODE_TEST2;
     break;
 
+  case 6003:
+    arguments->mode = MODE_TEST3;
+    break;
+
   case 'r':
     arguments->mode = MODE_READ;
     arguments->read_words = atoi(arg);
@@ -260,10 +348,46 @@ parse_opt (int key, char *arg, struct argp_state *state)
 
 static struct argp argp = { options, parse_opt, "", "" };
 
+void segfault_sigaction(int signal, siginfo_t *si, void *arg)
+{
+  perror("segfault\n");
+  printf("Caught segfault at address %p\n", si->si_addr);
+  exit(0);
+}
+
+void sigill_sigaction(int signal, siginfo_t *si, void *arg)
+{
+  perror("sigill\n");
+  printf("Caught sigill at address %p\n", si->si_addr);
+  exit(0);
+}
+
 // MAIN ////////////////////////////////////////////////////////////////////
 int main(int argc, char *argv[])
 {
 	int i, cnt=1;
+
+  // TODO: REMOVE
+  // catch segfaults
+  struct sigaction sa;
+
+  memset(&sa, 0, sizeof(struct sigaction));
+  sigemptyset(&sa.sa_mask);
+  sa.sa_sigaction = segfault_sigaction;
+  sa.sa_flags   = SA_SIGINFO;
+
+  sigaction(SIGSEGV, &sa, NULL);
+
+  // catch SIGILLs
+  struct sigaction sigill;
+
+  memset(&sigill, 0, sizeof(struct sigaction));
+  sigemptyset(&sigill.sa_mask);
+  sigill.sa_sigaction = sigill_sigaction;
+  sigill.sa_flags = SA_ONSTACK | SA_RESTART | SA_SIGINFO;
+
+  sigaction(SIGILL, &sigill, NULL);
+
 
 	printf( "-------------------------------------------------------\n"
 		    "ICAP DEMONSTRATOR\n"
@@ -381,17 +505,28 @@ int main(int argc, char *argv[])
     printf("Performing gcapture\n");
     hw_icap_gcapture();
   } else if(g_arguments.mode == MODE_RESTORE) {
-    hw_icap_gsr();
+    hw_icap_grestore();
   } else if(g_arguments.mode == MODE_TEST) {
+    //--------------------------------------------------------------------------
+    // Load RM, set some values, capture it
+    // Then set different values, load different RM
+    // Finally restore original RM, check if values are identical
+    //--------------------------------------------------------------------------
     int slot = g_arguments.slot;
 
+    // ensure that we are in a valid state first
     reconfigure_prblock(slot, ADD);
     test_prblock(slot, ADD);
     prblock_get(slot, 3);
 
-    prblock_set(slot, 3, 0xAA00BBCC);
+    // set values that we want to capture
+    prblock_set(slot, 3, 0x11223344);
     prblock_get(slot, 3);
 
+    prblock_mem_set(slot, 0x00000000);
+
+
+    // capture bitstream
     struct pr_bitstream_t test_bit;
 
     bitstream_capture(&pr_bit[slot][ADD], &test_bit);
@@ -399,15 +534,19 @@ int main(int argc, char *argv[])
     printf("Capturing current state completed\n");
     fflush(stdout);
 
-    bitstream_save("partial_bitstreams/test.bit", &test_bit);
+    bitstream_save("partial_bitstreams/test.bin", &test_bit);
 
+    // set it to a different value (just because)
     prblock_set(slot, 3, 0x00DD0000);
     test_prblock(slot, ADD);
+    prblock_mem_set(slot, 0x01010101);
     prblock_get(slot, 3);
 
+    // configure different module to erase all traces of the former
     reconfigure_prblock(slot, SUB);
     test_prblock(slot, SUB);
 
+    // restore captured module
     // send thread exit command
     mbox_put(&mb_in[slot],THREAD_EXIT_CMD);
     usleep(100);
@@ -430,6 +569,7 @@ int main(int argc, char *argv[])
     printf("reset done\n");
     fflush(stdout);
 
+    prblock_mem_get(slot, 0xAABBCCDD);
     test_prblock(slot, ADD);
 
     sleep(1);
@@ -447,28 +587,6 @@ int main(int argc, char *argv[])
     }
 
     icap_read_frame(g_arguments.read_far, g_arguments.read_words, mem);
-/*
-
-    unsigned int block_size = 300;
-    uint32_t* cmp_mem = (uint32_t*)malloc(block_size * sizeof(uint32_t));
-
-    for(i = 0; i*81 + block_size < g_arguments.read_words; i++ ) {
-      hw_icap_read(g_arguments.read_far + i, block_size, cmp_mem);
-
-      printf("FAR is %08X, run %d\n", g_arguments.read_far + i, i);
-
-      unsigned int k;
-      if(i == 35) {
-        for(k = 0;k < block_size; k++)
-          printf("FAR %08X, Word %8d, %08X, %08X\n", g_arguments.read_far + i, k, cmp_mem[k], mem[i * 81 + k]);
-      }
-      for(k = 0; k < block_size; k++) {
-        if(mem[k + i*81] != cmp_mem[k]) {
-          printf("Failed at far %08X, word %d\nExpected %08X, is %08X\nWord: %d\n", g_arguments.read_far + i, k, mem[k + i * 81], cmp_mem[k], k + i*81);
-        }
-      }
-    }
-    */
 
     unsigned int i;
     for(i = 0; i < g_arguments.read_words; i++) {
@@ -478,6 +596,19 @@ int main(int argc, char *argv[])
   } else if(g_arguments.mode == MODE_SWITCH_BOT) {
     icap_switch_bot();
   } else if(g_arguments.mode == MODE_TEST2) {
+    int slot = HWT_DPR2;
+
+    struct pr_bitstream_t test_bit;
+    //bitstream_open("partial_bitstreams/test.bin", &test_bit);
+
+    //bitstream_restore(&test_bit);
+
+    reconfigure_prblock(slot, ADD);
+    bitstream_capture(&pr_bit[slot][ADD], &test_bit);
+    bitstream_save("partial_bitstreams/test.bin", &test_bit);
+    prblock_mem_get(slot, 0xABCDABCD);
+    prblock_mem_set(slot, 0xABCDABCD);
+    /*
     icap_gcapture();
 
     sleep(1);
@@ -496,9 +627,21 @@ int main(int argc, char *argv[])
 
     printf("restore done\n");
     fflush(stdout);
+    */
+  } else if(g_arguments.mode == MODE_TEST3) {
+    int slot = HWT_DPR2;
+
+    struct pr_bitstream_t test_bit;
+    bitstream_open("partial_bitstreams/test.bin", &test_bit);
+
+    icap_write(test_bit.block, test_bit.length * 4);
+    prblock_mem_get(slot, 0x10101010);
   }
 
+  printf("Exiting now\n");
 
+  // If we use return 0 instead of exit(0) we're getting segmentation faults. I know this makes no sense, but this is what I observed...?
+  exit(0);
 	return 0;
 }
 

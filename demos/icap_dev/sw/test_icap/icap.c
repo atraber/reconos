@@ -73,6 +73,18 @@ int icap_read_frame(uint32_t far, uint32_t size, uint32_t* dst)
   }
 }
 
+int icap_read_frame_multiple(struct pr_frame_t* frames, unsigned int num, uint32_t* block)
+{
+  switch(g_activeICAP) {
+  case ICAP_HW:
+    return hw_icap_read_frame_multiple(frames, num, block);
+
+  default:
+    printf("The select ICAP interface is not available. Only ICAP_HW is currently supported\n");
+    return 0;
+  }
+}
+
 int icap_write_frame(uint32_t far, uint32_t* addr, unsigned int words)
 {
   switch(g_activeICAP) {

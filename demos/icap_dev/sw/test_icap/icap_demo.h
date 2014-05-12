@@ -10,6 +10,8 @@
 #define ADD 0
 #define SUB 1
 
+#define PRBLOCK_MEM_SIZE  2048
+
 #define THREAD_EXIT_CMD 0xFFFFFFFF
 
 extern struct reconos_resource res[NUM_SLOTS][2];
@@ -21,6 +23,12 @@ extern struct mbox mb_out[NUM_SLOTS];
 struct pr_bitstream_t {
   uint32_t* block;
   unsigned int length; // in 32 bit words
+};
+
+struct pr_frame_t {
+  uint32_t far;
+  uint32_t offset; // offset from start in bitstream in words
+  uint32_t words; // in words
 };
 
 extern struct pr_bitstream_t pr_bit[NUM_SLOTS][2]; // the first one will not be used as it is not a reconfigurable module
@@ -38,6 +46,7 @@ void icap_set(int icap);
 int icap_write(uint32_t* addr, unsigned int size);
 int icap_read(uint32_t* addr, unsigned int size);
 int icap_read_frame(uint32_t far, uint32_t size, uint32_t* dst);
+int icap_read_frame_multiple(struct pr_frame_t* frames, unsigned int num, uint32_t* block);
 int icap_write_frame(uint32_t far, uint32_t* addr, unsigned int words);
 int icap_gcapture();
 int icap_grestore();
@@ -45,6 +54,7 @@ int icap_grestore();
 int hw_icap_write(uint32_t* addr, unsigned int size);
 int hw_icap_read(uint32_t* addr, unsigned int size);
 int hw_icap_read_frame(uint32_t far, uint32_t size, uint32_t* dst);
+int hw_icap_read_frame_multiple(struct pr_frame_t* frames, unsigned int num, uint32_t* block);
 int hw_icap_write_frame(uint32_t far, uint32_t* addr, unsigned int words);
 
 int sw_icap_write(uint32_t* addr, unsigned int size);

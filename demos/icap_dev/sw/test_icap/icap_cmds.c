@@ -309,7 +309,7 @@ int hw_icap_read_frame(uint32_t far, uint32_t size, uint32_t* dst)
     printf("hw_icap_read_frame: Writing first command sequence to ICAP has failed\n");
     return 0;
   }
-
+  
   // read
   uint32_t* mem = (uint32_t*)malloc(real_size * sizeof(uint32_t));
   if(mem == NULL) {
@@ -339,6 +339,129 @@ int hw_icap_read_frame(uint32_t far, uint32_t size, uint32_t* dst)
   memcpy(dst, mem + 82, (size) * 4);
 
   free(mem);
+
+  return 1;
+}
+
+
+uint32_t g_icap_read_multiple[] = {0x20000000, // noop
+                                   0x30008001, // write to cmd
+                                   0x00000007, // RCRC
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x30008001, // write to cmd
+                                   0x00000004, // RCFG
+                                   0x20000000, // noop
+                                   0x30002001, // write to FAR
+                                   0x00008A80, // FAR address
+                                   0x28006000, // type 1 read 0 words from FDRO
+                                   0x48000080, // type 2 read 128 words from FDRO
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000, // noop
+                                   0x20000000};// noop
+
+
+int hw_icap_read_frame_multiple(struct pr_frame_t* frames, unsigned int num, uint32_t* block)
+{
+  int ret;
+
+  if(num == 0)
+    return 0;
+
+  // prepare first frame for readback
+  // account for the padframe and dummy words
+  uint32_t real_size = frames[0].words + 82;
+
+  g_icap_read_cmd[21] = frames[0].far;
+  g_icap_read_cmd[23] = (real_size) | 0x48000000;
+
+  ret = hw_icap_write(g_icap_read_cmd, sizeof g_icap_read_cmd);
+  if(ret == 0) {
+    printf("hw_icap_read_frame: Writing first command sequence to ICAP has failed\n");
+    return 0;
+  }
+
+  unsigned int i;
+  for(i = 0; i < num; i++) {
+
+    if(i != 0) {
+      // account for the padframe and dummy words
+      real_size = frames[i].words + 82;
+
+      g_icap_read_multiple[13] = frames[i].far;
+      g_icap_read_multiple[15] = (real_size) | 0x48000000;
+
+      // prepare next frame for readback
+      ret = hw_icap_write(g_icap_read_multiple, sizeof g_icap_read_multiple);
+      if(ret == 0) {
+        printf("hw_icap_read_frame: Writing first command sequence to ICAP has failed\n");
+        return 0;
+      }
+    }
+
+
+    uint32_t* mem = (uint32_t*)malloc(real_size * sizeof(uint32_t));
+    if(mem == NULL) {
+      printf("Could not allocate buffer\n");
+      return 0;
+    }
+
+    memset(mem, 0xAB, real_size * sizeof(uint32_t));
+
+    // we need to flush the cache here as otherwise we get a part of old data and a part of new data
+    reconos_cache_flush();
+
+    ret = hw_icap_read(mem, real_size * sizeof(uint32_t));
+    if(ret == 0) {
+      printf("hw_icap_read_frame: Reading from ICAP has failed\n");
+      return 0;
+    }
+
+    // the first 82 words are rubish, because they are from the pad frame and a dummy word
+    memcpy(block + frames[i].offset, mem + 82, (frames[i].words) * 4);
+
+    free(mem);
+  }
+
+  // we have finished reading, desync the ICAP interface
+  ret = hw_icap_write(g_icap_read_cmd2, sizeof g_icap_read_cmd2);
+  if(ret == 0) {
+    printf("hw_icap_read_frame: Writing first command sequence to ICAP has failed\n");
+    return 0;
+  }
 
   return 1;
 }
@@ -517,6 +640,17 @@ uint32_t g_icap_grestore[] = {0xFFFFFFFF,
                               0x00000000, //  belongs to previous packet, 0 packets follow   
                               0x20000000, // Type 1 packet, NOOP 0 packets follow
                               0x20000000, // Type 1 packet, NOOP 0 packets follow
+                              0x30008001, // write to cmd
+                              0x0000000B, // SHUTDOWN
+                              0x20000000, // noop
+                              0x30008001, // write to cmd
+                              0x00000007, // RCRC
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
+                              0x20000000, // noop
                               0x30008001, //Type 1 packet, Write, CMD reg 1 packets follow
                               0x0000000B, //SHUTDOWN belongs to previous packet, 0 packets follow
                               0x20000000, //Type 1 packet, NOOP 0 packets follow
@@ -622,7 +756,7 @@ uint32_t g_icap_grestore[] = {0xFFFFFFFF,
 
 int hw_icap_grestore() {
   int ret;
-  
+
   ret = hw_icap_write(g_icap_grestore, 32 * 4);
   if(ret == 0) {
     printf("Writing first restore sequence failed\n");
