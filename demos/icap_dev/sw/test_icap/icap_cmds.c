@@ -73,15 +73,15 @@ int sw_icap_write(uint32_t* addr, unsigned int size)
 {
   int retval = 0;
 
-  FILE* fp = fopen("/dev/icap0", "w");
-  if(fp == NULL) {
+  int fd = open("/dev/icap0", O_WRONLY);
+  if(fd == -1) {
     printf("sw_icap_write: Could not open icap\n");
 
     goto FAIL;
   }
 
   // write whole file in one command
-  if( fwrite(addr, sizeof(uint32_t), size/4, fp) != (size / 4)) {
+  if( write(fd, addr, size) != size ) {
     printf("sw_icap_write: Something went wrong while writing to ICAP\n");
 
     goto FAIL;
@@ -90,8 +90,8 @@ int sw_icap_write(uint32_t* addr, unsigned int size)
   retval = 1;
 
 FAIL:
-  if(fp != NULL)
-    fclose(fp);
+  if(fd != -1)
+    close(fd);
 
   return retval;
 }
@@ -147,72 +147,38 @@ uint32_t g_icap_switch_bot[] = {0xFFFFFFFF, // Dummy word
                                 0x20000000}; // NOOP
 
 // icap switch to top
-uint32_t g_icap_switch_top[] = {0xFFFFFFFF,
-                                0x000000BB,
-                                0x11220044,
-                                0xFFFFFFFF,
-                                0xAA995566, // sync
-                                0x20000000,
+uint32_t g_icap_switch_top[] = {0xFFFFFFFF, // Dummy word
+                                0x000000BB, // Bus Width Sync Word
+                                0x11220044, // Bus Width Detect
+                                0xFFFFFFFF, // Dummy Word
+                                0xAA995566, // SYNC
+                                0x20000000, // NOOP
                                 0x3000A001, // write to mask
-                                0x40000000,
-                                0x20000000,
+                                0x40000000, // icap control
+                                0x20000000, // NOOP
                                 0x3000C001, // write to ctl0
-                                0x00000000,
-                                0x20000000,
-                                0x30008001,
+                                0x00000000, // change icap
+                                0x20000000, // NOOP
+                                0x30008001, // write to cmd
                                 0x0000000D, // desync
-                                0x20000000,
-                                0x20000000};
+                                0x20000000, // NOOP
+                                0x20000000}; // NOOP
 
-// switches to bottom icap using hwt_icap
+//------------------------------------------------------------------------------
+// switches to bottom icap using HWT_ICAP
+//------------------------------------------------------------------------------
 void icap_switch_bot() {
   // has to be done two times, don't know why?
   hw_icap_write(g_icap_switch_bot, sizeof g_icap_switch_bot);
   hw_icap_write(g_icap_switch_bot, sizeof g_icap_switch_bot);
 }
 
+//------------------------------------------------------------------------------
 // should switch to top ICAP using XPS_HWICAP
-// Does not seem to work for some reason?
+// WARNING: Does not seem to work for some reason?
+//------------------------------------------------------------------------------
 void icap_switch_top() {
   sw_icap_write(g_icap_switch_top, sizeof g_icap_switch_top);
-}
-
-// loads bitstream into ICAP
-// Returns 1 if successfull, 0 otherwise
-int sw_icap_load(int slot, int thread_id)
-{
-  if( sw_icap_write(pr_bit[slot][thread_id].block, pr_bit[slot][thread_id].length * 4) == 0) {
-    printf("Could not write to ICAP using XPS_HWICAP controller\n");
-
-    return 0;
-  }
-
-  return 1;
-}
-
-// load partial bitfile via hardware icap thread
-int hw_icap_load(int slot, int thread_id)
-{
-	int ret;
-
-  uint32_t* addr = pr_bit[slot][thread_id].block;
-  unsigned int size = (unsigned int)pr_bit[slot][thread_id].length * 4;
-
-  ret = hw_icap_write(addr, size);
-
-	return ret;
-}
-
-int linux_icap_load(int slot, int thread_id)
-{
-  int ret = -2;
-
-  if(thread_id == ADD)
-    ret = system("cat partial_bitstreams/partial_add.bin > /dev/icap0");
-  else if(thread_id == SUB)
-    ret = system("cat partial_bitstreams/partial_sub.bin > /dev/icap0");
-
-  return ret;
 }
 
 

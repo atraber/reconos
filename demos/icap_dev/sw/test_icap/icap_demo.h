@@ -70,16 +70,18 @@ int sw_icap_grestore();
 #define RECONF_HW    2
 #define RECONF_NULL  3
 
-#define MODE_WRITE      0
-#define MODE_READ       1
-#define MODE_WRITE_ADD  2
-#define MODE_WRITE_SUB  3
-#define MODE_CAPTURE    4
-#define MODE_RESTORE    5
-#define MODE_TEST       6
-#define MODE_SWITCH_BOT 7
-#define MODE_TEST2      8
-#define MODE_TEST3      9
+#define MODE_WRITE       0
+#define MODE_READ        1
+#define MODE_WRITE_ADD   2
+#define MODE_WRITE_SUB   3
+#define MODE_CAPTURE     4
+#define MODE_RESTORE     5
+#define MODE_TEST        6
+#define MODE_SWITCH_BOT  7
+#define MODE_TEST2       8
+#define MODE_TEST3       9
+#define MODE_SWITCH_TOP 10
+
 struct cmd_arguments_t {
   unsigned int reconf_mode;
   unsigned int mode;

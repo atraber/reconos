@@ -26,6 +26,7 @@ static struct argp_option options[] = {
   {"test2",   6000, "slot", OPTION_ARG_OPTIONAL,  "Playground.. can be anything here" },
   {"test3",   6003, "slot", OPTION_ARG_OPTIONAL,  "Playground.. can be anything here" },
   {"switch_bot", 5000, 0,   0,  "Change to bottom ICAP interface" },
+  {"switch_top", 5001, 0,   0,  "Change to top ICAP interface" },
   { 0 }
 };
 
@@ -78,6 +79,10 @@ parse_opt (int key, char *arg, struct argp_state *state)
 
   case 5000:
     arguments->mode = MODE_SWITCH_BOT;
+    break;
+
+  case 5001:
+    arguments->mode = MODE_SWITCH_TOP;
     break;
 
   case 't':

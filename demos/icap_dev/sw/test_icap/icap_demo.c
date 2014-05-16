@@ -32,6 +32,57 @@ struct mbox mb_out[NUM_SLOTS];
 
 struct pr_bitstream_t pr_bit[NUM_SLOTS][2];
 
+
+// load partial bitfile via hardware icap thread
+int hw_icap_load(int slot, int thread_id)
+{
+	int ret;
+
+  uint32_t* addr = pr_bit[slot][thread_id].block;
+  unsigned int size = (unsigned int)pr_bit[slot][thread_id].length * 4;
+
+  ret = hw_icap_write(addr, size);
+
+  if(ret == 0) {
+    printf("Could not write to ICAP using HWT_ICAP controller\n");
+    return 0;
+  }
+
+	return 1;
+}
+
+// loads bitstream into ICAP
+// Returns 1 if successfull, 0 otherwise
+int sw_icap_load(int slot, int thread_id)
+{
+  if( sw_icap_write(pr_bit[slot][thread_id].block, pr_bit[slot][thread_id].length * 4) == 0) {
+    printf("Could not write to ICAP using XPS_HWICAP controller\n");
+
+    return 0;
+  }
+
+  return 1;
+}
+
+int linux_icap_load(int slot, int thread_id)
+{
+  int ret = -2;
+
+  if(slot == 1) {
+    if(thread_id == ADD)
+      ret = system("cat partial_bitstreams/partial_add.bin > /dev/icap0");
+    else if(thread_id == SUB)
+      ret = system("cat partial_bitstreams/partial_sub.bin > /dev/icap0");
+  } else {
+    if(thread_id == ADD)
+      ret = system("cat partial_bitstreams/partial_add2.bin > /dev/icap0");
+    else if(thread_id == SUB)
+      ret = system("cat partial_bitstreams/partial_sub2.bin > /dev/icap0");
+  }
+
+  return ret;
+}
+
 int prblock_set(int slot, unsigned int reg, uint32_t value)
 {
 	mbox_put(&mb_in[slot], reg);
@@ -91,6 +142,7 @@ int prblock_mem_get(int slot, uint32_t value)
   }
 
   // test memory
+  // we use static memory allocation for now
   // uint32_t* mem = (uint32_t*)malloc(PRBLOCK_MEM_SIZE * sizeof(uint32_t));
   // if(mem == NULL) {
   //   printf("Memory alloc has failed\n");
@@ -196,16 +248,13 @@ int reconfigure_prblock(int slot, int thread_id)
 	// reconfigure hardware slot
   switch(g_arguments.reconf_mode) {
     case RECONF_LINUX:
-      ret = linux_icap_load(slot, thread_id); // DOES NOT YET ACCEPT the second slot
+      ret = linux_icap_load(slot, thread_id);
       break;
     case RECONF_SW:
       ret = sw_icap_load(slot, thread_id);
       break;
     case RECONF_HW:
       ret = hw_icap_load(slot, thread_id);
-      //icap_write(pr_bit[slot][thread_id].block, pr_bit[slot][thread_id].length * 4);
-      // TODO: DAFUQ???
-      //bitstream_restore(&pr_bit[slot][thread_id]);
       break;
     default:
       break;
@@ -473,6 +522,8 @@ int main(int argc, char *argv[])
 
   } else if(g_arguments.mode == MODE_SWITCH_BOT) {
     icap_switch_bot();
+  } else if(g_arguments.mode == MODE_SWITCH_TOP) {
+    icap_switch_top();
   } else if(g_arguments.mode == MODE_TEST2) {
     int slot = g_arguments.slot;
 
