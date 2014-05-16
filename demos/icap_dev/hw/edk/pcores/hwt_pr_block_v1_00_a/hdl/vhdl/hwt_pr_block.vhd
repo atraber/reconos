@@ -10,6 +10,10 @@ library reconos_v3_00_b;
 use reconos_v3_00_b.reconos_pkg.all;
 
 entity hwt_pr_block is
+  generic (
+    G_ADD : boolean := true
+    );
+
   port (
     -- OSIF FSL   
     OSFSL_S_Read    : out std_logic;  -- Read signal, requiring next available input to be read
@@ -73,6 +77,8 @@ architecture implementation of hwt_pr_block is
   signal vals : std_logic_vector(31 downto 0);
   signal msg  : std_logic_vector(31 downto 0);
 
+  signal ResultxD : unsigned(31 downto 0);
+
   -----------------------------------------------------------------------------
   -- registers
   -----------------------------------------------------------------------------
@@ -114,6 +120,14 @@ begin
   --    end if;
   --  end process;
 
+  genAdd : if G_ADD = true generate
+    ResultxD <= unsigned(RegistersxD(0)) + unsigned(RegistersxD(1));
+  end generate genAdd;
+
+  genSub : if G_ADD = false generate
+    ResultxD <= unsigned(RegistersxD(0)) - unsigned(RegistersxD(1));
+  end generate genSub;
+
   -- os and memory synchronisation state machine
   reconos_fsm : process (clk, rst, o_osif) is
     variable done : boolean;
@@ -128,7 +142,7 @@ begin
     elsif rising_edge(clk) then
 
       -- default assignment
-      RegistersxD(2) <= RegistersxD(0) + RegistersxD(1);
+      RegistersxD(2) <= conv_std_logic_vector(ResultxD, ResultxD'length);
 
       case state is
         -----------------------------------------------------------------------
@@ -226,5 +240,5 @@ begin
       end case;
     end if;
   end process;
-  
+
 end architecture;

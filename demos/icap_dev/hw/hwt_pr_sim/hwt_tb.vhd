@@ -211,7 +211,11 @@ architecture behavior of hwt_tb is
 begin
 
   -- Instantiate the Unit Under Test (UUT)
-  uut : entity work.hwt_pr_block port map (
+  uut : entity work.hwt_pr_block
+    generic map (
+      G_ADD => false
+      )
+    port map (
     OSFSL_S_Read    => OSFSL_S_Read,
     OSFSL_S_Data    => OSFSL_S_Data,
     OSFSL_S_Control => '0',
@@ -422,9 +426,9 @@ begin
     wait for clk_period;
 
 
-    write_reg(0, x"00000011", MB_M_Write, MB_M_Data, MB_M_Full, MB_S_Exists, MB_S_Read);
+    write_reg(1, x"00000011", MB_M_Write, MB_M_Data, MB_M_Full, MB_S_Exists, MB_S_Read);
 
-    write_reg(1, x"00001111", MB_M_Write, MB_M_Data, MB_M_Full, MB_S_Exists, MB_S_Read);
+    write_reg(0, x"00001111", MB_M_Write, MB_M_Data, MB_M_Full, MB_S_Exists, MB_S_Read);
     write_reg(3, x"AABBCCDD", MB_M_Write, MB_M_Data, MB_M_Full, MB_S_Exists, MB_S_Read);
 
     read_reg(2, x"00001122", MB_M_Write, MB_M_Data, MB_M_Full, MB_S_Exists, MB_S_Read, MB_S_Data);
