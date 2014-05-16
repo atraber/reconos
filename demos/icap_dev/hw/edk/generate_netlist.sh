@@ -18,6 +18,7 @@ echo "######################################################################"
 
 # Make sure that we are really building the addition
 sed -i '14s/.*/    G_ADD : boolean := true/' ./pcores/hwt_pr_block_v1_00_a/hdl/vhdl/hwt_pr_block.vhd
+sed -i '14s/.*/    G_ADD : boolean := true/' ./pcores/hwt_pr_app_v1_00_a/hdl/vhdl/hwt_pr_app.vhd
 
 ################################################################################
 # Building netlist
@@ -53,6 +54,7 @@ echo "######################################################################"
 
 # Make sure that we are really building the subtraction
 sed -i '14s/.*/    G_ADD : boolean := false/' ./pcores/hwt_pr_block_v1_00_a/hdl/vhdl/hwt_pr_block.vhd
+sed -i '14s/.*/    G_ADD : boolean := false/' ./pcores/hwt_pr_app_v1_00_a/hdl/vhdl/hwt_pr_app.vhd
 
 ################################################################################
 # Building netlist
@@ -66,8 +68,8 @@ echo "run netlist" | xps -nw ./system.xmp
 
 # Netlist of Reconfigurable Module is moved to a folder specific for this
 # configuration
-mv ./implementation/system_hwt_pr_block_0_wrapper.ngc ../pr_design/syn/pr_b/
-mv ./implementation/system_hwt_pr_block_1_wrapper.ngc ../pr_design/syn/pr_b/
+cp ./implementation/system_hwt_pr_block_0_wrapper.ngc ../pr_design/syn/pr_b/
+cp ./implementation/system_hwt_pr_block_1_wrapper.ngc ../pr_design/syn/pr_b/
 
 echo "CONFIGURATION B FINISHED"
 
@@ -75,3 +77,4 @@ echo "CONFIGURATION B FINISHED"
 # restore addition as this is what is on git, we do not want useless commits for
 # this stuff
 sed -i '14s/.*/    G_ADD : boolean := true/' ./pcores/hwt_pr_block_v1_00_a/hdl/vhdl/hwt_pr_block.vhd
+sed -i '14s/.*/    G_ADD : boolean := true/' ./pcores/hwt_pr_app_v1_00_a/hdl/vhdl/hwt_pr_app.vhd

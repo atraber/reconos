@@ -64,7 +64,7 @@ BEGIN hwt_pr_block
  PORT Clk = clk_100_0000MHzMMCM0
 END
 
-BEGIN hwt_pr_block
+BEGIN hwt_pr_app
  PARAMETER INSTANCE = hwt_pr_block_1
  PARAMETER HW_VER = v1.00.a
  BUS_INTERFACE OS_SFSL = fsl_v20_2b
