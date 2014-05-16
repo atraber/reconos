@@ -78,4 +78,32 @@ int hw_icap_gsr();
 int sw_icap_gcapture();
 int sw_icap_grestore();
 
+// command line parsing
+#define RECONF_LINUX 0
+#define RECONF_SW    1
+#define RECONF_HW    2
+#define RECONF_NULL  3
+
+#define MODE_WRITE      0
+#define MODE_READ       1
+#define MODE_WRITE_ADD  2
+#define MODE_WRITE_SUB  3
+#define MODE_CAPTURE    4
+#define MODE_RESTORE    5
+#define MODE_TEST       6
+#define MODE_SWITCH_BOT 7
+#define MODE_TEST2      8
+#define MODE_TEST3      9
+struct cmd_arguments_t {
+  unsigned int reconf_mode;
+  unsigned int mode;
+  unsigned int max_cnt;
+  unsigned int read_far;
+  unsigned int read_words;
+  int slot;
+};
+
+void cmd_parsing(int argc, char* argv[], struct cmd_arguments_t* arguments);
+
+
 #endif

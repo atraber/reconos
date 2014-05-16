@@ -66,7 +66,7 @@ architecture implementation of hwt_pr_block is
 
   constant o_RAMAddr_max : std_logic_vector(0 to C_LOCAL_RAM_ADDRESS_WIDTH-1) := (others => '1');
 
-  shared variable local_ram : LOCAL_MEMORY_T := (others => x"10101010");
+  shared variable local_ram : LOCAL_MEMORY_T := (others => x"FFFFFFFF");
 
   signal ignore : std_logic_vector(C_FSL_WIDTH-1 downto 0);
 

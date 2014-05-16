@@ -269,8 +269,9 @@ int bitstream_capture(struct pr_bitstream_t* stream_in, struct pr_bitstream_t* s
 
   icap_read_frame_multiple(readFrames, numReadFrames, stream_out->block);
 
-  // try to set all 0x00020000 to zero in block ram regions
-  // this is WRONG! but I did not yet find a better solution...
+  // try to set bit 0x00020000 to zero in block ram regions, where needed
+  // Don't know if this is correct, this is just guessing based on the observation
+  // that when this bit is set, new ram content is not accepted
   for(i = 0; i < numReadFrames; i++) {
     if((readFrames[i].far & 0xFFE00000) != 0x00200000)
       continue;
@@ -278,10 +279,14 @@ int bitstream_capture(struct pr_bitstream_t* stream_in, struct pr_bitstream_t* s
     printf("FAR 0x%08X points to RAM region, trying to clean it up\n", readFrames[i].far);
     uint32_t* mem = stream_out->block + readFrames[i].offset;
 
-    unsigned int k;
-    for(k = 0; k < readFrames[i].words; k++) {
-      if(mem[k] == 0x00020000)
-        mem[k] = 0;
+    unsigned int k, j;
+    for(k = 0;; k++) {
+      j = 4 + k * 10 + ((k+4) / 8);
+      //printf("j is %d\n", j + readFrames[i].offset);
+      if(j >= readFrames[i].words)
+        break;
+
+      mem[j] &= ~0x00020000;
     }
   }
 
