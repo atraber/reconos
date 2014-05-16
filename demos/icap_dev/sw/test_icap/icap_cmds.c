@@ -16,8 +16,10 @@
 
 #include "icap_demo.h"
 
+//------------------------------------------------------------------------------
 // load arbitrary cmd sequence via hardware icap thread
 // size must be in bytes
+//------------------------------------------------------------------------------
 int hw_icap_write(uint32_t* addr, unsigned int size)
 {
 	int ret;
@@ -38,7 +40,11 @@ int hw_icap_write(uint32_t* addr, unsigned int size)
 	return 1;
 }
 
+//------------------------------------------------------------------------------
+// Reads from the ICAP interface. This only works if a readback has been
+// initiated manually before, otherwise this will block and never return
 // size must be in bytes
+//------------------------------------------------------------------------------
 int hw_icap_read(uint32_t* addr, unsigned int size)
 {
 	int ret;
@@ -59,8 +65,10 @@ int hw_icap_read(uint32_t* addr, unsigned int size)
 	return 1;
 }
 
+//------------------------------------------------------------------------------
 // load arbitrary cmd sequence via software icap
 // size must be in bytes
+//------------------------------------------------------------------------------
 int sw_icap_write(uint32_t* addr, unsigned int size)
 {
   int retval = 0;
@@ -88,7 +96,11 @@ FAIL:
   return retval;
 }
 
+//------------------------------------------------------------------------------
+// Should read from the software ICAP, but it does not work! The kernel driver
+// seems to be broken for virtex 6
 // size must be in bytes
+//------------------------------------------------------------------------------
 int sw_icap_read(uint32_t* addr, unsigned int size)
 {
   int retval = 0;
@@ -116,20 +128,6 @@ FAIL:
 }
 
 
-// untested
-uint32_t g_icap_crc_clear[] = {0xFFFFFFFF, // Dummy Word
-                               0x000000BB, // Bus Width Sync Word
-                               0x11220044, // Bus Width Detect
-                               0xFFFFFFFF, // Dummy Word
-                               0xAA995566, // Sync Word
-                               0x20000000, // NOOP
-                               0x30008001, // Type 1 write to CMD
-                               0x00000007, // RCRC
-                               0x20000000, // NOOP
-                               0x30008001, // Type 1 write to CMD
-                               0x0000000D, // DESYNC
-                               0x20000000, // NOOP
-                               0x20000000}; // NOOP
 // icap switch to bottom, does work!
 uint32_t g_icap_switch_bot[] = {0xFFFFFFFF, // Dummy word
                                 0x000000BB, // Bus Width Sync Word
@@ -148,7 +146,6 @@ uint32_t g_icap_switch_bot[] = {0xFFFFFFFF, // Dummy word
                                 0x20000000, // NOOP
                                 0x20000000}; // NOOP
 
-// does not work?
 // icap switch to top
 uint32_t g_icap_switch_top[] = {0xFFFFFFFF,
                                 0x000000BB,
@@ -174,15 +171,10 @@ void icap_switch_bot() {
   hw_icap_write(g_icap_switch_bot, sizeof g_icap_switch_bot);
 }
 
-// switches to bottom icap using hwt_icap
+// should switch to top ICAP using XPS_HWICAP
+// Does not seem to work for some reason?
 void icap_switch_top() {
   sw_icap_write(g_icap_switch_top, sizeof g_icap_switch_top);
-}
-
-
-// switches to bottom icap using hwt_icap
-void hwt_icap_clear_crc() {
-  hw_icap_write(g_icap_crc_clear, sizeof g_icap_crc_clear);
 }
 
 // loads bitstream into ICAP
@@ -245,9 +237,9 @@ uint32_t g_icap_read_cmd[] = {0xFFFFFFFF,
                               0x00000004, // RCFG
                               0x20000000, // noop
                               0x30002001, // write to FAR
-                              0x00008A80, // FAR address
+                              0x00008A80, // FAR address, will be replaced
                               0x28006000, // type 1 read 0 words from FDRO
-                              0x48000080, // type 2 read 128 words from FDRO
+                              0x48000080, // type 2 read 128 words from FDRO, will be replaced
                               0x20000000, // noop
                               0x20000000, // noop
                               0x20000000, // noop
@@ -293,7 +285,10 @@ uint32_t g_icap_read_cmd2[] = {0x20000000, // noop
                                0x20000000, // noop
                                0x20000000};// noop
 
+//------------------------------------------------------------------------------
+// Reads a frame from ICAP given by the frame address far
 // size must be in words
+//------------------------------------------------------------------------------
 int hw_icap_read_frame(uint32_t far, uint32_t size, uint32_t* dst)
 {
   int ret;
@@ -394,6 +389,10 @@ uint32_t g_icap_read_multiple[] = {0x20000000, // noop
                                    0x20000000};// noop
 
 
+//------------------------------------------------------------------------------
+// Read multiple frames in one command. This is useful for capturing a bitstream,
+// as hopefully the hardware is stopped during readback. This has to be tested though
+//------------------------------------------------------------------------------
 int hw_icap_read_frame_multiple(struct pr_frame_t* frames, unsigned int num, uint32_t* block)
 {
   int ret;
@@ -416,7 +415,8 @@ int hw_icap_read_frame_multiple(struct pr_frame_t* frames, unsigned int num, uin
 
   unsigned int i;
   for(i = 0; i < num; i++) {
-
+    // prepare the next frame for readback
+    // the first frame is already ready as we have done that in the first write (see above)
     if(i != 0) {
       // account for the padframe and dummy words
       real_size = frames[i].words + 82;
@@ -433,6 +433,8 @@ int hw_icap_read_frame_multiple(struct pr_frame_t* frames, unsigned int num, uin
     }
 
 
+    // allocate a new buffer for readback. We cannot use the buffer which we are given here
+    // as readback contains 82 useless words which would overwrite useful data in the given buffer.
     uint32_t* mem = (uint32_t*)malloc(real_size * sizeof(uint32_t));
     if(mem == NULL) {
       printf("Could not allocate buffer\n");
@@ -447,6 +449,7 @@ int hw_icap_read_frame_multiple(struct pr_frame_t* frames, unsigned int num, uin
     ret = hw_icap_read(mem, real_size * sizeof(uint32_t));
     if(ret == 0) {
       printf("hw_icap_read_frame: Reading from ICAP has failed\n");
+      free(mem);
       return 0;
     }
 
@@ -548,52 +551,6 @@ FAIL:
     free(mem);
 
   return 1;
-}
-
-uint32_t g_icap_read_reg[] = {0xFFFFFFFF,
-                              0x000000BB,
-                              0x11220044,
-                              0xFFFFFFFF,
-                              0xAA995566, // sync
-                              0x20000000, // noop
-                              0x20000000, // noop
-                              0x2800E001, // read from STAT register
-                              0x20000000, // noop
-                              0x20000000};// noop
-
-uint32_t g_icap_read_reg2[] = {0x30008001, // write to cmd
-                               0x0000000D, // DESYNC
-                               0x20000000, // noop
-                               0x20000000};// noop
-
-
-// works!
-int hw_icap_read_reg(uint8_t reg) {
-  // prepare command sequence
-  g_icap_read_reg[7] = 0x28000101 | ((reg & 0x1F) << 13);
-
-
-  printf("Writing to ICAP\n");
-  hw_icap_write(g_icap_read_reg, sizeof g_icap_read_reg);
-
-  // read
-  uint32_t mem[1];
-  mem[0] = 0x00;
-  reconos_cache_flush();
-
-  printf("Reading from ICAP\n");
-  hw_icap_write(mem, ((1) * 4) | 0x00000001);
-
-  printf("Finishing ICAP\n");
-  hw_icap_write(g_icap_read_reg2, sizeof g_icap_read_reg2);
-
-
-  unsigned int i;
-  for(i = 0; i < 1; i++) {
-    printf("%08X\n", mem[i]);
-  }
-
-  return 0;
 }
 
 uint32_t g_icap_gcapture[] = {0xFFFFFFFF,
@@ -938,7 +895,10 @@ uint32_t g_icap_write_frame2[] = {0x20000000, // 100 noops, don't know how many 
 
 
 
-// addr points to an array in memory
+//------------------------------------------------------------------------------
+// Write a frame to ICAP, given by the frame address far, number of words and 
+// the buffer where the frame is stored (addr).
+//------------------------------------------------------------------------------
 int hw_icap_write_frame(uint32_t far, uint32_t* addr, unsigned int words)
 {
 	int ret;
@@ -968,7 +928,10 @@ int hw_icap_write_frame(uint32_t far, uint32_t* addr, unsigned int words)
 	return 1;
 }
 
-// addr points to an array in memory
+//------------------------------------------------------------------------------
+// Write a frame to ICAP, given by the frame address far, number of words and 
+// the buffer where the frame is stored (addr).
+//------------------------------------------------------------------------------
 int sw_icap_write_frame(uint32_t far, uint32_t* addr, unsigned int words)
 {
 	int ret;

@@ -202,8 +202,8 @@ int reconfigure_prblock(int slot, int thread_id)
       ret = sw_icap_load(slot, thread_id);
       break;
     case RECONF_HW:
-      //ret = hw_icap_load(slot, thread_id);
-      icap_write(pr_bit[slot][thread_id].block, pr_bit[slot][thread_id].length * 4);
+      ret = hw_icap_load(slot, thread_id);
+      //icap_write(pr_bit[slot][thread_id].block, pr_bit[slot][thread_id].length * 4);
       // TODO: DAFUQ???
       //bitstream_restore(&pr_bit[slot][thread_id]);
       break;
@@ -278,11 +278,6 @@ int main(int argc, char *argv[])
      
 
 
-  if(g_arguments.reconf_mode == RECONF_HW)
-    icap_set(ICAP_HW);
-  else if(g_arguments.reconf_mode == RECONF_SW)
-    icap_set(ICAP_SW);
- 
 
 	printf("[icap] Initialize ReconOS.\n");
 	reconos_init_autodetect();
@@ -469,7 +464,7 @@ int main(int argc, char *argv[])
       return EXIT_FAILURE;
     }
 
-    icap_read_frame(g_arguments.read_far, g_arguments.read_words, mem);
+    hw_icap_read_frame(g_arguments.read_far, g_arguments.read_words, mem);
 
     unsigned int i;
     for(i = 0; i < g_arguments.read_words; i++) {
@@ -494,7 +489,7 @@ int main(int argc, char *argv[])
     struct pr_bitstream_t test_bit;
     bitstream_open("partial_bitstreams/test.bin", &test_bit);
 
-    icap_write(test_bit.block, test_bit.length * 4);
+    hw_icap_write(test_bit.block, test_bit.length * 4);
     prblock_mem_get(slot, 0xFFFFFFFF);
   }
 

@@ -19,8 +19,10 @@
 #include "icap_demo.h"
 
 
+//------------------------------------------------------------------------------
 // preload bitstream and save it in memory
 // Returns 1 if successfull, 0 otherwise
+//------------------------------------------------------------------------------
 int bitstream_open(const char* path, struct pr_bitstream_t* stream)
 {
   int retval = 0;
@@ -91,6 +93,12 @@ FAIL:
 
 #define MAX_PR_FRAMES 64
 
+//------------------------------------------------------------------------------
+// Capture the current state of the FPGA. The original partial bitstream which
+// was used to program the FPGA must be given here as the necessary information
+// for capturing is extracted from it.
+// The captured state is saved in stream_out
+//------------------------------------------------------------------------------
 int bitstream_capture(struct pr_bitstream_t* stream_in, struct pr_bitstream_t* stream_out)
 {
   // copy input stream as we override it with the current values in the FPGA
@@ -239,13 +247,13 @@ int bitstream_capture(struct pr_bitstream_t* stream_in, struct pr_bitstream_t* s
     return 0;
   }
 
-  icap_write_frame(arrFrames[0].far, stream_out->block + arrFrames[0].offset, arrFrames[0].words);
+  hw_icap_write_frame(arrFrames[0].far, stream_out->block + arrFrames[0].offset, arrFrames[0].words);
 
   //----------------------------------------------------------------------------
   // do gcapture
   //----------------------------------------------------------------------------
 
-  icap_gcapture();
+  hw_icap_gcapture();
 
   //----------------------------------------------------------------------------
   // readback of data
@@ -267,7 +275,7 @@ int bitstream_capture(struct pr_bitstream_t* stream_in, struct pr_bitstream_t* s
     numReadFrames++;
   }
 
-  icap_read_frame_multiple(readFrames, numReadFrames, stream_out->block);
+  hw_icap_read_frame_multiple(readFrames, numReadFrames, stream_out->block);
 
   // try to set bit 0x00020000 to zero in block ram regions, where needed
   // Don't know if this is correct, this is just guessing based on the observation
@@ -293,6 +301,9 @@ int bitstream_capture(struct pr_bitstream_t* stream_in, struct pr_bitstream_t* s
   return 1;
 }
 
+//------------------------------------------------------------------------------
+// Save a given bitstream to the file system
+//------------------------------------------------------------------------------
 int bitstream_save(const char* path, struct pr_bitstream_t* stream)
 {
   int retval = 0;
@@ -321,11 +332,21 @@ FAIL:
   return retval;
 }
 
+//------------------------------------------------------------------------------
+// Restore a captured state. This is done by writing the bitstream to ICAP and
+// then issuing a GRESTORE. GRESTORE is actually part of the bitstream, but it
+// does not work so we trigger it manually afterwards.
+// WARNING: As we trigger the GRESTORE after writing the bitstream to the FPGA,
+// the FPGA potentially starts with the wrong state and is reset to the right
+// state a few clock cycles later. This could potentially lead to a corrupted
+// state (e.g.  in RAM?). More investigations are needed if we need to do
+// something here or if this is fine the way it is now.
+//------------------------------------------------------------------------------
 int bitstream_restore(struct pr_bitstream_t* stream)
 {
-  icap_write(stream->block, stream->length * 4);
+  hw_icap_write(stream->block, stream->length * 4);
 
-  icap_grestore();
+  hw_icap_grestore();
 
   return 1;
 }

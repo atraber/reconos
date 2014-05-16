@@ -39,18 +39,6 @@ int bitstream_capture(struct pr_bitstream_t* stream_in, struct pr_bitstream_t* s
 int bitstream_restore(struct pr_bitstream_t* stream);
 
 
-#define ICAP_HW 0
-#define ICAP_SW 1
-void icap_set(int icap);
-
-int icap_write(uint32_t* addr, unsigned int size);
-int icap_read(uint32_t* addr, unsigned int size);
-int icap_read_frame(uint32_t far, uint32_t size, uint32_t* dst);
-int icap_read_frame_multiple(struct pr_frame_t* frames, unsigned int num, uint32_t* block);
-int icap_write_frame(uint32_t far, uint32_t* addr, unsigned int words);
-int icap_gcapture();
-int icap_grestore();
-
 int hw_icap_write(uint32_t* addr, unsigned int size);
 int hw_icap_read(uint32_t* addr, unsigned int size);
 int hw_icap_read_frame(uint32_t far, uint32_t size, uint32_t* dst);
@@ -68,9 +56,7 @@ int linux_icap_load(int slot, int thread_id);
 
 void icap_switch_bot();
 void icap_switch_top();
-void hwt_icap_clear_crc();
 
-int hw_icap_read_reg(uint8_t reg);
 int hw_icap_gcapture();
 int hw_icap_grestore();
 int hw_icap_gsr();
