@@ -287,19 +287,29 @@ void sigill_sigaction(int signal, siginfo_t *si, void *arg)
   exit(0);
 }
 
-// MAIN ////////////////////////////////////////////////////////////////////
+//------------------------------------------------------------------------------
 int main(int argc, char *argv[])
 {
 	int i, cnt=1;
 
-  // TODO: REMOVE
-  // catch segfaults
+	printf( "-------------------------------------------------------\n"
+		    "ICAP DEMONSTRATOR\n"
+		    "(" __FILE__ ")\n"
+		    "Compiled on " __DATE__ ", " __TIME__ ".\n"
+		    "-------------------------------------------------------\n\n" );
+
+  //----------------------------------------------------------------------------
+  // catch segfaults and invalid instructions
+  // They should actually not happen, but if they do, we want to know as much
+  // as possible about them
+  //----------------------------------------------------------------------------
+  // catch segmentation faults
   struct sigaction sa;
 
   memset(&sa, 0, sizeof(struct sigaction));
   sigemptyset(&sa.sa_mask);
   sa.sa_sigaction = segfault_sigaction;
-  sa.sa_flags   = SA_SIGINFO;
+  sa.sa_flags     = SA_SIGINFO;
 
   sigaction(SIGSEGV, &sa, NULL);
 
@@ -309,16 +319,11 @@ int main(int argc, char *argv[])
   memset(&sigill, 0, sizeof(struct sigaction));
   sigemptyset(&sigill.sa_mask);
   sigill.sa_sigaction = sigill_sigaction;
-  sigill.sa_flags = SA_ONSTACK | SA_RESTART | SA_SIGINFO;
+  sigill.sa_flags     = SA_ONSTACK | SA_RESTART | SA_SIGINFO;
 
   sigaction(SIGILL, &sigill, NULL);
 
 
-	printf( "-------------------------------------------------------\n"
-		    "ICAP DEMONSTRATOR\n"
-		    "(" __FILE__ ")\n"
-		    "Compiled on " __DATE__ ", " __TIME__ ".\n"
-		    "-------------------------------------------------------\n\n" );
 
   //----------------------------------------------------------------------------
   // command line parsing
@@ -326,12 +331,13 @@ int main(int argc, char *argv[])
   cmd_parsing(argc, argv, &g_arguments);
      
 
-
-
-	printf("[icap] Initialize ReconOS.\n");
+  //----------------------------------------------------------------------------
+  // Initialize ReconOS
+  //----------------------------------------------------------------------------
+	printf("[icap_demo] Initialize ReconOS.\n");
 	reconos_init_autodetect();
 
-	printf("[icap] Creating delegate threads.\n\n");
+	printf("[icap_demo] Creating delegate threads.\n\n");
 	for (i=0; i<NUM_SLOTS; i++){
 		// mbox init
 		mbox_init(&mb_in[i],  10);
@@ -347,13 +353,17 @@ int main(int argc, char *argv[])
 	}
 
 
+  //----------------------------------------------------------------------------
   // cache partial bitstreams in memory
+  //----------------------------------------------------------------------------
   bitstream_open("partial_bitstreams/partial_add.bin", &pr_bit[HWT_DPR][ADD]);
   bitstream_open("partial_bitstreams/partial_sub.bin", &pr_bit[HWT_DPR][SUB]);
   bitstream_open("partial_bitstreams/partial_add2.bin", &pr_bit[HWT_DPR2][ADD]);
   bitstream_open("partial_bitstreams/partial_sub2.bin", &pr_bit[HWT_DPR2][SUB]);
 
+  //----------------------------------------------------------------------------
   // print current register values
+  //----------------------------------------------------------------------------
   prblock_get(HWT_DPR, 0);
   prblock_get(HWT_DPR, 1);
   prblock_get(HWT_DPR, 2);
@@ -364,7 +374,9 @@ int main(int argc, char *argv[])
   prblock_get(HWT_DPR2, 2);
   prblock_get(HWT_DPR2, 3);
 
+  //----------------------------------------------------------------------------
   // what configuration mode are we using?
+  //----------------------------------------------------------------------------
   switch(g_arguments.reconf_mode) {
     case RECONF_LINUX:
       printf("Using linux reconfiguration mode\n");
@@ -380,6 +392,7 @@ int main(int argc, char *argv[])
       break;
   }
 
+  //----------------------------------------------------------------------------
   if(g_arguments.mode == MODE_WRITE) {
     while(1) {
       // reconfigure partial hw slot and check thread
@@ -447,7 +460,7 @@ int main(int argc, char *argv[])
     printf("Capturing current state completed\n");
     fflush(stdout);
 
-    bitstream_save("partial_bitstreams/test.bin", &test_bit);
+    //bitstream_save("partial_bitstreams/test.bin", &test_bit);
 
     // set it to a different value (just because)
     prblock_set(slot, 3, 0x00DD0000);
