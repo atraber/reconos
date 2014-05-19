@@ -18,7 +18,9 @@ echo "######################################################################"
 
 # Make sure that we are really building the addition
 sed -i '14s/.*/    G_ADD : boolean := true/' ./pcores/hwt_pr_block_v1_00_a/hdl/vhdl/hwt_pr_block.vhd
-sed -i '14s/.*/    G_MUL : boolean := true/' ./pcores/hwt_pr_app_v1_00_a/hdl/vhdl/hwt_pr_app.vhd
+# build mul
+rm ./pcores/hwt_pr_app_v1_00_a
+ln -s ../../pcores/hwt_pr_mul_v1_00_a/ ./pcores/hwt_pr_app_v1_00_a
 
 ################################################################################
 # Building netlist
@@ -54,7 +56,9 @@ echo "######################################################################"
 
 # Make sure that we are really building the subtraction
 sed -i '14s/.*/    G_ADD : boolean := false/' ./pcores/hwt_pr_block_v1_00_a/hdl/vhdl/hwt_pr_block.vhd
-sed -i '14s/.*/    G_MUL : boolean := false/' ./pcores/hwt_pr_app_v1_00_a/hdl/vhdl/hwt_pr_app.vhd
+# build lfsr
+rm ./pcores/hwt_pr_app_v1_00_a
+ln -s ../../pcores/hwt_pr_lfsr_v1_00_a/ ./pcores/hwt_pr_app_v1_00_a
 
 ################################################################################
 # Building netlist
@@ -77,4 +81,6 @@ echo "CONFIGURATION B FINISHED"
 # restore addition as this is what is on git, we do not want useless commits for
 # this stuff
 sed -i '14s/.*/    G_ADD : boolean := true/' ./pcores/hwt_pr_block_v1_00_a/hdl/vhdl/hwt_pr_block.vhd
-sed -i '14s/.*/    G_MUL : boolean := true/' ./pcores/hwt_pr_app_v1_00_a/hdl/vhdl/hwt_pr_app.vhd
+# build mul
+rm ./pcores/hwt_pr_app_v1_00_a
+ln -s ../../pcores/hwt_pr_mul_v1_00_a/ ./pcores/hwt_pr_app_v1_00_a

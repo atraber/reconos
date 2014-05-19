@@ -10,6 +10,9 @@
 #define ADD 0
 #define SUB 1
 
+#define MUL  0
+#define LFSR 1
+
 #define PRBLOCK_MEM_SIZE  2048
 
 #define THREAD_EXIT_CMD 0xFFFFFFFF
@@ -81,6 +84,10 @@ int sw_icap_grestore();
 #define MODE_TEST2       8
 #define MODE_TEST3       9
 #define MODE_SWITCH_TOP 10
+#define MODE_WRITE_MUL  11
+#define MODE_TEST4      12
+#define MODE_TEST5      13
+#define MODE_WRITE_LFSR 14
 
 struct cmd_arguments_t {
   unsigned int reconf_mode;

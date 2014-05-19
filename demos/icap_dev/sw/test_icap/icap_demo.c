@@ -176,14 +176,32 @@ int prblock_mem_get(int slot, uint32_t value)
 	return 1;
 }
 
-int test_prblock(int slot, int thread_id)
+unsigned int lfsr_sim(unsigned int iterations, unsigned int start) {
+  unsigned int i;
+
+  start = start & 0xFFFF;
+
+  for(i = 0; i < iterations; i++) {
+    unsigned int temp = (start << 1) & 0xFFFF;
+    unsigned int bit10 = (start >> 10) & 0x1;
+    unsigned int bit12 = (start >> 12) & 0x1;
+    unsigned int bit13 = (start >> 13) & 0x1;
+    unsigned int bit15 = (start >> 15) & 0x1;
+
+    start = temp | (bit15 ^ bit13 ^ bit12 ^ bit10);
+  }
+  
+  return start;
+}
+
+int test_prblock_add_sub(int slot, int thread_id)
 {
-  if(slot == 0 || slot >= NUM_SLOTS) {
-    printf("Slot %d does not contain a reconfigurable module\n", slot);
+  if(slot == HWT_DPR) {
+    printf("Wrong slot, expected %d, got %d\n", HWT_DPR, slot);
     return 0;
   }
 
-  unsigned int ret, counter;
+  unsigned int ret;
   prblock_set(slot, 0, 0x01003344);
   prblock_set(slot, 1, 0x01001122);
 
@@ -191,7 +209,7 @@ int test_prblock(int slot, int thread_id)
   ret = prblock_get(slot, 2);
 
   // get counter value from register 3
-  counter = prblock_get(slot, 3);
+  prblock_get(slot, 3);
   
   switch(thread_id) {
   case ADD:
@@ -225,6 +243,98 @@ int test_prblock(int slot, int thread_id)
 
 	return 1;
 }
+
+int test_prblock_mul_lfsr(int slot, int thread_id)
+{
+  if(slot == HWT_DPR2) {
+    printf("Wrong slot, expected %d, got %d\n", HWT_DPR2, slot);
+    return 0;
+  }
+
+  unsigned int ret;
+
+  if(thread_id == MUL) {
+    const unsigned int opA = 10;
+    const unsigned int opB = 20;
+
+    // test memory
+    prblock_mem_set(slot, 0x11223344);
+
+    if(prblock_mem_get(slot, 0x11223344) == 0)
+      printf("  # PRBLOCK: memory failed\n");
+
+    // set operands
+    prblock_set(slot, 0, opA);
+    prblock_set(slot, 1, opB);
+
+    // start multiplier
+    prblock_set(slot, 3, 0x00000001);
+
+    ret = prblock_get(slot, 3);
+    if(ret == 0) {
+      ret = prblock_get(slot, 3);
+      if(ret == opA * opB) {
+        printf("Multiplier result is CORRECT\n");
+      }
+      else {
+        printf("Multiplier result is wrong, expected %d, got %d\n", opA * opB, ret);
+        return 0;
+      }
+    } else {
+      printf("Multiplier too slow, still running\n");
+      return 0;
+    }
+  } else if(thread_id == LFSR) {
+    const unsigned int lfsr_num = 4;
+
+    unsigned int i;
+    for(i = 0; i < lfsr_num; i++) {
+      prblock_set(slot, i + 1, 0x00000001);
+    }
+
+    // load them
+    prblock_set(slot, 0, 0x00000001);
+
+    usleep(500);
+
+    // capture them
+    prblock_set(slot, 0, 0x00000002);
+
+    unsigned int iterations = prblock_get(slot, 0);
+
+    ret = prblock_get(slot, 1);
+
+    for(i = 1; i < lfsr_num; i++) {
+      if( prblock_get(slot, i + 1) != ret) {
+        printf("Results are not equal\n");
+        return 0;
+      }
+    }
+
+    if(ret != lfsr_sim(iterations, 0x1) ) {
+      printf("LFSR is in wrong state\n");
+      return 0;
+    }
+  } else {
+    printf("Unsupported thread_id %d\n", thread_id);
+  }
+
+	return 1;
+}
+
+int test_prblock(int slot, int thread_id)
+{
+  if(slot == 0 || slot >= NUM_SLOTS) {
+    printf("Slot %d does not contain a reconfigurable module\n", slot);
+    return 0;
+  }
+
+  if(slot == 1)
+    return test_prblock_add_sub(slot, thread_id);
+  else
+    return test_prblock_mul_lfsr(slot, thread_id);
+}
+
 
 int reconfigure_prblock(int slot, int thread_id)
 {
@@ -358,8 +468,8 @@ int main(int argc, char *argv[])
   //----------------------------------------------------------------------------
   bitstream_open("partial_bitstreams/partial_add.bin", &pr_bit[HWT_DPR][ADD]);
   bitstream_open("partial_bitstreams/partial_sub.bin", &pr_bit[HWT_DPR][SUB]);
-  bitstream_open("partial_bitstreams/partial_add2.bin", &pr_bit[HWT_DPR2][ADD]);
-  bitstream_open("partial_bitstreams/partial_sub2.bin", &pr_bit[HWT_DPR2][SUB]);
+  bitstream_open("partial_bitstreams/partial_add2.bin", &pr_bit[HWT_DPR2][MUL]);
+  bitstream_open("partial_bitstreams/partial_sub2.bin", &pr_bit[HWT_DPR2][LFSR]);
 
   //----------------------------------------------------------------------------
   // print current register values
@@ -417,15 +527,22 @@ int main(int argc, char *argv[])
     reconfigure_prblock(HWT_DPR, ADD);
     test_prblock(HWT_DPR, ADD);
 
-    reconfigure_prblock(HWT_DPR2, ADD);
-    test_prblock(HWT_DPR2, ADD);
+    //reconfigure_prblock(HWT_DPR2, ADD);
+    //test_prblock(HWT_DPR2, ADD);
 
   } else if(g_arguments.mode == MODE_WRITE_SUB) {
     reconfigure_prblock(HWT_DPR, SUB);
     test_prblock(HWT_DPR, SUB);
 
-    reconfigure_prblock(HWT_DPR2, SUB);
-    test_prblock(HWT_DPR2, SUB);
+    // reconfigure_prblock(HWT_DPR2, SUB);
+    // test_prblock(HWT_DPR2, SUB);
+  } else if(g_arguments.mode == MODE_WRITE_MUL) {
+    reconfigure_prblock(HWT_DPR2, MUL);
+    test_prblock(HWT_DPR2, MUL);
+
+  } else if(g_arguments.mode == MODE_WRITE_LFSR) {
+    reconfigure_prblock(HWT_DPR2, LFSR);
+    test_prblock(HWT_DPR2, LFSR);
 
   } else if(g_arguments.mode == MODE_CAPTURE) {
     printf("Performing gcapture\n");
@@ -555,6 +672,205 @@ int main(int argc, char *argv[])
 
     hw_icap_write(test_bit.block, test_bit.length * 4);
     prblock_mem_get(slot, 0xFFFFFFFF);
+  } else if(g_arguments.mode == MODE_TEST4) {
+    //--------------------------------------------------------------------------
+    // Load RM, set some values, capture it
+    // Then set different values, load different RM
+    // Finally restore original RM, check if values are identical
+    //--------------------------------------------------------------------------
+    int slot = HWT_DPR2;
+
+    const unsigned int opA = 0x01234567;
+    const unsigned int opB = 0x00A0B0C0;
+
+    // ensure that we are in a valid state first
+    reconfigure_prblock(slot, MUL);
+    test_prblock(slot, MUL);
+    prblock_get(slot, 3);
+
+    // set values that we want to capture
+    prblock_set(slot, 0, opA);
+    prblock_set(slot, 1, opB);
+    prblock_set(slot, 3, 0x00000001); // start multiplier
+
+    prblock_mem_set(slot, 0xAABBCCDD);
+
+
+    // capture bitstream
+    struct pr_bitstream_t test_bit;
+
+    bitstream_capture(&pr_bit[slot][MUL], &test_bit);
+
+    printf("Capturing current state completed\n");
+    fflush(stdout);
+
+    //bitstream_save("partial_bitstreams/test.bin", &test_bit);
+
+    // set it to a different value (just because)
+    // this destroys the currently running multiplier result
+    prblock_set(slot, 0, 0x66666666);
+    prblock_set(slot, 1, 0x66666666);
+    prblock_set(slot, 2, 0x66666666);
+
+    printf("Last check before reconfiguration\n");
+    fflush(stdout);
+
+    prblock_mem_set(slot, 0x01010101);
+    prblock_mem_get(slot, 0x01010101);
+
+    printf("Memory access done\n");
+    fflush(stdout);
+
+    printf("Configure LFSR module\n");
+    fflush(stdout);
+
+    // configure different module to erase all traces of the former
+    reconfigure_prblock(slot, LFSR);
+    test_prblock(slot, LFSR);
+
+    printf("Sending THREAD_EXIT_CMD\n");
+    fflush(stdout);
+
+    // restore captured module
+    // send thread exit command
+    mbox_put(&mb_in[slot],THREAD_EXIT_CMD);
+    usleep(100);
+    reconos_slot_reset(slot, 1);
+
+    printf("Performing restore now...\n");
+    fflush(stdout);
+
+    bitstream_restore(&test_bit);
+
+    printf("Restore done\n");
+    fflush(stdout);
+
+    // reset hardware thread
+    reconos_slot_reset(slot, 0);
+    hw_icap_grestore();
+
+
+    printf("reset done\n");
+    fflush(stdout);
+
+    prblock_mem_get(slot, 0xAABBCCDD);
+
+    // now check the multiplier result, wait for it to finish
+    while(1) {
+      sleep(1);
+
+      if( prblock_get(slot, 3) == 0)
+        break;
+    }
+
+    if( prblock_get(slot, 2) != opA * opB) {
+      printf("Result is not correct. Expected %d, got %d\n", opA * opB, prblock_get(slot, 2));
+    } else {
+      printf("Result is CORRECT\n");
+    }
+
+    printf("test done\n");
+    fflush(stdout);
+  } else if(g_arguments.mode == MODE_TEST5) {
+    //--------------------------------------------------------------------------
+    // Load RM, set some values, capture it
+    // Then set different values, load different RM
+    // Finally restore original RM, check if values are identical
+    //--------------------------------------------------------------------------
+    int slot = HWT_DPR2;
+
+    // ensure that we are in a valid state first
+    reconfigure_prblock(slot, LFSR);
+    test_prblock(slot, LFSR);
+
+    // set values that we want to capture
+    const unsigned int lfsr_num = 4;
+
+    unsigned int i;
+    for(i = 0; i < lfsr_num; i++) {
+      prblock_set(slot, i + 1, 0x00000001);
+    }
+
+    // load them
+    prblock_set(slot, 0, 0x00000001);
+
+
+    // capture bitstream
+    struct pr_bitstream_t test_bit;
+
+    bitstream_capture(&pr_bit[slot][MUL], &test_bit);
+
+    printf("Capturing current state completed\n");
+    fflush(stdout);
+
+    //bitstream_save("partial_bitstreams/test.bin", &test_bit);
+
+    // set it to a different value (just because)
+    // this destroys the currently running multiplier result
+    prblock_set(slot, 0, 0x66666666);
+    prblock_set(slot, 1, 0x66666666);
+    prblock_set(slot, 2, 0x66666666);
+
+    printf("Last check before reconfiguration\n");
+    fflush(stdout);
+
+    printf("Configure LFSR module\n");
+    fflush(stdout);
+
+    // configure different module to erase all traces of the former
+    reconfigure_prblock(slot, LFSR);
+    test_prblock(slot, LFSR);
+
+    printf("Sending THREAD_EXIT_CMD\n");
+    fflush(stdout);
+
+    // restore captured module
+    // send thread exit command
+    mbox_put(&mb_in[slot],THREAD_EXIT_CMD);
+    usleep(100);
+    reconos_slot_reset(slot, 1);
+
+    printf("Performing restore now...\n");
+    fflush(stdout);
+
+    bitstream_restore(&test_bit);
+
+    printf("Restore done\n");
+    fflush(stdout);
+
+    // reset hardware thread
+    reconos_slot_reset(slot, 0);
+    hw_icap_grestore();
+
+
+    printf("reset done\n");
+    fflush(stdout);
+
+
+    // now check the LFSR
+    // capture them
+    prblock_set(slot, 0, 0x00000002);
+
+    unsigned int iterations = prblock_get(slot, 0);
+
+    unsigned int lfsr_value = prblock_get(slot, 1);
+
+    for(i = 1; i < lfsr_num; i++) {
+      if( prblock_get(slot, i + 1) != lfsr_value) {
+        printf("Results are not equal\n");
+        return 0;
+      }
+    }
+
+    if(lfsr_value != lfsr_sim(iterations, 0x1) ) {
+      printf("LFSR is in wrong state\n");
+      return 0;
+    } else {
+      printf("LFSR correct: %d\n", lfsr_value);
+    }
+
+    printf("test done\n");
+    fflush(stdout);
   }
 
   printf("Exiting now\n");
