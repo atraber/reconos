@@ -11,7 +11,7 @@ use reconos_v3_00_b.reconos_pkg.all;
 
 entity hwt_pr_block is
   generic (
-    G_ADD : boolean := true
+    G_ADD : boolean := false
     );
 
   port (

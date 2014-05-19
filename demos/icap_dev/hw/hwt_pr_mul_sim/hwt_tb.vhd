@@ -105,20 +105,20 @@ architecture behavior of hwt_tb is
   procedure write_reg (
     reg                  : in  natural;
     value                : in  std_logic_vector(31 downto 0);
-    signal fsl2hwt_write : out std_logic;
-    signal fsl2hwt_data  : out std_logic_vector(31 downto 0);
-    signal fsl2hwt_full  : in  std_logic;
+    signal tb2hwt_write : out std_logic;
+    signal tb2hwt_data  : out std_logic_vector(31 downto 0);
+    signal tb2hwt_full  : in  std_logic;
     signal hwt2tb_exists : in  std_logic;
     signal hwt2tb_read   : out std_logic
     ) is
   begin
     -- first
     wait for clk_period;
-    fsl2hwt_write <= '1';
-    fsl2hwt_data  <= conv_std_logic_vector(reg, 32);
+    tb2hwt_write <= '1';
+    tb2hwt_data  <= conv_std_logic_vector(reg, 32);
 
     wait for clk_period;
-    fsl2hwt_write <= '0';
+    tb2hwt_write <= '0';
 
     if hwt2tb_exists = '0' then
       wait until hwt2tb_exists = '1';
@@ -132,11 +132,11 @@ architecture behavior of hwt_tb is
 
     -- second
     wait for clk_period;
-    fsl2hwt_write <= '1';
-    fsl2hwt_data  <= value;
+    tb2hwt_write <= '1';
+    tb2hwt_data  <= value;
 
     wait for clk_period;
-    fsl2hwt_write <= '0';
+    tb2hwt_write <= '0';
 
     wait for clk_period;
 
@@ -343,15 +343,15 @@ architecture behavior of hwt_tb is
 
     wait for clk_period*2;
     hwt2tb_read <= '0';
-
   end procedure;
+
 
 begin
 
   -- Instantiate the Unit Under Test (UUT)
-  uut : entity work.hwt_pr_block
+  uut : entity work.hwt_pr_app
     generic map (
-      G_ADD => true
+      G_MUL => true
       )
     port map (
     OSFSL_S_Read    => OSFSL_S_Read,
@@ -564,13 +564,14 @@ begin
     wait for clk_period;
 
 
+    write_reg(0, x"00000011", MB_M_Write, MB_M_Data, MB_M_Full, MB_S_Exists, MB_S_Read);
     write_reg(1, x"00000011", MB_M_Write, MB_M_Data, MB_M_Full, MB_S_Exists, MB_S_Read);
+    write_reg(3, x"00000001", MB_M_Write, MB_M_Data, MB_M_Full, MB_S_Exists, MB_S_Read);
 
-    write_reg(0, x"00001111", MB_M_Write, MB_M_Data, MB_M_Full, MB_S_Exists, MB_S_Read);
-    write_reg(3, x"AABBCCDD", MB_M_Write, MB_M_Data, MB_M_Full, MB_S_Exists, MB_S_Read);
 
-    read_reg(2, x"00001122", MB_M_Write, MB_M_Data, MB_M_Full, MB_S_Exists, MB_S_Read, MB_S_Data);
-    read_reg(3, x"AABBCCDD", MB_M_Write, MB_M_Data, MB_M_Full, MB_S_Exists, MB_S_Read, MB_S_Data);
+    read_reg(3, x"00000001", MB_M_Write, MB_M_Data, MB_M_Full, MB_S_Exists, MB_S_Read, MB_S_Data);
+    read_reg(2, x"00000121", MB_M_Write, MB_M_Data, MB_M_Full, MB_S_Exists, MB_S_Read, MB_S_Data);
+    read_reg(3, x"00000000", MB_M_Write, MB_M_Data, MB_M_Full, MB_S_Exists, MB_S_Read, MB_S_Data);
 
     memcopy_to_hwt(x"00000000", MB_M_Write, MB_M_Data, MB_M_Full, MB_S_Exists, MB_S_Read, MB_S_Data);
     memcopy_to_main(x"00000000", MB_M_Write, MB_M_Data, MB_M_Full, MB_S_Exists, MB_S_Read, MB_S_Data);
