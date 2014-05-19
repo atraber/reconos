@@ -403,7 +403,8 @@ void sigill_sigaction(int signal, siginfo_t *si, void *arg)
 //------------------------------------------------------------------------------
 int main(int argc, char *argv[])
 {
-	int i, cnt=1;
+	unsigned cnt=1;
+  unsigned int i;
 
 	printf( "-------------------------------------------------------\n"
 		    "ICAP DEMONSTRATOR\n"
@@ -506,7 +507,11 @@ int main(int argc, char *argv[])
   }
 
   //----------------------------------------------------------------------------
-  if(g_arguments.mode == MODE_WRITE) {
+  int slot = g_arguments.slot;
+  struct pr_bitstream_t test_bit;
+  switch(g_arguments.mode) {
+  //----------------------------------------------------------------------------
+  case MODE_WRITE:
     while(1) {
       // reconfigure partial hw slot and check thread
       printf("[icap] Test no. %03d\n",cnt);
@@ -532,34 +537,60 @@ int main(int argc, char *argv[])
       sleep(1); 
       cnt++;
     }
-  } else if(g_arguments.mode == MODE_WRITE_ADD) {
+
+    break;
+
+  //----------------------------------------------------------------------------
+  case MODE_WRITE_ADD:
     reconfigure_prblock(HWT_DPR, ADD);
     test_prblock(HWT_DPR, ADD);
 
-  } else if(g_arguments.mode == MODE_WRITE_SUB) {
+    break;
+
+  //----------------------------------------------------------------------------
+  case MODE_WRITE_SUB:
     reconfigure_prblock(HWT_DPR, SUB);
     test_prblock(HWT_DPR, SUB);
 
-  } else if(g_arguments.mode == MODE_WRITE_MUL) {
+    break;
+
+  //----------------------------------------------------------------------------
+  case MODE_WRITE_MUL:
     reconfigure_prblock(HWT_DPR2, MUL);
     test_prblock(HWT_DPR2, MUL);
+    
+    break;
 
-  } else if(g_arguments.mode == MODE_WRITE_LFSR) {
+  //----------------------------------------------------------------------------
+  case MODE_WRITE_LFSR:
     reconfigure_prblock(HWT_DPR2, LFSR);
     test_prblock(HWT_DPR2, LFSR);
 
-  } else if(g_arguments.mode == MODE_CAPTURE) {
+    break;
+
+  //----------------------------------------------------------------------------
+  case MODE_CAPTURE:
     printf("Performing gcapture\n");
     hw_icap_gcapture();
-  } else if(g_arguments.mode == MODE_RESTORE) {
+    printf("GCAPTURE done\n");
+
+    break;
+
+  //----------------------------------------------------------------------------
+  case MODE_RESTORE:
+    printf("Performing GRESTORE\n");
     hw_icap_grestore();
-  } else if(g_arguments.mode == MODE_TEST) {
-    //--------------------------------------------------------------------------
-    // Load RM, set some values, capture it
-    // Then set different values, load different RM
-    // Finally restore original RM, check if values are identical
-    //--------------------------------------------------------------------------
-    int slot = g_arguments.slot;
+    printf("GRESTORE done\n");
+
+    break;
+
+  //----------------------------------------------------------------------------
+  // Load RM, set some values, capture it
+  // Then set different values, load different RM
+  // Finally restore original RM, check if values are identical
+  //----------------------------------------------------------------------------
+  case MODE_TEST_ADD:
+    slot = HWT_DPR;
 
     // ensure that we are in a valid state first
     reconfigure_prblock(slot, ADD);
@@ -575,8 +606,6 @@ int main(int argc, char *argv[])
 
 
     // capture bitstream
-    struct pr_bitstream_t test_bit;
-
     bitstream_capture(&pr_bit[slot][ADD], &test_bit);
 
     printf("Capturing current state completed\n");
@@ -626,8 +655,6 @@ int main(int argc, char *argv[])
     // reset hardware thread
     reconos_slot_reset(slot, 0);
 
-    //sleep(1);
-
     printf("reset done\n");
     fflush(stdout);
 
@@ -645,12 +672,10 @@ int main(int argc, char *argv[])
 
     test_prblock(slot, ADD);
 
-    //sleep(1);
+    break;
 
-    printf("test done\n");
-    fflush(stdout);
-    prblock_get(slot, 3);
-  } else if(g_arguments.mode == MODE_READ) {
+  //----------------------------------------------------------------------------
+  case MODE_READ:
     printf("Readback mode, reading %d words from 0x%08X\n", g_arguments.read_words, g_arguments.read_far);
 
     uint32_t* mem = (uint32_t*) malloc(g_arguments.read_words * sizeof(uint32_t));
@@ -661,40 +686,50 @@ int main(int argc, char *argv[])
 
     hw_icap_read_frame(g_arguments.read_far, g_arguments.read_words, mem);
 
-    unsigned int i;
     for(i = 0; i < g_arguments.read_words; i++) {
       printf("%08X\n", mem[i]);
     }
 
-  } else if(g_arguments.mode == MODE_SWITCH_BOT) {
+    break;
+
+  //----------------------------------------------------------------------------
+  case MODE_SWITCH_BOT:
     icap_switch_bot();
-  } else if(g_arguments.mode == MODE_SWITCH_TOP) {
+
+    break;
+
+  //----------------------------------------------------------------------------
+  case MODE_SWITCH_TOP:
     icap_switch_top();
-  } else if(g_arguments.mode == MODE_TEST2) {
-    int slot = g_arguments.slot;
+    
+    break;
 
-    struct pr_bitstream_t test_bit;
-
+  //----------------------------------------------------------------------------
+  case MODE_TEST2:
     reconfigure_prblock(slot, ADD);
     prblock_mem_set(slot, 0xFFFFFFFF);
     bitstream_capture(&pr_bit[slot][ADD], &test_bit);
     bitstream_save("partial_bitstreams/test.bin", &test_bit);
     prblock_mem_set(slot, 0xABCDABCD);
-  } else if(g_arguments.mode == MODE_TEST3) {
-    int slot = g_arguments.slot;
 
-    struct pr_bitstream_t test_bit;
+    break;
+
+  //----------------------------------------------------------------------------
+  case MODE_TEST3:
     bitstream_open("partial_bitstreams/test.bin", &test_bit);
 
     hw_icap_write(test_bit.block, test_bit.length * 4);
     prblock_mem_get(slot, 0xFFFFFFFF);
-  } else if(g_arguments.mode == MODE_TEST4) {
-    //--------------------------------------------------------------------------
-    // Load RM, set some values, capture it
-    // Then set different values, load different RM
-    // Finally restore original RM, check if values are identical
-    //--------------------------------------------------------------------------
-    int slot = HWT_DPR2;
+
+    break;
+
+  //----------------------------------------------------------------------------
+  // Load RM, set some values, capture it
+  // Then set different values, load different RM
+  // Finally restore original RM, check if values are identical
+  //----------------------------------------------------------------------------
+  case MODE_TEST_MUL:
+    slot = HWT_DPR2;
 
     const unsigned int opA = 0x112300AB;
     const unsigned int opB = 0x00A0B0C0;
@@ -790,15 +825,15 @@ int main(int argc, char *argv[])
       printf("### Result is CORRECT\n");
     }
 
-    printf("test done\n");
-    fflush(stdout);
-  } else if(g_arguments.mode == MODE_TEST5) {
-    //--------------------------------------------------------------------------
-    // Load RM, set some values, capture it
-    // Then set different values, load different RM
-    // Finally restore original RM, check if values are identical
-    //--------------------------------------------------------------------------
-    int slot = HWT_DPR2;
+    break;
+
+  //----------------------------------------------------------------------------
+  // Load RM, set some values, capture it
+  // Then set different values, load different RM
+  // Finally restore original RM, check if values are identical
+  //----------------------------------------------------------------------------
+  case MODE_TEST_LFSR:
+    slot = HWT_DPR2;
 
     // ensure that we are in a valid state first
     reconfigure_prblock(slot, LFSR);
@@ -807,7 +842,6 @@ int main(int argc, char *argv[])
     // set values that we want to capture
     const unsigned int lfsr_num = 4;
 
-    unsigned int i;
     for(i = 0; i < lfsr_num; i++) {
       prblock_set(slot, i + 1, 0x00000001);
     }
@@ -817,14 +851,12 @@ int main(int argc, char *argv[])
 
 
     // capture bitstream
-    struct pr_bitstream_t test_bit;
-
-    bitstream_capture(&pr_bit[slot][MUL], &test_bit);
+    bitstream_capture(&pr_bit[slot][LFSR], &test_bit);
 
     printf("Capturing current state completed\n");
     fflush(stdout);
 
-    //bitstream_save("partial_bitstreams/test.bin", &test_bit);
+    bitstream_save("partial_bitstreams/test.bin", &test_bit);
 
     // set it to a different value (just because)
     // this destroys the currently running multiplier result
@@ -889,10 +921,15 @@ int main(int argc, char *argv[])
       printf("### LFSR correct: %X\n", lfsr_value);
     }
 
-    printf("test done\n");
-    fflush(stdout);
+    break;
+
+  //----------------------------------------------------------------------------
+  default:
+    printf("No argument supplied, doing nothing\n");
+    break;
   }
 
+  //----------------------------------------------------------------------------
   printf("Exiting now\n");
 
   // If we use return 0 instead of exit(0) we're getting segmentation faults. I know this makes no sense, but this is what I observed...?

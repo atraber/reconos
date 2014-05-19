@@ -304,62 +304,127 @@ int hw_icap_read_frame(uint32_t far, uint32_t size, uint32_t* dst)
   return 1;
 }
 
+uint32_t g_icap_read_capture_cmd[] = {
+  0xFFFFFFFF,
+  0x000000BB,
+  0x11220044,
+  0xFFFFFFFF,
+  0xAA995566, // sync
+  0x20000000, // noop
+  0x30008001, // write to cmd
+  0x0000000B, // SHUTDOWN
+  0x20000000, // noop
+  0x30008001, // write to cmd
+  0x00000007, // RCRC
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x30008001, // write to cmd
+  0x0000000C, // gcapture
+  0x20000000, // noop
+  0x30002001, // write to FAR
+  0x00000000, // FAR address
+  0x20000000, // noop
+  0x20000000, // noop
+  0x30008001, // write to cmd
+  0x00000004, // RCFG
+  0x20000000, // noop
+  0x30002001, // write to FAR
+  0x00008A80, // FAR address, will be replaced
+  0x28006000, // type 1 read 0 words from FDRO
+  0x48000080, // type 2 read 128 words from FDRO, will be replaced
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000};// noop
 
-uint32_t g_icap_read_multiple[] = {0x20000000, // noop
-                                   0x30008001, // write to cmd
-                                   0x00000007, // RCRC
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x30008001, // write to cmd
-                                   0x00000004, // RCFG
-                                   0x20000000, // noop
-                                   0x30002001, // write to FAR
-                                   0x00008A80, // FAR address
-                                   0x28006000, // type 1 read 0 words from FDRO
-                                   0x48000080, // type 2 read 128 words from FDRO
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000, // noop
-                                   0x20000000};// noop
+uint32_t g_icap_read_multiple[] = {
+  0x20000000, // noop
+  0x30008001, // write to cmd
+  0x00000007, // RCRC
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x30008001, // write to cmd
+  0x00000004, // RCFG
+  0x20000000, // noop
+  0x30002001, // write to FAR
+  0x00008A80, // FAR address
+  0x28006000, // type 1 read 0 words from FDRO
+  0x48000080, // type 2 read 128 words from FDRO
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000, // noop
+  0x20000000};// noop
 
 
 //------------------------------------------------------------------------------
 // Read multiple frames in one command. This is useful for capturing a bitstream,
 // as hopefully the hardware is stopped during readback. This has to be tested though
 //------------------------------------------------------------------------------
-int hw_icap_read_frame_multiple(struct pr_frame_t* frames, unsigned int num, uint32_t* block)
+int hw_icap_read_capture(struct pr_frame_t* frames, unsigned int num, uint32_t* block)
 {
   int ret;
 
@@ -370,10 +435,10 @@ int hw_icap_read_frame_multiple(struct pr_frame_t* frames, unsigned int num, uin
   // account for the padframe and dummy words
   uint32_t real_size = frames[0].words + 82;
 
-  g_icap_read_cmd[21] = frames[0].far;
-  g_icap_read_cmd[23] = (real_size) | 0x48000000;
+  g_icap_read_capture_cmd[28] = frames[0].far;
+  g_icap_read_capture_cmd[30] = (real_size) | 0x48000000;
 
-  ret = hw_icap_write(g_icap_read_cmd, sizeof g_icap_read_cmd);
+  ret = hw_icap_write(g_icap_read_capture_cmd, sizeof g_icap_read_capture_cmd);
   if(ret == 0) {
     printf("hw_icap_read_frame: Writing first command sequence to ICAP has failed\n");
     return 0;

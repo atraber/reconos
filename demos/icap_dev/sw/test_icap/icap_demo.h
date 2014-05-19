@@ -45,7 +45,7 @@ int bitstream_restore(struct pr_bitstream_t* stream);
 int hw_icap_write(uint32_t* addr, unsigned int size);
 int hw_icap_read(uint32_t* addr, unsigned int size);
 int hw_icap_read_frame(uint32_t far, uint32_t size, uint32_t* dst);
-int hw_icap_read_frame_multiple(struct pr_frame_t* frames, unsigned int num, uint32_t* block);
+int hw_icap_read_capture(struct pr_frame_t* frames, unsigned int num, uint32_t* block);
 int hw_icap_write_frame(uint32_t far, uint32_t* addr, unsigned int words);
 
 int sw_icap_write(uint32_t* addr, unsigned int size);
@@ -79,14 +79,14 @@ int sw_icap_grestore();
 #define MODE_WRITE_SUB   3
 #define MODE_CAPTURE     4
 #define MODE_RESTORE     5
-#define MODE_TEST        6
+#define MODE_TEST_ADD    6
 #define MODE_SWITCH_BOT  7
 #define MODE_TEST2       8
 #define MODE_TEST3       9
 #define MODE_SWITCH_TOP 10
 #define MODE_WRITE_MUL  11
-#define MODE_TEST4      12
-#define MODE_TEST5      13
+#define MODE_TEST_MUL   12
+#define MODE_TEST_LFSR  13
 #define MODE_WRITE_LFSR 14
 
 struct cmd_arguments_t {

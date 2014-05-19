@@ -250,13 +250,7 @@ int bitstream_capture(struct pr_bitstream_t* stream_in, struct pr_bitstream_t* s
   hw_icap_write_frame(arrFrames[0].far, stream_out->block + arrFrames[0].offset, arrFrames[0].words);
 
   //----------------------------------------------------------------------------
-  // do gcapture
-  //----------------------------------------------------------------------------
-
-  hw_icap_gcapture();
-
-  //----------------------------------------------------------------------------
-  // readback of data
+  // readback of data, also doing gcapture in the process
   //----------------------------------------------------------------------------
 
   struct pr_frame_t readFrames[MAX_PR_FRAMES];
@@ -275,7 +269,7 @@ int bitstream_capture(struct pr_bitstream_t* stream_in, struct pr_bitstream_t* s
     numReadFrames++;
   }
 
-  hw_icap_read_frame_multiple(readFrames, numReadFrames, stream_out->block);
+  hw_icap_read_capture(readFrames, numReadFrames, stream_out->block);
 
   // try to set bit 0x00020000 to zero in block ram regions, where needed
   // Don't know if this is correct, this is just guessing based on the observation

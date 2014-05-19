@@ -10,27 +10,27 @@
 
 /* The options we understand. */
 static struct argp_option options[] = {
-  {"hw",    2400, 0,     0,  "Use hwt_icap for reconfiguration" },
-  {"sw",    2500, 0,     0,  "Use software for reconfiguration" },
-  {"linux", 2600, 0,     0,  "Use linux for reconfiguration" },
-  {"null",  2700, 0,     0,  "Use nothing for reconfiguration (just test)" },
-  {"write", 'w',  "nr",  0,  "Write to ICAP interface and test the slot, do this <nr> times" },
-  {"add",   3000, 0,     0,  "Write ADD to ICAP interface and test the slot" },
-  {"sub",   3100, 0,     0,  "Write SUB to ICAP interface and test the slot" },
-  {"mul",   3200, 0,     0,  "Write MUL to ICAP interface and test the slot" },
-  {"lfsr",  3300, 0,     0,  "Write LFSR to ICAP interface and test the slot" },
-  {"read",  'r',  "nr",  0,
+  {"hw",    2400, 0,    0, "Use hwt_icap for reconfiguration" },
+  {"sw",    2500, 0,    0, "Use software for reconfiguration" },
+  {"linux", 2600, 0,    0, "Use linux for reconfiguration" },
+  {"null",  2700, 0,    0, "Use nothing for reconfiguration (just test)" },
+  {"write", 'w',  "nr", 0, "Write to ICAP interface and test the slot, do this <nr> times" },
+  {"add",   3000, 0,    0, "Write ADD to ICAP interface and test the slot" },
+  {"sub",   3100, 0,    0, "Write SUB to ICAP interface and test the slot" },
+  {"mul",   3200, 0,    0, "Write MUL to ICAP interface and test the slot" },
+  {"lfsr",  3300, 0,    0, "Write LFSR to ICAP interface and test the slot" },
+  {"read",  'r',  "nr", 0,
    "Read from ICAP interface and dump its output to console, read <nr> words" },
-  {"far",     'f',  "FAR",  0,  "FAR to read from, must be in hex format (0xABCD)" },
-  {"capture", 4000, 0,      0,  "Capture current state using GCAPTURE" },
-  {"restore", 4100, 0,      0,  "Restore state using GSR" },
-  {"test",    't',  "slot", OPTION_ARG_OPTIONAL, "Playground.. can be anything here" },
-  {"test2",   6000, "slot", OPTION_ARG_OPTIONAL,  "Playground.. can be anything here" },
-  {"test3",   6003, "slot", OPTION_ARG_OPTIONAL,  "Playground.. can be anything here" },
-  {"test4",   6004, "slot", OPTION_ARG_OPTIONAL,  "Playground.. can be anything here" },
-  {"test5",   6005, "slot", OPTION_ARG_OPTIONAL,  "Playground.. can be anything here" },
-  {"switch_bot", 5000, 0,   0,  "Change to bottom ICAP interface" },
-  {"switch_top", 5001, 0,   0,  "Change to top ICAP interface" },
+  {"far",        'f',  "FAR",  0, "FAR to read from, must be in hex format (0xABCD)" },
+  {"capture",    4000, 0,      0, "Capture current state using GCAPTURE" },
+  {"restore",    4100, 0,      0, "Restore state using GSR" },
+  {"test_add",   't',  0,      0, "Capture add, poison it and restore it" },
+  {"test2",      6000, "slot", OPTION_ARG_OPTIONAL, "Playground.. can be anything here" },
+  {"test3",      6003, "slot", OPTION_ARG_OPTIONAL, "Playground.. can be anything here" },
+  {"test_mul",   6004, 0,      0, "Capture mul, poison it and restore it" },
+  {"test_lfsr",  6005, 0,      0, "Capture lfsr, poison it and restore it" },
+  {"switch_bot", 5000, 0,      0, "Change to bottom ICAP interface" },
+  {"switch_top", 5001, 0,      0, "Change to top ICAP interface (does not work!)" },
   { 0 }
 };
 
@@ -98,10 +98,7 @@ parse_opt (int key, char *arg, struct argp_state *state)
     break;
 
   case 't':
-    arguments->mode = MODE_TEST;
-
-    if(arg)
-      arguments->slot = atoi(arg);
+    arguments->mode = MODE_TEST_ADD;
     break;
 
   case 6000:
@@ -119,17 +116,11 @@ parse_opt (int key, char *arg, struct argp_state *state)
     break;
 
   case 6004:
-    arguments->mode = MODE_TEST4;
-
-    if(arg)
-      arguments->slot = atoi(arg);
+    arguments->mode = MODE_TEST_MUL;
     break;
 
   case 6005:
-    arguments->mode = MODE_TEST5;
-
-    if(arg)
-      arguments->slot = atoi(arg);
+    arguments->mode = MODE_TEST_LFSR;
     break;
 
   case 'r':
@@ -144,7 +135,7 @@ parse_opt (int key, char *arg, struct argp_state *state)
   case ARGP_KEY_INIT:
     // default values
     arguments->reconf_mode = RECONF_HW;
-    arguments->mode = MODE_WRITE;
+    arguments->mode = 999999;
     arguments->max_cnt = 10;
     arguments->read_far = 0x8A80;
     arguments->read_words = 1;
