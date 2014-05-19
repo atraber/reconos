@@ -350,9 +350,6 @@ begin
 
   -- Instantiate the Unit Under Test (UUT)
   uut : entity work.hwt_pr_app
-    generic map (
-      G_MUL => true
-      )
     port map (
     OSFSL_S_Read    => OSFSL_S_Read,
     OSFSL_S_Data    => OSFSL_S_Data,
@@ -573,8 +570,8 @@ begin
     read_reg(2, x"00000121", MB_M_Write, MB_M_Data, MB_M_Full, MB_S_Exists, MB_S_Read, MB_S_Data);
     read_reg(3, x"00000000", MB_M_Write, MB_M_Data, MB_M_Full, MB_S_Exists, MB_S_Read, MB_S_Data);
 
-    memcopy_to_hwt(x"00000000", MB_M_Write, MB_M_Data, MB_M_Full, MB_S_Exists, MB_S_Read, MB_S_Data);
-    memcopy_to_main(x"00000000", MB_M_Write, MB_M_Data, MB_M_Full, MB_S_Exists, MB_S_Read, MB_S_Data);
+    memcopy_to_hwt(x"DABC6621", MB_M_Write, MB_M_Data, MB_M_Full, MB_S_Exists, MB_S_Read, MB_S_Data);
+    memcopy_to_main(x"DABC6621", MB_M_Write, MB_M_Data, MB_M_Full, MB_S_Exists, MB_S_Read, MB_S_Data);
 
     wait;
   end process;

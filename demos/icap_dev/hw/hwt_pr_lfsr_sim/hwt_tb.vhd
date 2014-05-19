@@ -573,14 +573,9 @@ begin
     read_reg(3, x"00000001", MB_M_Write, MB_M_Data, MB_M_Full, MB_S_Exists, MB_S_Read, MB_S_Data);
 
     
-    read_reg(0, x"00000000", MB_M_Write, MB_M_Data, MB_M_Full, MB_S_Exists, MB_S_Read, MB_S_Data);
-
     write_reg(0, x"00000002", MB_M_Write, MB_M_Data, MB_M_Full, MB_S_Exists, MB_S_Read);
 
-    read_reg(0, x"00000000", MB_M_Write, MB_M_Data, MB_M_Full, MB_S_Exists, MB_S_Read, MB_S_Data);
-
-    --memcopy_to_hwt(x"00000000", MB_M_Write, MB_M_Data, MB_M_Full, MB_S_Exists, MB_S_Read, MB_S_Data);
-    --memcopy_to_main(x"00000000", MB_M_Write, MB_M_Data, MB_M_Full, MB_S_Exists, MB_S_Read, MB_S_Data);
+    --read_reg(0, x"00000000", MB_M_Write, MB_M_Data, MB_M_Full, MB_S_Exists, MB_S_Read, MB_S_Data);
 
     wait;
   end process;

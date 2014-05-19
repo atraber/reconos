@@ -27,8 +27,8 @@ architecture Behavioral of memory is
   signal memFirstValid : integer := 0;
   signal memLastValid  : integer := 0;
 
-  file file_stim  : text open read_mode is "./partial_stim.hex";  -- open the frame file for reading
-  file file_check : text open read_mode is "./partial_check.hex";  -- open the frame file for reading
+  file file_stim  : text open read_mode is "./mem_stim.hex";  -- open the frame file for reading
+  file file_check : text open read_mode is "./mem_check.hex";  -- open the frame file for reading
 
   -----------------------------------------------------------------------------
   -- functions
