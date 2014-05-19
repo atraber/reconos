@@ -196,7 +196,7 @@ unsigned int lfsr_sim(unsigned int iterations, unsigned int start) {
 
 int test_prblock_add_sub(int slot, int thread_id)
 {
-  if(slot == HWT_DPR) {
+  if(slot != HWT_DPR) {
     printf("Wrong slot, expected %d, got %d\n", HWT_DPR, slot);
     return 0;
   }
@@ -246,7 +246,7 @@ int test_prblock_add_sub(int slot, int thread_id)
 
 int test_prblock_mul_lfsr(int slot, int thread_id)
 {
-  if(slot == HWT_DPR2) {
+  if(slot != HWT_DPR2) {
     printf("Wrong slot, expected %d, got %d\n", HWT_DPR2, slot);
     return 0;
   }
@@ -272,7 +272,7 @@ int test_prblock_mul_lfsr(int slot, int thread_id)
 
     ret = prblock_get(slot, 3);
     if(ret == 0) {
-      ret = prblock_get(slot, 3);
+      ret = prblock_get(slot, 2);
       if(ret == opA * opB) {
         printf("Multiplier result is CORRECT\n");
       }
@@ -296,6 +296,7 @@ int test_prblock_mul_lfsr(int slot, int thread_id)
     prblock_set(slot, 0, 0x00000001);
 
     usleep(500);
+    sleep(1);
 
     // capture them
     prblock_set(slot, 0, 0x00000002);
@@ -315,6 +316,8 @@ int test_prblock_mul_lfsr(int slot, int thread_id)
       printf("LFSR is in wrong state\n");
       return 0;
     }
+
+    printf("LFSR result correct!\n");
   } else {
     printf("Unsupported thread_id %d\n", thread_id);
   }
@@ -511,9 +514,15 @@ int main(int argc, char *argv[])
       reconfigure_prblock(HWT_DPR, ADD);
       test_prblock(HWT_DPR, ADD);
 
+      reconfigure_prblock(HWT_DPR2, MUL);
+      test_prblock(HWT_DPR2, MUL);
+
 
       reconfigure_prblock(HWT_DPR, SUB);
       test_prblock(HWT_DPR, SUB);
+
+      reconfigure_prblock(HWT_DPR2, LFSR);
+      test_prblock(HWT_DPR2, LFSR);
 
 
       // stop after n reconfigurations
@@ -527,15 +536,10 @@ int main(int argc, char *argv[])
     reconfigure_prblock(HWT_DPR, ADD);
     test_prblock(HWT_DPR, ADD);
 
-    //reconfigure_prblock(HWT_DPR2, ADD);
-    //test_prblock(HWT_DPR2, ADD);
-
   } else if(g_arguments.mode == MODE_WRITE_SUB) {
     reconfigure_prblock(HWT_DPR, SUB);
     test_prblock(HWT_DPR, SUB);
 
-    // reconfigure_prblock(HWT_DPR2, SUB);
-    // test_prblock(HWT_DPR2, SUB);
   } else if(g_arguments.mode == MODE_WRITE_MUL) {
     reconfigure_prblock(HWT_DPR2, MUL);
     test_prblock(HWT_DPR2, MUL);
@@ -567,6 +571,7 @@ int main(int argc, char *argv[])
     prblock_get(slot, 3);
 
     prblock_mem_set(slot, 0xAABBCCDD);
+    prblock_mem_get(slot, 0xAABBCCDD);
 
 
     // capture bitstream
@@ -626,7 +631,18 @@ int main(int argc, char *argv[])
     printf("reset done\n");
     fflush(stdout);
 
-    prblock_mem_get(slot, 0xAABBCCDD);
+    if( prblock_mem_get(slot, 0xAABBCCDD) == 0) {
+      printf("### Memory test has failed\n");
+    } else {
+      printf("### Memory test OK\n");
+    }
+
+    if( prblock_get(slot, 3) == 0x11223344) {
+      printf("### Captured value OK\n");
+    } else {
+      printf("### Captured value was wrong\n");
+    }
+
     test_prblock(slot, ADD);
 
     //sleep(1);
@@ -680,7 +696,7 @@ int main(int argc, char *argv[])
     //--------------------------------------------------------------------------
     int slot = HWT_DPR2;
 
-    const unsigned int opA = 0x01234567;
+    const unsigned int opA = 0x112300AB;
     const unsigned int opB = 0x00A0B0C0;
 
     // ensure that we are in a valid state first
@@ -694,6 +710,7 @@ int main(int argc, char *argv[])
     prblock_set(slot, 3, 0x00000001); // start multiplier
 
     prblock_mem_set(slot, 0xAABBCCDD);
+    prblock_mem_get(slot, 0xAABBCCDD);
 
 
     // capture bitstream
@@ -753,7 +770,11 @@ int main(int argc, char *argv[])
     printf("reset done\n");
     fflush(stdout);
 
-    prblock_mem_get(slot, 0xAABBCCDD);
+    if( prblock_mem_get(slot, 0xAABBCCDD) == 0) {
+      printf("### Memory test has failed\n");
+    } else {
+      printf("### Memory test OK\n");
+    }
 
     // now check the multiplier result, wait for it to finish
     while(1) {
@@ -764,9 +785,9 @@ int main(int argc, char *argv[])
     }
 
     if( prblock_get(slot, 2) != opA * opB) {
-      printf("Result is not correct. Expected %d, got %d\n", opA * opB, prblock_get(slot, 2));
+      printf("### Result is not correct. Expected %d, got %d\n", opA * opB, prblock_get(slot, 2));
     } else {
-      printf("Result is CORRECT\n");
+      printf("### Result is CORRECT\n");
     }
 
     printf("test done\n");
@@ -811,15 +832,15 @@ int main(int argc, char *argv[])
     prblock_set(slot, 1, 0x66666666);
     prblock_set(slot, 2, 0x66666666);
 
-    printf("Last check before reconfiguration\n");
+    printf("Poisoning current values in FPGA done\n");
     fflush(stdout);
 
     printf("Configure LFSR module\n");
     fflush(stdout);
 
     // configure different module to erase all traces of the former
-    reconfigure_prblock(slot, LFSR);
-    test_prblock(slot, LFSR);
+    reconfigure_prblock(slot, MUL);
+    test_prblock(slot, MUL);
 
     printf("Sending THREAD_EXIT_CMD\n");
     fflush(stdout);
@@ -857,16 +878,15 @@ int main(int argc, char *argv[])
 
     for(i = 1; i < lfsr_num; i++) {
       if( prblock_get(slot, i + 1) != lfsr_value) {
-        printf("Results are not equal\n");
-        return 0;
+        printf("### Results are not equal\n");
       }
     }
 
-    if(lfsr_value != lfsr_sim(iterations, 0x1) ) {
-      printf("LFSR is in wrong state\n");
-      return 0;
+    unsigned int lfsr_value_sim = lfsr_sim(iterations, 0x1);
+    if(lfsr_value != lfsr_value_sim ) {
+      printf("### LFSR is in wrong state, should be %X\n", lfsr_value_sim);
     } else {
-      printf("LFSR correct: %d\n", lfsr_value);
+      printf("### LFSR correct: %X\n", lfsr_value);
     }
 
     printf("test done\n");
