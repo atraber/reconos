@@ -440,7 +440,7 @@ int hw_icap_read_capture(struct pr_frame_t* frames, unsigned int num, uint32_t* 
 
   ret = hw_icap_write(g_icap_read_capture_cmd, sizeof g_icap_read_capture_cmd);
   if(ret == 0) {
-    printf("hw_icap_read_frame: Writing first command sequence to ICAP has failed\n");
+    printf("hw_icap_read_capture: Writing first command sequence to ICAP has failed\n");
     return 0;
   }
 
@@ -458,7 +458,7 @@ int hw_icap_read_capture(struct pr_frame_t* frames, unsigned int num, uint32_t* 
       // prepare next frame for readback
       ret = hw_icap_write(g_icap_read_multiple, sizeof g_icap_read_multiple);
       if(ret == 0) {
-        printf("hw_icap_read_frame: Writing first command sequence to ICAP has failed\n");
+        printf("hw_icap_read_capture: Writing first command sequence to ICAP has failed\n");
         return 0;
       }
     }
@@ -479,7 +479,7 @@ int hw_icap_read_capture(struct pr_frame_t* frames, unsigned int num, uint32_t* 
 
     ret = hw_icap_read(mem, real_size * sizeof(uint32_t));
     if(ret == 0) {
-      printf("hw_icap_read_frame: Reading from ICAP has failed\n");
+      printf("hw_icap_read_capture: Reading from ICAP has failed\n");
       free(mem);
       return 0;
     }
@@ -493,7 +493,7 @@ int hw_icap_read_capture(struct pr_frame_t* frames, unsigned int num, uint32_t* 
   // we have finished reading, desync the ICAP interface
   ret = hw_icap_write(g_icap_read_cmd2, sizeof g_icap_read_cmd2);
   if(ret == 0) {
-    printf("hw_icap_read_frame: Writing first command sequence to ICAP has failed\n");
+    printf("hw_icap_read_capture: Writing first command sequence to ICAP has failed\n");
     return 0;
   }
 

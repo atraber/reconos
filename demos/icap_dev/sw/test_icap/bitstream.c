@@ -284,7 +284,6 @@ int bitstream_capture(struct pr_bitstream_t* stream_in, struct pr_bitstream_t* s
     unsigned int k, j;
     for(k = 0;; k++) {
       j = 4 + k * 10 + ((k+4) / 8);
-      //printf("j is %d\n", j + readFrames[i].offset);
       if(j >= readFrames[i].words)
         break;
 

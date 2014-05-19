@@ -756,7 +756,7 @@ int main(int argc, char *argv[])
     printf("Capturing current state completed\n");
     fflush(stdout);
 
-    //bitstream_save("partial_bitstreams/test.bin", &test_bit);
+    // bitstream_save("partial_bitstreams/test.bin", &test_bit);
 
     // set it to a different value (just because)
     // this destroys the currently running multiplier result
