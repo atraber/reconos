@@ -32,6 +32,12 @@ struct mbox mb_out[NUM_SLOTS];
 
 struct pr_bitstream_t pr_bit[NUM_SLOTS][2];
 
+// if clock gating is used, this function enables (disables) the clock
+void clock_enable(int slot, int enable)
+{
+  reconos_slot_reset(slot + 8, enable);
+}
+
 
 // load partial bitfile via hardware icap thread
 int hw_icap_load(int slot, int thread_id)
@@ -194,7 +200,7 @@ unsigned int lfsr_sim(unsigned int iterations, unsigned int start) {
   return start;
 }
 
-int test_prblock_add_sub(int slot, int thread_id)
+int prblock_test_add_sub(int slot, int thread_id)
 {
   if(slot != HWT_DPR) {
     printf("Wrong slot, expected %d, got %d\n", HWT_DPR, slot);
@@ -244,7 +250,7 @@ int test_prblock_add_sub(int slot, int thread_id)
 	return 1;
 }
 
-int test_prblock_mul_lfsr(int slot, int thread_id)
+int prblock_test_mul_lfsr(int slot, int thread_id)
 {
   if(slot != HWT_DPR2) {
     printf("Wrong slot, expected %d, got %d\n", HWT_DPR2, slot);
@@ -325,7 +331,7 @@ int test_prblock_mul_lfsr(int slot, int thread_id)
 	return 1;
 }
 
-int test_prblock(int slot, int thread_id)
+int prblock_test(int slot, int thread_id)
 {
   if(slot == 0 || slot >= NUM_SLOTS) {
     printf("Slot %d does not contain a reconfigurable module\n", slot);
@@ -333,13 +339,13 @@ int test_prblock(int slot, int thread_id)
   }
 
   if(slot == 1)
-    return test_prblock_add_sub(slot, thread_id);
+    return prblock_test_add_sub(slot, thread_id);
   else
-    return test_prblock_mul_lfsr(slot, thread_id);
+    return prblock_test_mul_lfsr(slot, thread_id);
 }
 
 
-int reconfigure_prblock(int slot, int thread_id)
+int prblock_reconfigure(int slot, int thread_id)
 {
 	timing_t t_start, t_stop;
   us_t t_check;
@@ -352,6 +358,7 @@ int reconfigure_prblock(int slot, int thread_id)
   usleep(100);
 
   reconos_slot_reset(slot, 1);
+  clock_enable(slot, 0);
 
   printf("Starting reconfiguration\n");
   fflush(stdout);
@@ -380,11 +387,21 @@ int reconfigure_prblock(int slot, int thread_id)
   printf("Reconfiguration done in %lu us, resetting hardware thread\n", t_check);
 
 	// reset hardware thread
+  clock_enable(slot, 1);
   reconos_slot_reset(slot,0);
 
 	return ret;
 }
 
+// capture a prblock
+void prblock_capture(int slot, int thread_id, struct pr_bitstream_t* stream)
+{
+  clock_enable(slot, 0);
+  bitstream_capture(&pr_bit[slot][thread_id], stream);
+  clock_enable(slot, 1);
+}
+
+// restore a previously captured PR block
 void prblock_restore(int slot, struct pr_bitstream_t* stream)
 {
   // send thread exit command, does not seem to be needed?
@@ -396,7 +413,7 @@ void prblock_restore(int slot, struct pr_bitstream_t* stream)
   reconos_slot_reset(slot, 1);
 
   // stop clock
-  reconos_slot_reset(slot + 8, 0);
+  clock_enable(slot, 0);
 
   bitstream_restore(stream);
 
@@ -408,17 +425,7 @@ void prblock_restore(int slot, struct pr_bitstream_t* stream)
   hw_icap_grestore();
 
   // start clock
-  reconos_slot_reset(slot + 8, 1);
-}
-
-void hw_clock_enable(int enable)
-{
-  if(enable)
-    reconos_slot_reset(10, 1);
-  else
-    reconos_slot_reset(10, 0);
-
-  printf("Changed clock to %d\n", enable);
+  clock_enable(slot, 1);
 }
 
 
@@ -487,7 +494,10 @@ int main(int argc, char *argv[])
 	printf("[icap_demo] Initialize ReconOS.\n");
 	reconos_init_autodetect();
 
-  hw_clock_enable(1);
+  reconos_slot_reset(HWT_DPR2 + 8, 1);
+  reconos_slot_reset(HWT_DPR2, 0);
+  reconos_slot_reset(HWT_DPR2, 1);
+
 	printf("[icap_demo] Creating delegate threads.\n\n");
 	for (i=0; i<NUM_SLOTS; i++){
 		// mbox init
@@ -553,18 +563,18 @@ int main(int argc, char *argv[])
       // reconfigure partial hw slot and check thread
       printf("[icap] Test no. %03d\n",cnt);
 
-      reconfigure_prblock(HWT_DPR, ADD);
-      test_prblock(HWT_DPR, ADD);
+      prblock_reconfigure(HWT_DPR, ADD);
+      prblock_test(HWT_DPR, ADD);
 
-      reconfigure_prblock(HWT_DPR2, MUL);
-      test_prblock(HWT_DPR2, MUL);
+      prblock_reconfigure(HWT_DPR2, MUL);
+      prblock_test(HWT_DPR2, MUL);
 
 
-      reconfigure_prblock(HWT_DPR, SUB);
-      test_prblock(HWT_DPR, SUB);
+      prblock_reconfigure(HWT_DPR, SUB);
+      prblock_test(HWT_DPR, SUB);
 
-      reconfigure_prblock(HWT_DPR2, LFSR);
-      test_prblock(HWT_DPR2, LFSR);
+      prblock_reconfigure(HWT_DPR2, LFSR);
+      prblock_test(HWT_DPR2, LFSR);
 
 
       // stop after n reconfigurations
@@ -579,29 +589,29 @@ int main(int argc, char *argv[])
 
   //----------------------------------------------------------------------------
   case MODE_WRITE_ADD:
-    reconfigure_prblock(HWT_DPR, ADD);
-    test_prblock(HWT_DPR, ADD);
+    prblock_reconfigure(HWT_DPR, ADD);
+    prblock_test(HWT_DPR, ADD);
 
     break;
 
   //----------------------------------------------------------------------------
   case MODE_WRITE_SUB:
-    reconfigure_prblock(HWT_DPR, SUB);
-    test_prblock(HWT_DPR, SUB);
+    prblock_reconfigure(HWT_DPR, SUB);
+    prblock_test(HWT_DPR, SUB);
 
     break;
 
   //----------------------------------------------------------------------------
   case MODE_WRITE_MUL:
-    reconfigure_prblock(HWT_DPR2, MUL);
-    test_prblock(HWT_DPR2, MUL);
+    prblock_reconfigure(HWT_DPR2, MUL);
+    prblock_test(HWT_DPR2, MUL);
     
     break;
 
   //----------------------------------------------------------------------------
   case MODE_WRITE_LFSR:
-    reconfigure_prblock(HWT_DPR2, LFSR);
-    test_prblock(HWT_DPR2, LFSR);
+    prblock_reconfigure(HWT_DPR2, LFSR);
+    prblock_test(HWT_DPR2, LFSR);
 
     break;
 
@@ -630,8 +640,8 @@ int main(int argc, char *argv[])
     slot = HWT_DPR;
 
     // ensure that we are in a valid state first
-    reconfigure_prblock(slot, ADD);
-    test_prblock(slot, ADD);
+    prblock_reconfigure(slot, ADD);
+    prblock_test(slot, ADD);
     prblock_get(slot, 3);
 
     // set values that we want to capture
@@ -652,7 +662,7 @@ int main(int argc, char *argv[])
 
     // set it to a different value (just because)
     prblock_set(slot, 3, 0x00DD0000);
-    test_prblock(slot, ADD);
+    prblock_test(slot, ADD);
 
     printf("Last check before reconfiguration\n");
     fflush(stdout);
@@ -668,8 +678,8 @@ int main(int argc, char *argv[])
     fflush(stdout);
 
     // configure different module to erase all traces of the former
-    reconfigure_prblock(slot, SUB);
-    test_prblock(slot, SUB);
+    prblock_reconfigure(slot, SUB);
+    prblock_test(slot, SUB);
 
     printf("Sending THREAD_EXIT_CMD\n");
     fflush(stdout);
@@ -707,7 +717,7 @@ int main(int argc, char *argv[])
       printf("### Captured value was wrong\n");
     }
 
-    test_prblock(slot, ADD);
+    prblock_test(slot, ADD);
 
     break;
 
@@ -743,7 +753,7 @@ int main(int argc, char *argv[])
 
   //----------------------------------------------------------------------------
   case MODE_TEST2:
-    reconfigure_prblock(slot, ADD);
+    prblock_reconfigure(slot, ADD);
     prblock_mem_set(slot, 0xFFFFFFFF);
     bitstream_capture(&pr_bit[slot][ADD], &test_bit);
     bitstream_save("partial_bitstreams/test.bin", &test_bit);
@@ -772,8 +782,8 @@ int main(int argc, char *argv[])
     const unsigned int opB = 0x00A0B0C0;
 
     // ensure that we are in a valid state first
-    reconfigure_prblock(slot, MUL);
-    test_prblock(slot, MUL);
+    prblock_reconfigure(slot, MUL);
+    prblock_test(slot, MUL);
     prblock_get(slot, 3);
 
     // set values that we want to capture
@@ -814,8 +824,8 @@ int main(int argc, char *argv[])
     fflush(stdout);
 
     // configure different module to erase all traces of the former
-    reconfigure_prblock(slot, LFSR);
-    test_prblock(slot, LFSR);
+    prblock_reconfigure(slot, LFSR);
+    prblock_test(slot, LFSR);
 
     printf("Sending THREAD_EXIT_CMD\n");
     fflush(stdout);
@@ -873,8 +883,8 @@ int main(int argc, char *argv[])
     slot = HWT_DPR2;
 
     // ensure that we are in a valid state first
-    reconfigure_prblock(slot, LFSR);
-    test_prblock(slot, LFSR);
+    prblock_reconfigure(slot, LFSR);
+    prblock_test(slot, LFSR);
 
     // set values that we want to capture
     const unsigned int lfsr_num = 4;
@@ -888,9 +898,7 @@ int main(int argc, char *argv[])
 
 
     // capture bitstream
-    hw_clock_enable(0);
-    bitstream_capture(&pr_bit[slot][LFSR], &test_bit);
-    hw_clock_enable(1);
+    prblock_capture(slot, LFSR, &test_bit);
 
     printf("Capturing current state completed\n");
     fflush(stdout);
@@ -911,10 +919,10 @@ int main(int argc, char *argv[])
     fflush(stdout);
 
     // configure different module to erase all traces of the former
-    reconfigure_prblock(slot, MUL);
+    prblock_reconfigure(slot, MUL);
     printf("Start test\n");
     fflush(stdout);
-    test_prblock(slot, MUL);
+    prblock_test(slot, MUL);
 
     printf("Restoring captured PR block\n");
     fflush(stdout);
