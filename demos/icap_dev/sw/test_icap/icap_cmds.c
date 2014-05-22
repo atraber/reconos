@@ -477,12 +477,14 @@ int hw_icap_read_capture(struct pr_frame_t* frames, unsigned int num, uint32_t* 
     // we need to flush the cache here as otherwise we get a part of old data and a part of new data
     reconos_cache_flush();
 
+
     ret = hw_icap_read(mem, real_size * sizeof(uint32_t));
     if(ret == 0) {
       printf("hw_icap_read_capture: Reading from ICAP has failed\n");
       free(mem);
       return 0;
     }
+
 
     // the first 82 words are rubish, because they are from the pad frame and a dummy word
     memcpy(block + frames[i].offset, mem + 82, (frames[i].words) * 4);

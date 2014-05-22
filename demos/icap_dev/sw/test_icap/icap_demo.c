@@ -385,6 +385,42 @@ int reconfigure_prblock(int slot, int thread_id)
 	return ret;
 }
 
+void prblock_restore(int slot, struct pr_bitstream_t* stream)
+{
+  // send thread exit command, does not seem to be needed?
+  //mbox_put(&mb_in[slot],THREAD_EXIT_CMD);
+  //usleep(100);
+
+  // reset hardware thread, also disables FSLs
+  // this is needed as otherwise invalid stuff gets written into te FIFOs and FSLs
+  reconos_slot_reset(slot, 1);
+
+  // stop clock
+  reconos_slot_reset(slot + 8, 0);
+
+  bitstream_restore(stream);
+
+  // start hardware thread again, releasing reset
+  reconos_slot_reset(slot, 0);
+
+  // now restore the previous information
+  // This part would be timing critical if the clock was not stopped
+  hw_icap_grestore();
+
+  // start clock
+  reconos_slot_reset(slot + 8, 1);
+}
+
+void hw_clock_enable(int enable)
+{
+  if(enable)
+    reconos_slot_reset(10, 1);
+  else
+    reconos_slot_reset(10, 0);
+
+  printf("Changed clock to %d\n", enable);
+}
+
 
 void segfault_sigaction(int signal, siginfo_t *si, void *arg)
 {
@@ -451,6 +487,7 @@ int main(int argc, char *argv[])
 	printf("[icap_demo] Initialize ReconOS.\n");
 	reconos_init_autodetect();
 
+  hw_clock_enable(1);
 	printf("[icap_demo] Creating delegate threads.\n\n");
 	for (i=0; i<NUM_SLOTS; i++){
 		// mbox init
@@ -472,8 +509,8 @@ int main(int argc, char *argv[])
   //----------------------------------------------------------------------------
   bitstream_open("partial_bitstreams/partial_add.bin", &pr_bit[HWT_DPR][ADD]);
   bitstream_open("partial_bitstreams/partial_sub.bin", &pr_bit[HWT_DPR][SUB]);
-  bitstream_open("partial_bitstreams/partial_add2.bin", &pr_bit[HWT_DPR2][MUL]);
-  bitstream_open("partial_bitstreams/partial_sub2.bin", &pr_bit[HWT_DPR2][LFSR]);
+  bitstream_open("partial_bitstreams/partial_mul.bin", &pr_bit[HWT_DPR2][MUL]);
+  bitstream_open("partial_bitstreams/partial_lfsr.bin", &pr_bit[HWT_DPR2][LFSR]);
 
   //----------------------------------------------------------------------------
   // print current register values
@@ -851,54 +888,39 @@ int main(int argc, char *argv[])
 
 
     // capture bitstream
+    hw_clock_enable(0);
     bitstream_capture(&pr_bit[slot][LFSR], &test_bit);
+    hw_clock_enable(1);
 
     printf("Capturing current state completed\n");
     fflush(stdout);
 
-    bitstream_save("partial_bitstreams/test.bin", &test_bit);
+    //bitstream_save("partial_bitstreams/test.bin", &test_bit);
 
     // set it to a different value (just because)
-    // this destroys the currently running multiplier result
     prblock_set(slot, 0, 0x66666666);
     prblock_set(slot, 1, 0x66666666);
     prblock_set(slot, 2, 0x66666666);
 
+    prblock_get(slot, 1);
+
     printf("Poisoning current values in FPGA done\n");
     fflush(stdout);
 
-    printf("Configure LFSR module\n");
+    printf("Configure MUL module\n");
     fflush(stdout);
 
     // configure different module to erase all traces of the former
     reconfigure_prblock(slot, MUL);
+    printf("Start test\n");
+    fflush(stdout);
     test_prblock(slot, MUL);
 
-    printf("Sending THREAD_EXIT_CMD\n");
+    printf("Restoring captured PR block\n");
     fflush(stdout);
 
     // restore captured module
-    // send thread exit command
-    mbox_put(&mb_in[slot],THREAD_EXIT_CMD);
-    usleep(100);
-    reconos_slot_reset(slot, 1);
-
-    printf("Performing restore now...\n");
-    fflush(stdout);
-
-    bitstream_restore(&test_bit);
-
-    printf("Restore done\n");
-    fflush(stdout);
-
-    // reset hardware thread
-    reconos_slot_reset(slot, 0);
-    hw_icap_grestore();
-
-
-    printf("reset done\n");
-    fflush(stdout);
-
+    prblock_restore(slot, &test_bit);
 
     // now check the LFSR
     // capture them
