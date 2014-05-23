@@ -409,11 +409,12 @@ void prblock_restore(int slot, struct pr_bitstream_t* stream)
   //usleep(100);
 
   // reset hardware thread, also disables FSLs
-  // this is needed as otherwise invalid stuff gets written into te FIFOs and FSLs
+  // this is needed as otherwise invalid stuff gets written into the FIFOs and FSLs
   reconos_slot_reset(slot, 1);
 
   // stop clock
   clock_enable(slot, 0);
+
 
   bitstream_restore(stream);
 
@@ -494,6 +495,7 @@ int main(int argc, char *argv[])
 	printf("[icap_demo] Initialize ReconOS.\n");
 	reconos_init_autodetect();
 
+  // TODO: Check what is really needed
   reconos_slot_reset(HWT_DPR2 + 8, 1);
   reconos_slot_reset(HWT_DPR2, 0);
   reconos_slot_reset(HWT_DPR2, 1);
@@ -796,6 +798,8 @@ int main(int argc, char *argv[])
 
 
     // capture bitstream
+    printf("Capturing current state\n");
+    fflush(stdout);
     struct pr_bitstream_t test_bit;
 
     bitstream_capture(&pr_bit[slot][MUL], &test_bit);
@@ -827,29 +831,13 @@ int main(int argc, char *argv[])
     prblock_reconfigure(slot, LFSR);
     prblock_test(slot, LFSR);
 
-    printf("Sending THREAD_EXIT_CMD\n");
+    printf("Restoring captured state\n");
     fflush(stdout);
 
     // restore captured module
-    // send thread exit command
-    mbox_put(&mb_in[slot],THREAD_EXIT_CMD);
-    usleep(100);
-    reconos_slot_reset(slot, 1);
-
-    printf("Performing restore now...\n");
-    fflush(stdout);
-
-    bitstream_restore(&test_bit);
+    prblock_restore(slot, &test_bit);
 
     printf("Restore done\n");
-    fflush(stdout);
-
-    // reset hardware thread
-    reconos_slot_reset(slot, 0);
-    hw_icap_grestore();
-
-
-    printf("reset done\n");
     fflush(stdout);
 
     if( prblock_mem_get(slot, 0xAABBCCDD) == 0) {
@@ -930,6 +918,9 @@ int main(int argc, char *argv[])
     // restore captured module
     prblock_restore(slot, &test_bit);
 
+    printf("Restore done\n");
+    fflush(stdout);
+
     // now check the LFSR
     // capture them
     prblock_set(slot, 0, 0x00000002);
@@ -962,8 +953,6 @@ int main(int argc, char *argv[])
   //----------------------------------------------------------------------------
   printf("Exiting now\n");
 
-  // If we use return 0 instead of exit(0) we're getting segmentation faults. I know this makes no sense, but this is what I observed...?
-  exit(0);
 	return 0;
 }
 
