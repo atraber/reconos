@@ -129,7 +129,7 @@ begin
   end generate genSub;
 
   -- os and memory synchronisation state machine
-  reconos_fsm : process (clk, rst, o_osif) is
+  reconos_fsm : process (clk, rst, o_osif, o_memif, o_ram) is
     variable done : boolean;
   begin
     if rst = '1' then

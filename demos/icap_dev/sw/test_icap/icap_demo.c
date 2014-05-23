@@ -557,7 +557,11 @@ int main(int argc, char *argv[])
 
   //----------------------------------------------------------------------------
   int slot = g_arguments.slot;
-  struct pr_bitstream_t test_bit;
+  struct pr_bitstream_t test_bit, bit_mul, bit_lfsr;
+  const unsigned int opA = 0x112300AB;
+  const unsigned int opB = 0x00A0B0C0;
+  const unsigned int lfsr_num = 4;
+
   switch(g_arguments.mode) {
   //----------------------------------------------------------------------------
   case MODE_WRITE:
@@ -780,20 +784,23 @@ int main(int argc, char *argv[])
   case MODE_TEST_MUL:
     slot = HWT_DPR2;
 
-    const unsigned int opA = 0x112300AB;
-    const unsigned int opB = 0x00A0B0C0;
-
     // ensure that we are in a valid state first
     prblock_reconfigure(slot, MUL);
     prblock_test(slot, MUL);
     prblock_get(slot, 3);
 
     // set values that we want to capture
+    printf("Set capture values\n");
+    fflush(stdout);
     prblock_set(slot, 0, opA);
     prblock_set(slot, 1, opB);
     prblock_set(slot, 3, 0x00000001); // start multiplier
 
+    printf("Set capture memory values\n");
+    fflush(stdout);
     prblock_mem_set(slot, 0xAABBCCDD);
+    printf("Check capture memory values\n");
+    fflush(stdout);
     prblock_mem_get(slot, 0xAABBCCDD);
 
 
@@ -875,8 +882,6 @@ int main(int argc, char *argv[])
     prblock_test(slot, LFSR);
 
     // set values that we want to capture
-    const unsigned int lfsr_num = 4;
-
     for(i = 0; i < lfsr_num; i++) {
       prblock_set(slot, i + 1, 0x00000001);
     }
@@ -940,6 +945,127 @@ int main(int argc, char *argv[])
       printf("### LFSR is in wrong state, should be %X\n", lfsr_value_sim);
     } else {
       printf("### LFSR correct: %X\n", lfsr_value);
+    }
+
+    break;
+
+  //----------------------------------------------------------------------------
+  // Continuously swap two reconfigurable blocks
+  //----------------------------------------------------------------------------
+  case MODE_TEST_SWAP:
+    slot = HWT_DPR2;
+
+    printf("Configure LFSR module\n");
+    fflush(stdout);
+    // ensure that we are in a valid state first
+    prblock_reconfigure(slot, LFSR);
+    prblock_test(slot, LFSR);
+
+    // set values that we want to capture
+
+    for(i = 0; i < lfsr_num; i++) {
+      prblock_set(slot, i + 1, 0x00000001);
+    }
+
+    // load them
+    prblock_set(slot, 0, 0x00000001);
+
+
+    // capture bitstream
+    prblock_capture(slot, LFSR, &bit_lfsr);
+
+    printf("Capturing current state completed\n");
+    fflush(stdout);
+
+
+    printf("Configure MUL module\n");
+    fflush(stdout);
+
+    prblock_reconfigure(slot, MUL);
+    prblock_test(slot, MUL);
+
+    // set memory
+    prblock_mem_set(slot, 0xAABBCCDD);
+
+    // set values that we want to capture
+    prblock_set(slot, 0, opA);
+    prblock_set(slot, 1, opB);
+    prblock_set(slot, 3, 0x00000001); // start multiplier
+
+    // capture bitstream
+    prblock_capture(slot, MUL, &bit_mul);
+
+    printf("Capturing current state completed\n");
+    fflush(stdout);
+
+
+    for(cnt = 0; cnt < g_arguments.max_cnt; cnt++) {
+      printf("LFSR: Restoring captured PR block\n");
+      fflush(stdout);
+
+      // restore captured module
+      prblock_restore(slot, &bit_lfsr);
+
+      printf("LFSR: Restore done\n");
+      fflush(stdout);
+
+      // now check the LFSR
+      // capture them
+      prblock_set(slot, 0, 0x00000002);
+
+      unsigned int iterations = prblock_get(slot, 0);
+
+      unsigned int lfsr_value = prblock_get(slot, 1);
+
+      for(i = 1; i < lfsr_num; i++) {
+        if( prblock_get(slot, i + 1) != lfsr_value) {
+          printf("### Results are not equal\n");
+        }
+      }
+
+      unsigned int lfsr_value_sim = lfsr_sim(iterations, 0x1);
+      if(lfsr_value != lfsr_value_sim ) {
+        printf("### LFSR is in wrong state, should be %X\n", lfsr_value_sim);
+      } else {
+        printf("### LFSR: correct: %X\n", lfsr_value);
+      }
+
+      prblock_capture(slot, LFSR, &bit_lfsr);
+
+      // MUL
+      prblock_restore(slot, &bit_mul);
+
+      printf("MUL: Restore done\n");
+      fflush(stdout);
+
+      if( prblock_mem_get(slot, 0xAABBCCDD) == 0) {
+        printf("### Memory test has failed\n");
+      } else {
+        printf("### Memory test OK\n");
+      }
+
+      prblock_mem_set(slot, 0xAABBCCDD);
+
+      // now check the multiplier result, wait for it to finish
+      while(1) {
+        sleep(1);
+
+        if( prblock_get(slot, 3) == 0)
+          break;
+      }
+
+      if( prblock_get(slot, 2) != opA * opB) {
+        printf("### Result is not correct. Expected %d, got %d\n", opA * opB, prblock_get(slot, 2));
+      } else {
+        printf("### MUL: CORRECT\n");
+      }
+
+      // start next iteration
+      prblock_set(slot, 0, opA);
+      prblock_set(slot, 1, opB);
+      prblock_set(slot, 3, 0x00000001); // start multiplier
+
+      prblock_capture(slot, MUL, &bit_mul);
     }
 
     break;

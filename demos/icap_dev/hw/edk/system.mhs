@@ -91,7 +91,6 @@ BEGIN hwt_icap
  PORT DebugGetSize = hwt_icap_0_DebugGetSize_to_chipscope_ila_0
  PORT DebugIdle = hwt_icap_0_DebugIdle_to_chipscope_ila_0
  PORT DebugPutMem = hwt_icap_0_DebugPutMem_to_chipscope_ila_0
- PORT DebugClkEn = hwt_icap_0_DebugClkEn
 END
 
 BEGIN plb_v46
@@ -624,10 +623,10 @@ BEGIN chipscope_ila
  PARAMETER INSTANCE = chipscope_ila_0
  PARAMETER HW_VER = 1.05.a
  PARAMETER C_TRIG0_UNITS = 1
- PARAMETER C_TRIG0_TRIGGER_IN_WIDTH = 10
+ PARAMETER C_TRIG0_TRIGGER_IN_WIDTH = 9
  PARAMETER C_NUM_DATA_SAMPLES = 8192
  PORT chipscope_ila_control = chipscope_ila_0_icon_control
- PORT TRIG0 = hwt_icap_0_DebugClkEn & hwt_icap_0_DebugReadCalc_to_chipscope_ila_0 & hwt_icap_0_DebugReadICAP_to_chipscope_ila_0 & hwt_icap_0_DebugRamWE_to_chipscope_ila_0 & hwt_icap_0_DebugFinished_to_chipscope_ila_0 & hwt_icap_0_DebugGetSize_to_chipscope_ila_0 & hwt_icap_0_DebugIdle_to_chipscope_ila_0 & hwt_icap_0_DebugPutMem_to_chipscope_ila_0 & proc_control_0_resetA & proc_control_0_reset2
+ PORT TRIG0 = hwt_icap_0_DebugReadCalc_to_chipscope_ila_0 & hwt_icap_0_DebugReadICAP_to_chipscope_ila_0 & hwt_icap_0_DebugRamWE_to_chipscope_ila_0 & hwt_icap_0_DebugFinished_to_chipscope_ila_0 & hwt_icap_0_DebugGetSize_to_chipscope_ila_0 & hwt_icap_0_DebugIdle_to_chipscope_ila_0 & hwt_icap_0_DebugPutMem_to_chipscope_ila_0 & proc_control_0_resetA & proc_control_0_reset2
  PORT CLK = clk_100_0000MHzMMCM0
 END
 

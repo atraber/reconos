@@ -6,7 +6,7 @@
 -- Author     : atraber  <atraber@pc-10080>
 -- Company    : Computer Engineering and Networks Laboratory, ETH Zurich
 -- Created    : 2014-05-19
--- Last update: 2014-05-19
+-- Last update: 2014-05-23
 -- Platform   : Xilinx ISIM (simulation), Xilinx (synthesis)
 -- Standard   : VHDL'87
 -------------------------------------------------------------------------------
@@ -295,7 +295,7 @@ begin
   -----------------------------------------------------------------------------
   -- os and memory synchronisation state machine
   -----------------------------------------------------------------------------
-  reconos_fsm : process (clk, rst, o_osif) is
+  reconos_fsm : process (clk, rst, o_osif, o_memif, o_ram) is
     variable done : boolean;
   begin
     if rst = '1' then

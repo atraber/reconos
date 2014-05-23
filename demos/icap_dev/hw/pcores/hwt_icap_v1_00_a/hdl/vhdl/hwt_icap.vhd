@@ -218,7 +218,7 @@ begin
   -- Reconos FSM
   -- os and memory synchronisation state machine
   -----------------------------------------------------------------------------
-  reconos_fsm : process (clk, rst, o_osif) is
+  reconos_fsm : process (clk, rst, o_osif, o_memif, o_ram) is
     variable done      : boolean;
     variable localAddr : std_logic_vector(31 downto 0);
     variable len       : std_logic_vector(23 downto 0);

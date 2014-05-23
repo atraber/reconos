@@ -29,6 +29,7 @@ static struct argp_option options[] = {
   {"test3",      6003, "slot", OPTION_ARG_OPTIONAL, "Playground.. can be anything here" },
   {"test_mul",   6004, 0,      0, "Capture mul, poison it and restore it" },
   {"test_lfsr",  6005, 0,      0, "Capture lfsr, poison it and restore it" },
+  {"test_swap",  6006, "nr",   OPTION_ARG_OPTIONAL, "Continuously capture the state of MUL, load LFSR, restore MUL, restore LFSR, ..." },
   {"switch_bot", 5000, 0,      0, "Change to bottom ICAP interface" },
   {"switch_top", 5001, 0,      0, "Change to top ICAP interface (does not work!)" },
   { 0 }
@@ -121,6 +122,13 @@ parse_opt (int key, char *arg, struct argp_state *state)
 
   case 6005:
     arguments->mode = MODE_TEST_LFSR;
+    break;
+
+  case 6006:
+    arguments->mode = MODE_TEST_SWAP;
+
+    if(arg)
+      arguments->max_cnt = atoi(arg);
     break;
 
   case 'r':
