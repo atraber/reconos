@@ -29,17 +29,17 @@ void reconos_slot_reset(int num, int reset)
 
   if (reset)
     reconos_proc.slot_flags[num] |= SLOT_FLAG_RESET;
-    else
-      reconos_proc.slot_flags[num] &= ~SLOT_FLAG_RESET;
+  else
+    reconos_proc.slot_flags[num] &= ~SLOT_FLAG_RESET;
 
-      for (i = SLOTS_MAX - 1; i >= 0; i--) {
-        mask = mask << 1;
-        if ((reconos_proc.slot_flags[i] & SLOT_FLAG_RESET))
-          mask = mask | 1;
-      }
+  for (i = SLOTS_MAX - 1; i >= 0; i--) {
+    mask = mask << 1;
+    if ((reconos_proc.slot_flags[i] & SLOT_FLAG_RESET))
+      mask = mask | 1;
+  }
 
-      cmd = mask | 0x01000000;
-      fsl_write(reconos_proc.proc_control_fsl_b, cmd);
+  cmd = mask | 0x01000000;
+  fsl_write(reconos_proc.proc_control_fsl_b, cmd);
 }
 
 static uint32_t reconos_getpgd(void)
@@ -104,6 +104,7 @@ static void *reconos_control_thread_entry(void *arg)
 		cmd = fsl_read(reconos_proc.proc_control_fsl_a);
 		if (cmd == 0x00000001) {	
 			addr = (uint32_t *) fsl_read(reconos_proc.proc_control_fsl_a);
+      printf("reconos_control_thread_entry: Received addr %08X\n", addr); // DEBUG
 			reconos_proc.page_faults++;
 
 			/* This page has not been touched yet.
@@ -445,6 +446,7 @@ static void *reconos_delegate_thread_entry(void *arg)
 		case RECONOS_CMD_THREAD_EXIT:
 			return NULL;
 		default:
+      printf("reconos_delegate_thread_entry: Unknown cmd received, dying\n");
 			die();
 		}
 	}
