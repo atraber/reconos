@@ -488,11 +488,6 @@ int main(int argc, char *argv[])
 	printf("[icap_demo] Initialize ReconOS.\n");
 	reconos_init_autodetect();
 
-  // TODO: Check what is really needed
-  reconos_slot_reset(HWT_DPR2 + 8, 1);
-  reconos_slot_reset(HWT_DPR2, 0);
-  reconos_slot_reset(HWT_DPR2, 1);
-
 	printf("[icap_demo] Creating delegate threads.\n\n");
 	for (i=0; i<NUM_SLOTS; i++){
 		// mbox init
@@ -519,6 +514,8 @@ int main(int argc, char *argv[])
     bitstream_open("partial_bitstreams/partial_mul.bin", &pr_bit[HWT_DPR2][MUL]);
     bitstream_open("partial_bitstreams/partial_lfsr.bin", &pr_bit[HWT_DPR2][LFSR]);
   }
+
+  bitstream_save("partial_bitstreams/test.bin", &pr_bit[HWT_DPR][ADD]);
 
   //----------------------------------------------------------------------------
   // print current register values
@@ -860,7 +857,7 @@ int main(int argc, char *argv[])
     fflush(stdout);
 
     if( prblock_mem_get(slot, 0xAABBCCDD) == 0) {
-      printf("### Memory test has failed\n");
+      printf("### ERROR: Memory test has failed\n");
     } else {
       printf("### Memory test OK\n");
     }
@@ -874,7 +871,7 @@ int main(int argc, char *argv[])
     }
 
     if( prblock_get(slot, 2) != opA * opB) {
-      printf("### Result is not correct. Expected %d, got %d\n", opA * opB, prblock_get(slot, 2));
+      printf("### ERROR: Result is not correct. Expected %d, got %d\n", opA * opB, prblock_get(slot, 2));
     } else {
       printf("### Result is CORRECT\n");
     }
@@ -948,13 +945,13 @@ int main(int argc, char *argv[])
 
     for(i = 1; i < lfsr_num; i++) {
       if( prblock_get(slot, i + 1) != lfsr_value) {
-        printf("### Results are not equal\n");
+        printf("### ERROR: Results are not equal\n");
       }
     }
 
     unsigned int lfsr_value_sim = lfsr_sim(iterations, 0x1);
     if(lfsr_value != lfsr_value_sim ) {
-      printf("### LFSR is in wrong state, should be %X\n", lfsr_value_sim);
+      printf("### ERROR: LFSR is in wrong state, should be %X\n", lfsr_value_sim);
     } else {
       printf("### LFSR correct: %X\n", lfsr_value);
     }
@@ -1043,13 +1040,13 @@ int main(int argc, char *argv[])
 
       for(i = 1; i < lfsr_num; i++) {
         if( prblock_get(slot, i + 1) != lfsr_value) {
-          printf("### Results are not equal\n");
+          printf("### ERROR: Results are not equal\n");
         }
       }
 
       unsigned int lfsr_value_sim = lfsr_sim(iterations, 0x1);
       if(lfsr_value != lfsr_value_sim ) {
-        printf("### LFSR is in wrong state, should be %X\n", lfsr_value_sim);
+        printf("### ERROR: LFSR is in wrong state, should be %X\n", lfsr_value_sim);
       } else {
         printf("### LFSR: correct: %X\n", lfsr_value);
       }
@@ -1065,7 +1062,7 @@ int main(int argc, char *argv[])
       fflush(stdout);
 
       if( prblock_mem_get(slot, 0xAABBCCDD) == 0) {
-        printf("### Memory test has failed\n");
+        printf("### ERROR: Memory test has failed\n");
       } else {
         printf("### Memory test OK\n");
       }
@@ -1081,7 +1078,7 @@ int main(int argc, char *argv[])
       }
 
       if( prblock_get(slot, 2) != opA * opB) {
-        printf("### Result is not correct. Expected %d, got %d\n", opA * opB, prblock_get(slot, 2));
+        printf("### ERROR: Result is not correct. Expected %d, got %d\n", opA * opB, prblock_get(slot, 2));
       } else {
         printf("### MUL: CORRECT\n");
       }

@@ -223,8 +223,6 @@ int bitstream_capture(struct pr_bitstream_t* stream_in, struct pr_bitstream_t* s
         }
       } else if(header == 0x2) {
         // type 2 packet
-
-        // TODO!
       }
     }
   }
@@ -305,16 +303,16 @@ int bitstream_save(const char* path, struct pr_bitstream_t* stream)
 {
   int retval = 0;
 
-  FILE* fp = fopen(path, "w");
-  if(fp == NULL) {
+  int fd = open(path, O_CREAT|O_WRONLY|O_TRUNC);
+  if(fd == -1) {
     printf("Could not open file %s\n", path);
 
     goto FAIL;
   }
 
-  size_t size = stream->length;
+  size_t size = stream->length * sizeof(uint32_t);
   // write whole file in one command
-  if( fwrite(stream->block, sizeof(uint32_t), size, fp) != size) {
+  if( write(fd, stream->block, size) != size) {
     printf("Something went wrong while writing to file\n");
 
     goto FAIL;
@@ -323,8 +321,8 @@ int bitstream_save(const char* path, struct pr_bitstream_t* stream)
   retval = 1;
 
 FAIL:
-  if(fp != NULL)
-    fclose(fp);
+  if(fd != -1)
+    close(fd);
 
   return retval;
 }

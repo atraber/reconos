@@ -4,7 +4,7 @@
   <IDENTIFICATION VERSION="1.2" XTLVERSION="1.2"/>
 
   <SET CLASS="PROJECT" DISPLAYMODE="TREE" VIEW_ID="BUSINTERFACE">
-    <HEADERS HSCROLL="0" VSCROLL="231">
+    <HEADERS HSCROLL="0" VSCROLL="180">
       <VARIABLE COL_INDEX="0" COL_WIDTH="274" IS_VISIBLE="TRUE" VIEWDISP="Name" VIEWTYPE="HEADER"/>
       <VARIABLE COL_INDEX="1" COL_WIDTH="255" IS_VISIBLE="TRUE" VIEWDISP="Bus Name" VIEWTYPE="HEADER"/>
       <VARIABLE COL_INDEX="2" IS_VISIBLE="FALSE" VIEWDISP="Bus Standard" VIEWTYPE="HEADER"/>
@@ -14,9 +14,10 @@
       <VARIABLE COL_INDEX="6" IS_VISIBLE="FALSE" VIEWDISP="Type" VIEWTYPE="HEADER"/>
     </HEADERS>
     <SPLITTERS COLLAPSIBLE="1" HANDLEWIDTH="4" MARKER="255" ORIENTATION="1" RESIZE="1" SIZES="195,1302,200" VERSION="0"/>
+    <SET ID="DDR3_SDRAM" IS_EXPANDED="TRUE"/>
     <STATUS>
       <SELECTIONS>
-        <VARIABLE ID="clock_enable_0"/>
+        <VARIABLE ID="DDR3_SDRAM"/>
       </SELECTIONS>
     </STATUS>
     <SEQUENCES IS_DEF_SEQUENCES="TRUE">
@@ -25,15 +26,15 @@
       <VARIABLE ID="hwt_icap_0" ROW_INDEX="23"/>
       <VARIABLE ID="mb_plb" ROW_INDEX="10"/>
       <VARIABLE ID="RS232_Uart_1" ROW_INDEX="33"/>
-      <VARIABLE ID="DDR3_SDRAM" ROW_INDEX="12"/>
-      <VARIABLE ID="FLASH_CE_inverter" ROW_INDEX="41"/>
-      <VARIABLE ID="PCIe_Diff_Clk" ROW_INDEX="39"/>
-      <VARIABLE ID="clock_generator_0" ROW_INDEX="37"/>
+      <VARIABLE ID="DDR3_SDRAM" IS_EXPANDED="TRUE" ROW_INDEX="12"/>
+      <VARIABLE ID="FLASH_CE_inverter" ROW_INDEX="42"/>
+      <VARIABLE ID="PCIe_Diff_Clk" ROW_INDEX="40"/>
+      <VARIABLE ID="clock_generator_0" ROW_INDEX="38"/>
       <VARIABLE ID="mdm_0" ROW_INDEX="13"/>
-      <VARIABLE ID="proc_sys_reset_0" ROW_INDEX="42"/>
+      <VARIABLE ID="proc_sys_reset_0" ROW_INDEX="43"/>
       <VARIABLE ID="xps_intc_0" ROW_INDEX="14"/>
       <VARIABLE ID="Ethernet_MAC" ROW_INDEX="28"/>
-      <VARIABLE ID="AND_Gate" ROW_INDEX="40"/>
+      <VARIABLE ID="AND_Gate" ROW_INDEX="41"/>
       <VARIABLE ID="xps_timer_0" ROW_INDEX="32"/>
       <VARIABLE ID="fsl_v20_0a" ROW_INDEX="0"/>
       <VARIABLE ID="fsl_v20_0b" ROW_INDEX="1"/>
@@ -56,14 +57,14 @@
       <VARIABLE ID="mmu_0" ROW_INDEX="26"/>
       <VARIABLE ID="xps_mem_0" ROW_INDEX="30"/>
       <VARIABLE ID="proc_control_0" ROW_INDEX="27"/>
-      <VARIABLE ID="gnd2int_0" ROW_INDEX="38"/>
+      <VARIABLE ID="gnd2int_0" ROW_INDEX="39"/>
       <VARIABLE ID="xps_sysace_0" ROW_INDEX="31"/>
       <VARIABLE ID="xps_hwicap_0" ROW_INDEX="29"/>
       <VARIABLE ID="microblaze_0" ROW_INDEX="11"/>
       <VARIABLE ID="chipscope_ila_0" ROW_INDEX="35"/>
       <VARIABLE ID="chipscope_icon_0" ROW_INDEX="34"/>
       <VARIABLE ID="clock_enable_0" ROW_INDEX="36"/>
-      <VARIABLE ID="clock_enable_1" ROW_INDEX="43"/>
+      <VARIABLE ID="clock_enable_1" ROW_INDEX="37"/>
     </SEQUENCES>
   </SET>
 
@@ -130,9 +131,7 @@
     <SET ID="clock_enable_0" IS_EXPANDED="TRUE"/>
     <SET ID="clock_enable_1" IS_EXPANDED="TRUE"/>
     <STATUS>
-      <SELECTIONS>
-        <VARIABLE ID="Clk_out" PARENT="clock_enable_1"/>
-      </SELECTIONS>
+      <SELECTIONS/>
     </STATUS>
     <SEQUENCES IS_DEF_SEQUENCES="TRUE">
       <VARIABLE ID="ExternalPorts" ROW_INDEX="0"/>

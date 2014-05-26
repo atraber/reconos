@@ -540,11 +540,6 @@ int sw_icap_read_frame(uint32_t far, uint32_t size, uint32_t* dst)
 
   memset(mem, 0xAB, real_size * sizeof(uint32_t));
 
-  // AAARGH FUU ZOMFG RAGE!!!!
-  // we need to flush the cache here as otherwise we get a part of old data and a part of new data
-  // TODO: not needed for sw driver?
-  reconos_cache_flush();
-
   size_t words_read = 0;
   while(words_read < real_size) {
     printf("sw_icap_read_frame: read(fd, mem + words_read, 4 * (%d - %d)\n", real_size, (int)words_read);

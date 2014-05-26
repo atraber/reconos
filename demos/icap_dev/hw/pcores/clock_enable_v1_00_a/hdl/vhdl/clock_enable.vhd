@@ -38,15 +38,23 @@ begin
 --       I   => clk
 --       );
 
-  BUFHCE_inst : BUFHCE
-    generic map (
-      INIT_OUT => 0  -- Initial output value, also indicates stop low vs stop high behavior
-      )
+  BUFGCE_inst : BUFGCE
     port map (
-      O  => clk_out,                    -- 1-bit The output of the BUFH
-      CE => ClkEnRegxSP,  -- 1-bit Enables propagation of signal from I to O. When low, sets output to 0.
-      I  => clk                         -- 1-bit The input to the BUFH
+      O  => clk_out,                    -- Clock buffer ouptput
+      CE => ClkEnRegxSP,                -- Clock enable input
+      I  => clk                         -- Clock buffer input
       );
+
+
+  -- BUFHCE_inst : BUFHCE
+  --   generic map (
+  --     INIT_OUT => 0  -- Initial output value, also indicates stop low vs stop high behavior
+  --     )
+  --   port map (
+  --     O  => clk_out,                    -- 1-bit The output of the BUFH
+  --     CE => ClkEnRegxSP,  -- 1-bit Enables propagation of signal from I to O. When low, sets output to 0.
+  --     I  => clk                         -- 1-bit The input to the BUFH
+  --     );
 
   -----------------------------------------------------------------------------
   -- Register
