@@ -93,8 +93,12 @@ architecture implementation of hwt_icap is
   signal LenxD  : std_logic_vector(31 downto 0);  -- in bytes
 
   -- icap signals
-  signal ICAPCExSB    : std_logic;
-  signal ICAPDataInxD : std_logic_vector(0 to ICAP_WIDTH-1);
+  signal ICAPCExSB          : std_logic;
+  signal ICAPDataInxD       : std_logic_vector(0 to ICAP_WIDTH-1);
+  signal ICAPDataOutxD      : std_logic_vector(0 to ICAP_WIDTH-1);
+  signal ICAPErrorxS        : std_logic;
+  signal ErrorClearxS       : std_logic;
+  signal ErrorxSP, ErrorxSN : std_logic;
 
 begin
 
@@ -103,29 +107,13 @@ begin
   memif_setup(i_memif, o_memif, FIFO32_S_Data, FIFO32_S_Fill, FIFO32_S_Rd, FIFO32_M_Data, FIFO32_M_Rem, FIFO32_M_Wr);
   ram_setup(i_ram, o_ram, o_RAMAddr_reconos_2, o_RAMData_reconos, i_RAMData_reconos, o_RAMWE_reconos);
 
-  -----------------------------------------------------------------------------
-  -- local dual-port ram
-  -----------------------------------------------------------------------------
-
-  -- reconos port
-  --local_ram_ctrl_1 : process (clk) is
-  --begin
-  --  if (rising_edge(clk)) then
-  --    if (o_RAMWE_reconos = '1') then
-  --      local_ram(conv_integer(unsigned(o_RAMAddr_reconos))) := o_RAMData_reconos;
-  --    else
-  --      i_RAMData_reconos <= local_ram(conv_integer(unsigned(o_RAMAddr_reconos)));
-  --    end if;
-  --  end if;
-  --end process;
-
   o_RAMAddr_reconos(0 to C_LOCAL_RAM_ADDRESS_WIDTH-1) <= o_RAMAddr_reconos_2((32-C_LOCAL_RAM_ADDRESS_WIDTH) to 31);
 
   -----------------------------------------------------------------------------
   -- Reconos FSM
   -- os and memory synchronisation state machine
   -----------------------------------------------------------------------------
-  reconos_fsm : process (clk, rst, o_osif) is
+  reconos_fsm : process (clk, rst, o_osif, o_memif, o_ram) is
     variable done : boolean;
   begin
     if rst = '1' then
@@ -138,6 +126,7 @@ begin
       AddrxD <= (others => '0');
       LenxD  <= (others => '0');
     elsif rising_edge(clk) then
+      ErrorClearxS <= '0';
 
       case state is
         -----------------------------------------------------------------------
@@ -145,6 +134,8 @@ begin
         -----------------------------------------------------------------------
         when STATE_GET_BITSTREAM_ADDR =>
           osif_mbox_get(i_osif, o_osif, MBOX_RECV, AddrxD, done);
+
+          ErrorClearxS <= '1';
 
           if done then
             if (AddrxD = X"FFFFFFFF") then
@@ -175,7 +166,11 @@ begin
           memif_read(i_ram, o_ram, i_memif, o_memif, AddrxD, X"00000000", LenxD(23 downto 0), done);
 
           if done then
-            state <= STATE_FINISHED;
+            if ErrorxSP = '1' then
+              state <= STATE_ERROR;
+            else
+              state <= STATE_FINISHED;
+            end if;
           end if;
 
           ---------------------------------------------------------------------
@@ -222,7 +217,32 @@ begin
       rdwrb => '0',                     -- active low
       i     => ICAPDataInxD,
       busy  => open,
-      o     => open);
+      o     => ICAPDataOutxD);
+
+  -----------------------------------------------------------------------------
+  -- Error register
+  -- we cannot directly look at ICAPErrorxS as this signal is cleared multiple
+  -- times by the ICAP interface
+  -----------------------------------------------------------------------------
+  errorReg : process (clk, rst)
+  begin  -- process errorReg
+    if rst = '1' then                   -- asynchronous reset (active high)
+      ErrorxSP <= '0';
+    elsif clk'event and clk = '1' then  -- rising clock edge
+      ErrorxSP <= ErrorxSN;
+    end if;
+  end process errorReg;
+
+  errorComb : process (ErrorClearxS, ErrorxSP, ICAPErrorxS)
+  begin  -- process errorComb
+    ErrorxSN <= ErrorxSP;
+
+    if ErrorClearxS = '1' then
+      ErrorxSN <= '0';
+    elsif ICAPErrorxS = '1' then
+      ErrorxSN <= '1';
+    end if;
+  end process errorComb;
 
   -----------------------------------------------------------------------------
   -- concurrent signal assignments
@@ -230,6 +250,7 @@ begin
 
   ICAPDataInxD <= o_RAMData_reconos;
   ICAPCExSB    <= not o_RAMWE_reconos;
+  ICAPErrorxS  <= not ICAPDataOutxD(24);
 
 end architecture;
 
