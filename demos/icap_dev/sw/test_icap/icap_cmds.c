@@ -104,39 +104,8 @@ FAIL:
   return retval;
 }
 
-//------------------------------------------------------------------------------
-// Should read from the software ICAP, but it does not work! The kernel driver
-// seems to be broken for virtex 6
-// size must be in bytes
-//------------------------------------------------------------------------------
-int sw_icap_read(uint32_t* addr, unsigned int size)
-{
-  int retval = 0;
 
-  FILE* fp = fopen("/dev/icap0", "r");
-  if(fp == NULL) {
-    printf("sw_icap_read: Could not open icap\n");
-
-    goto FAIL;
-  }
-  int ret = fread(addr, sizeof(uint32_t), size/4, fp);
-  if( ret != (size / 4)) {
-    printf("sw_icap_read: Something went wrong while reading from ICAP, read only %d words instead of %d\n", ret, size/4);
-
-    goto FAIL;
-  }
-
-  retval = 1;
-
-FAIL:
-  if(fp != NULL)
-    fclose(fp);
-
-  return retval;
-}
-
-
-// icap switch to bottom, does work!
+// icap switch to bottom
 uint32_t g_icap_switch_bot[] = {0xFFFFFFFF, // Dummy word
                                 0x000000BB, // Bus Width Sync Word
                                 0x11220044, // Bus Width Detect
@@ -190,6 +159,9 @@ void icap_switch_top() {
 }
 
 
+//------------------------------------------------------------------------------
+// icap_read
+//------------------------------------------------------------------------------
 uint32_t g_icap_read_cmd[] = {0xFFFFFFFF,
                               0x000000BB,
                               0x11220044,
@@ -312,6 +284,9 @@ int hw_icap_read_frame(uint32_t far, uint32_t size, uint32_t* dst)
   return 1;
 }
 
+//------------------------------------------------------------------------------
+// icap_read_capture
+//------------------------------------------------------------------------------
 uint32_t g_icap_read_capture_cmd[] = {
   0xFFFFFFFF,
   0x000000BB,
@@ -499,85 +474,9 @@ int hw_icap_read_capture(struct pr_frame_t* frames, unsigned int num, uint32_t* 
   return 1;
 }
 
-// size must be in words
-int sw_icap_read_frame(uint32_t far, uint32_t size, uint32_t* dst)
-{
-  int retval = 0;
-  int ret;
-  uint32_t* mem = NULL;
-
-  // account for the padframe and dummy words
-  uint32_t real_size = size + 82;
-
-  g_icap_read_cmd[21] = far;
-  g_icap_read_cmd[23] = (real_size + real_size / 1024 + 3) | 0x48000000;
-
-
-  // open ICAP interface
-  int fd = open("/dev/icap0", O_RDWR);
-  if(fd == -1) {
-    printf("sw_icap_read_frame: Could not open icap\n");
-
-    goto FAIL;
-  }
-
-  // write whole file in one command
-  uint32_t* addr = g_icap_read_cmd;
-  size_t words = sizeof(g_icap_read_cmd) / 4; 
-  if( write(fd, addr, words * 4) != words * 4) {
-    printf("sw_icap_read_frame: Writing first command sequence to ICAP has failed\n");
-
-    goto FAIL;
-  }
-
-  // read
-  mem = (uint32_t*)malloc(real_size * sizeof(uint32_t));
-  if(mem == NULL) {
-    printf("sw_icap_read_frame: Could not allocate buffer\n");
-
-    goto FAIL;
-  }
-
-  memset(mem, 0xAB, real_size * sizeof(uint32_t));
-
-  size_t words_read = 0;
-  while(words_read < real_size) {
-    printf("sw_icap_read_frame: read(fd, mem + words_read, 4 * (%d - %d)\n", real_size, (int)words_read);
-    ret = read(fd, mem + words_read, 4 * (real_size - words_read));
-
-    if(ret == -1) {
-      printf("sw_icap_read_frame: Reading from ICAP has failed after %d words\n", (int)words_read);
-      break;
-    }
-
-    printf("sw_icap_read_frame: we have read %d bytes\n", ret);
-
-    words_read += ret/4;
-  }
-
-  addr = g_icap_read_cmd2;
-  words = sizeof(g_icap_read_cmd2) / 4; 
-  if( write(fd, addr, 4 * words) != words * 4) {
-    printf("sw_icap_read_frame: Writing second command sequence to ICAP has failed\n");
-
-    goto FAIL;
-  }
-
-  // the first 82 words are rubish, because they are from the pad frame and a dummy word
-  memcpy(dst, mem + 82, (size) * 4);
-
-  retval = 1;
-
-FAIL:
-  if(fd != -1)
-    close(fd);
-
-  if(mem != NULL)
-    free(mem);
-
-  return 1;
-}
-
+//------------------------------------------------------------------------------
+// icap_gcapture
+//------------------------------------------------------------------------------
 uint32_t g_icap_gcapture[] = {0xFFFFFFFF,
                               0x000000BB,
                               0x11220044,
@@ -601,10 +500,9 @@ int hw_icap_gcapture() {
   return hw_icap_write(g_icap_gcapture, sizeof g_icap_gcapture);
 }
 
-int sw_icap_gcapture() {
-  return sw_icap_write(g_icap_gcapture, sizeof g_icap_gcapture);
-}
-
+//------------------------------------------------------------------------------
+// icap_grestore
+//------------------------------------------------------------------------------
 uint32_t g_icap_grestore[] = {
   0xFFFFFFFF,
   0x000000BB,
@@ -747,26 +645,10 @@ int hw_icap_grestore() {
   return 1;
 }
 
-int sw_icap_grestore() {
-  int ret;
-  
-  ret = sw_icap_write(g_icap_grestore, 32 * 4);
-  if(ret == 0) {
-    printf("Writing first restore sequence failed\n");
-  }
-
-  // GRESTORE does not work for some unknown reason, but GSR on STARTUP_VIRTEX6 does,
-  // so we are using GSR instead
-  hw_icap_gsr();
-
-  ret = sw_icap_write(g_icap_grestore, sizeof(g_icap_grestore) - 32 * 4);
-  if(ret == 0) {
-    printf("Writing second restore sequence failed\n");
-  }
-
-  return 1;
-}
-
+//------------------------------------------------------------------------------
+// assert GSR for one cycle
+// This is done by using STARTUP_VIRTEX6 on HWT_ICAP
+//------------------------------------------------------------------------------
 int hw_icap_gsr() {
 	int ret;
 
@@ -783,6 +665,9 @@ int hw_icap_gsr() {
 	return 1;
 }
 
+//------------------------------------------------------------------------------
+// icap_write_frame
+//------------------------------------------------------------------------------
 uint32_t g_icap_write_frame[] = {0xFFFFFFFF,
                                  0x000000BB,
                                  0x11220044,
@@ -938,39 +823,6 @@ int hw_icap_write_frame(uint32_t far, uint32_t* addr, unsigned int words)
   ret = hw_icap_write(g_icap_write_frame2, sizeof g_icap_write_frame2);
   if(ret == 0) {
     printf("hw_icap_write_frame: Write to ICAP has failed on second command sequence\n");
-    return 0;
-  }
-
-	return 1;
-}
-
-//------------------------------------------------------------------------------
-// Write a frame to ICAP, given by the frame address far, number of words and 
-// the buffer where the frame is stored (addr).
-//------------------------------------------------------------------------------
-int sw_icap_write_frame(uint32_t far, uint32_t* addr, unsigned int words)
-{
-	int ret;
-
-  // set FAR and size
-  g_icap_write_frame[11] = far;
-  g_icap_write_frame[14] = words | 0x50000000;
-
-  ret = sw_icap_write(g_icap_write_frame, sizeof g_icap_write_frame);
-  if(ret == 0) {
-    printf("sw_icap_write_frame: Write to ICAP has failed on first command sequence\n");
-    return 0;
-  }
-
-  ret = sw_icap_write(addr, words * sizeof(uint32_t));
-  if(ret == 0) {
-    printf("sw_icap_write_frame: Write to ICAP has failed on actual frame\n");
-    return 0;
-  }
-
-  ret = sw_icap_write(g_icap_write_frame2, sizeof g_icap_write_frame2);
-  if(ret == 0) {
-    printf("sw_icap_write_frame: Write to ICAP has failed on second command sequence\n");
     return 0;
   }
 

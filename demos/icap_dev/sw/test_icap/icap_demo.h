@@ -50,9 +50,6 @@ int hw_icap_read_capture(struct pr_frame_t* frames, unsigned int num, uint32_t* 
 int hw_icap_write_frame(uint32_t far, uint32_t* addr, unsigned int words);
 
 int sw_icap_write(uint32_t* addr, unsigned int size);
-int sw_icap_read(uint32_t* addr, unsigned int size);
-int sw_icap_read_frame(uint32_t far, unsigned int size, uint32_t* dst);
-int sw_icap_write_frame(uint32_t far, uint32_t* addr, unsigned int words);
 
 int sw_icap_load(int slot, int thread_id);
 int hw_icap_load(int slot, int thread_id);

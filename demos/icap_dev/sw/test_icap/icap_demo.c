@@ -32,14 +32,19 @@ struct mbox mb_out[NUM_SLOTS];
 
 struct pr_bitstream_t pr_bit[NUM_SLOTS][2];
 
+//------------------------------------------------------------------------------
 // if clock gating is used, this function enables (disables) the clock
+//------------------------------------------------------------------------------
 void clock_enable(int slot, int enable)
 {
   reconos_slot_reset(slot + 8, enable);
 }
 
 
+//------------------------------------------------------------------------------
 // load partial bitfile via hardware icap thread
+// This function returns 0 if an error occurred and 1 if successful
+//------------------------------------------------------------------------------
 int hw_icap_load(int slot, int thread_id)
 {
 	int ret;
@@ -57,8 +62,10 @@ int hw_icap_load(int slot, int thread_id)
 	return 1;
 }
 
-// loads bitstream into ICAP
+//------------------------------------------------------------------------------
+// loads bitstream via ICAP
 // Returns 1 if successfull, 0 otherwise
+//------------------------------------------------------------------------------
 int sw_icap_load(int slot, int thread_id)
 {
   if( sw_icap_write(pr_bit[slot][thread_id].block, pr_bit[slot][thread_id].length * 4) == 0) {
@@ -70,6 +77,10 @@ int sw_icap_load(int slot, int thread_id)
   return 1;
 }
 
+//------------------------------------------------------------------------------
+// loads bitstream via linux ICAP driver
+// Returns 1 if successfull, 0 otherwise
+//------------------------------------------------------------------------------
 int linux_icap_load(int slot, int thread_id)
 {
   int ret = -2;
@@ -89,14 +100,18 @@ int linux_icap_load(int slot, int thread_id)
   return ret;
 }
 
-int prblock_set(int slot, unsigned int reg, uint32_t value)
+//------------------------------------------------------------------------------
+// Set value of register reg in slot slot to value
+//------------------------------------------------------------------------------
+void prblock_set(int slot, unsigned int reg, uint32_t value)
 {
 	mbox_put(&mb_in[slot], reg);
 	mbox_put(&mb_in[slot], value);
-
-	return 0;
 }
 
+//------------------------------------------------------------------------------
+// Returns current value of register reg of slot slot
+//------------------------------------------------------------------------------
 int prblock_get(int slot, unsigned int reg)
 {
   unsigned int ret;
@@ -110,8 +125,12 @@ int prblock_get(int slot, unsigned int reg)
 	return ret;
 }
 
-uint32_t g_prblock_mem[PRBLOCK_MEM_SIZE];
 
+uint32_t g_prblock_mem[PRBLOCK_MEM_SIZE];
+//------------------------------------------------------------------------------
+// Set memory of hardware_thread slot to a certain value
+// All words are set to the same value
+//------------------------------------------------------------------------------
 int prblock_mem_set(int slot, uint32_t value)
 {
 #ifndef DO_MEMTEST
@@ -123,11 +142,6 @@ int prblock_mem_set(int slot, uint32_t value)
     return 0;
   }
 
-  // uint32_t* mem = (uint32_t*)malloc(PRBLOCK_MEM_SIZE * sizeof(uint32_t));
-  // if(mem == NULL) {
-  //   printf("Memory alloc has failed\n");
-  //   return 0;
-  // }
   uint32_t* mem = g_prblock_mem;
 
   unsigned int i;
@@ -139,11 +153,13 @@ int prblock_mem_set(int slot, uint32_t value)
   // copy has finished
 	mbox_get(&mb_out[slot]);
 
-  // free(mem);
-
 	return 0;
 }
 
+//------------------------------------------------------------------------------
+// Checks the current value of the memory in hardware_thread slot
+// Returns 1 if the memory content matches value, 0 otherwise
+//------------------------------------------------------------------------------
 int prblock_mem_get(int slot, uint32_t value)
 {
 #ifndef DO_MEMTEST
@@ -154,13 +170,6 @@ int prblock_mem_get(int slot, uint32_t value)
     return 0;
   }
 
-  // test memory
-  // we use static memory allocation for now
-  // uint32_t* mem = (uint32_t*)malloc(PRBLOCK_MEM_SIZE * sizeof(uint32_t));
-  // if(mem == NULL) {
-  //   printf("Memory alloc has failed\n");
-  //   return 0;
-  // }
   uint32_t* mem = g_prblock_mem;
 
   // set to different value
@@ -176,6 +185,9 @@ int prblock_mem_get(int slot, uint32_t value)
   // copy has finished
 	mbox_get(&mb_out[slot]);
 
+  // wait for potentially running transaction
+  usleep(100);
+
   // check
   for(i = 0; i < PRBLOCK_MEM_SIZE; i++) {
     if(mem[i] != value) {
@@ -184,11 +196,14 @@ int prblock_mem_get(int slot, uint32_t value)
     }
   }
 
-  // free(mem);
-
 	return 1;
 }
 
+//------------------------------------------------------------------------------
+// Simulates the LFSR that is implemented in hardware
+// This function returns the value of the LFSR after iterations iterations,
+// starting from state start
+//------------------------------------------------------------------------------
 unsigned int lfsr_sim(unsigned int iterations, unsigned int start) {
   unsigned int i;
 
@@ -207,6 +222,10 @@ unsigned int lfsr_sim(unsigned int iterations, unsigned int start) {
   return start;
 }
 
+//------------------------------------------------------------------------------
+// This function tests the add/sub block
+// It returns 1 if the test was successful, 0 otherwise
+//------------------------------------------------------------------------------
 int prblock_test_add_sub(int slot, int thread_id)
 {
   if(slot != HWT_DPR) {
@@ -251,6 +270,10 @@ int prblock_test_add_sub(int slot, int thread_id)
 	return 1;
 }
 
+//------------------------------------------------------------------------------
+// This function tests the MUL/LFSR block
+// It returns 1 if the test was successful, 0 otherwise
+//------------------------------------------------------------------------------
 int prblock_test_mul_lfsr(int slot, int thread_id)
 {
   if(slot != HWT_DPR2) {
@@ -329,6 +352,10 @@ int prblock_test_mul_lfsr(int slot, int thread_id)
 	return 1;
 }
 
+//------------------------------------------------------------------------------
+// This function tests the PR blocks
+// It returns 1 if the test was successful, 0 otherwise
+//------------------------------------------------------------------------------
 int prblock_test(int slot, int thread_id)
 {
   if(slot == 0 || slot >= NUM_SLOTS) {
@@ -342,7 +369,10 @@ int prblock_test(int slot, int thread_id)
     return prblock_test_mul_lfsr(slot, thread_id);
 }
 
-
+//------------------------------------------------------------------------------
+// Reconfigure the PR block contained in slot slot to the thread with id
+// thread_id
+//------------------------------------------------------------------------------
 int prblock_reconfigure(int slot, int thread_id)
 {
 	timing_t t_start, t_stop;
@@ -390,7 +420,9 @@ int prblock_reconfigure(int slot, int thread_id)
 	return ret;
 }
 
+//------------------------------------------------------------------------------
 // capture a prblock
+//------------------------------------------------------------------------------
 void prblock_capture(int slot, int thread_id, struct pr_bitstream_t* stream)
 {
   clock_enable(slot, 0);
@@ -398,7 +430,9 @@ void prblock_capture(int slot, int thread_id, struct pr_bitstream_t* stream)
   clock_enable(slot, 1);
 }
 
+//------------------------------------------------------------------------------
 // restore a previously captured PR block
+//------------------------------------------------------------------------------
 void prblock_restore(int slot, struct pr_bitstream_t* stream)
 {
   // reset hardware thread, also disables FSLs
@@ -423,6 +457,7 @@ void prblock_restore(int slot, struct pr_bitstream_t* stream)
 }
 
 
+//------------------------------------------------------------------------------
 void segfault_sigaction(int signal, siginfo_t *si, void *arg)
 {
   perror("segfault\n");
@@ -430,6 +465,7 @@ void segfault_sigaction(int signal, siginfo_t *si, void *arg)
   exit(0);
 }
 
+//------------------------------------------------------------------------------
 void sigill_sigaction(int signal, siginfo_t *si, void *arg)
 {
   perror("sigill\n");
@@ -437,7 +473,9 @@ void sigill_sigaction(int signal, siginfo_t *si, void *arg)
   exit(0);
 }
 
-//------------------------------------------------------------------------------
+//----------------------------------------------------------------------------//
+//                                 MAIN                                       //
+//----------------------------------------------------------------------------//
 int main(int argc, char *argv[])
 {
 	unsigned cnt=1;
@@ -514,8 +552,6 @@ int main(int argc, char *argv[])
     bitstream_open("partial_bitstreams/partial_mul.bin", &pr_bit[HWT_DPR2][MUL]);
     bitstream_open("partial_bitstreams/partial_lfsr.bin", &pr_bit[HWT_DPR2][LFSR]);
   }
-
-  bitstream_save("partial_bitstreams/test.bin", &pr_bit[HWT_DPR][ADD]);
 
   //----------------------------------------------------------------------------
   // print current register values
@@ -905,7 +941,6 @@ int main(int argc, char *argv[])
     printf("Capturing current state completed\n");
     fflush(stdout);
 
-    //bitstream_save("partial_bitstreams/test.bin", &test_bit);
 
     // set it to a different value (just because)
     prblock_set(slot, 0, 0x66666666);

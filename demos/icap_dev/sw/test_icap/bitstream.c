@@ -260,17 +260,13 @@ int bitstream_capture(struct pr_bitstream_t* stream_in, struct pr_bitstream_t* s
 
   // the first frame is ignored as this is the CFG_CLB frame which we have just wrote to the FPGA
   for(i = 1; i < numFrames; i++) {
-    // if((arrFrames[i].far & 0xFFE00000) == 0x00200000) {
-    //   printf("FAR 0x%08X points to RAM region, skipping it as we cannot handle it reliably\n", arrFrames[i].far);
-    //   continue;
-    // }
-
     readFrames[numReadFrames].far = arrFrames[i].far;
     readFrames[numReadFrames].words = arrFrames[i].words;
     readFrames[numReadFrames].offset = arrFrames[i].offset;
     numReadFrames++;
   }
 
+printf("Before read_capture\n");    fflush(stdout);
   hw_icap_read_capture(readFrames, numReadFrames, stream_out->block);
 
   // try to set bit 0x00020000 to zero in block ram regions, where needed
@@ -334,8 +330,8 @@ FAIL:
 // WARNING: As we trigger the GRESTORE after writing the bitstream to the FPGA,
 // the FPGA potentially starts with the wrong state and is reset to the right
 // state a few clock cycles later. This could potentially lead to a corrupted
-// state (e.g.  in RAM?). More investigations are needed if we need to do
-// something here or if this is fine the way it is now.
+// state (e.g.  in RAM?). To avoid this the clock in the reconfigurable region
+// has to be stopped.
 //------------------------------------------------------------------------------
 int bitstream_restore(struct pr_bitstream_t* stream)
 {
