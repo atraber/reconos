@@ -114,6 +114,10 @@ uint32_t g_prblock_mem[PRBLOCK_MEM_SIZE];
 
 int prblock_mem_set(int slot, uint32_t value)
 {
+#ifndef DO_MEMTEST
+  return 0;
+#endif
+
   if(slot == 0 || slot >= NUM_SLOTS) {
     printf("Slot %d does not contain a reconfigurable module\n", slot);
     return 0;
@@ -142,6 +146,9 @@ int prblock_mem_set(int slot, uint32_t value)
 
 int prblock_mem_get(int slot, uint32_t value)
 {
+#ifndef DO_MEMTEST
+  return 0;
+#endif
   if(slot == 0 || slot >= NUM_SLOTS) {
     printf("Slot %d does not contain a reconfigurable module\n", slot);
     return 0;
@@ -241,12 +248,6 @@ int prblock_test_add_sub(int slot, int thread_id)
     return 0;
   }
 
-  // // test memory
-  // prblock_mem_set(slot, 0x11223344);
-
-  // if(prblock_mem_get(slot, 0x11223344) == 0)
-  //   printf("  # PRBLOCK: memory failed\n");
-
 	return 1;
 }
 
@@ -301,9 +302,6 @@ int prblock_test_mul_lfsr(int slot, int thread_id)
     // load them
     prblock_set(slot, 0, 0x00000001);
 
-    usleep(500);
-    sleep(1);
-
     // capture them
     prblock_set(slot, 0, 0x00000002);
 
@@ -354,7 +352,6 @@ int prblock_reconfigure(int slot, int thread_id)
 
 	// send thread exit command
 	mbox_put(&mb_in[slot],THREAD_EXIT_CMD);
-
   usleep(100);
 
   reconos_slot_reset(slot, 1);
@@ -404,10 +401,6 @@ void prblock_capture(int slot, int thread_id, struct pr_bitstream_t* stream)
 // restore a previously captured PR block
 void prblock_restore(int slot, struct pr_bitstream_t* stream)
 {
-  // send thread exit command, does not seem to be needed?
-  //mbox_put(&mb_in[slot],THREAD_EXIT_CMD);
-  //usleep(100);
-
   // reset hardware thread, also disables FSLs
   // this is needed as otherwise invalid stuff gets written into the FIFOs and FSLs
   reconos_slot_reset(slot, 1);
@@ -521,8 +514,11 @@ int main(int argc, char *argv[])
   //----------------------------------------------------------------------------
   bitstream_open("partial_bitstreams/partial_add.bin", &pr_bit[HWT_DPR][ADD]);
   bitstream_open("partial_bitstreams/partial_sub.bin", &pr_bit[HWT_DPR][SUB]);
-  bitstream_open("partial_bitstreams/partial_mul.bin", &pr_bit[HWT_DPR2][MUL]);
-  bitstream_open("partial_bitstreams/partial_lfsr.bin", &pr_bit[HWT_DPR2][LFSR]);
+
+  if(NUM_SLOTS > 2) {
+    bitstream_open("partial_bitstreams/partial_mul.bin", &pr_bit[HWT_DPR2][MUL]);
+    bitstream_open("partial_bitstreams/partial_lfsr.bin", &pr_bit[HWT_DPR2][LFSR]);
+  }
 
   //----------------------------------------------------------------------------
   // print current register values
@@ -532,10 +528,12 @@ int main(int argc, char *argv[])
   prblock_get(HWT_DPR, 2);
   prblock_get(HWT_DPR, 3);
 
-  prblock_get(HWT_DPR2, 0);
-  prblock_get(HWT_DPR2, 1);
-  prblock_get(HWT_DPR2, 2);
-  prblock_get(HWT_DPR2, 3);
+  if(NUM_SLOTS > 2) {
+    prblock_get(HWT_DPR2, 0);
+    prblock_get(HWT_DPR2, 1);
+    prblock_get(HWT_DPR2, 2);
+    prblock_get(HWT_DPR2, 3);
+  }
 
   //----------------------------------------------------------------------------
   // what configuration mode are we using?
@@ -572,16 +570,37 @@ int main(int argc, char *argv[])
       prblock_reconfigure(HWT_DPR, ADD);
       prblock_test(HWT_DPR, ADD);
 
-      prblock_reconfigure(HWT_DPR2, MUL);
-      prblock_test(HWT_DPR2, MUL);
+      // test memory
+      prblock_mem_set(HWT_DPR, 0x11223344);
+
+      if(prblock_mem_get(HWT_DPR, 0x11223344) == 0)
+        printf("  # PRBLOCK: memory failed\n");
+
+      if(NUM_SLOTS > 2) {
+        prblock_reconfigure(HWT_DPR2, MUL);
+        prblock_test(HWT_DPR2, MUL);
+
+        // test memory
+        prblock_mem_set(HWT_DPR2, 0x11223344);
+
+        if(prblock_mem_get(HWT_DPR2, 0x11223344) == 0)
+          printf("  # PRBLOCK: memory failed\n");
+      }
 
 
       prblock_reconfigure(HWT_DPR, SUB);
       prblock_test(HWT_DPR, SUB);
 
-      prblock_reconfigure(HWT_DPR2, LFSR);
-      prblock_test(HWT_DPR2, LFSR);
+      // test memory
+      prblock_mem_set(HWT_DPR, 0xAABBCCDD);
 
+      if(prblock_mem_get(HWT_DPR, 0xAABBCCDD) == 0)
+        printf("  # PRBLOCK: memory failed\n");
+
+      if(NUM_SLOTS > 2) {
+        prblock_reconfigure(HWT_DPR2, LFSR);
+        prblock_test(HWT_DPR2, LFSR);
+      }
 
       // stop after n reconfigurations
       if(cnt == g_arguments.max_cnt)
@@ -598,12 +617,24 @@ int main(int argc, char *argv[])
     prblock_reconfigure(HWT_DPR, ADD);
     prblock_test(HWT_DPR, ADD);
 
+    // test memory
+    prblock_mem_set(HWT_DPR, 0x11223344);
+
+    if(prblock_mem_get(HWT_DPR, 0x11223344) == 0)
+      printf("  # PRBLOCK: memory failed\n");
+
     break;
 
   //----------------------------------------------------------------------------
   case MODE_WRITE_SUB:
     prblock_reconfigure(HWT_DPR, SUB);
     prblock_test(HWT_DPR, SUB);
+
+    // test memory
+    prblock_mem_set(HWT_DPR, 0x11223344);
+
+    if(prblock_mem_get(HWT_DPR, 0x11223344) == 0)
+      printf("  # PRBLOCK: memory failed\n");
 
     break;
 
@@ -612,6 +643,11 @@ int main(int argc, char *argv[])
     prblock_reconfigure(HWT_DPR2, MUL);
     prblock_test(HWT_DPR2, MUL);
     
+    // test memory
+    prblock_mem_set(HWT_DPR2, 0xAABBCCDD);
+
+    if(prblock_mem_get(HWT_DPR2, 0xAABBCCDD) == 0)
+      printf("  # PRBLOCK: memory failed\n");
     break;
 
   //----------------------------------------------------------------------------
@@ -659,12 +695,10 @@ int main(int argc, char *argv[])
 
 
     // capture bitstream
-    bitstream_capture(&pr_bit[slot][ADD], &test_bit);
+    prblock_capture(slot, ADD, &test_bit);
 
     printf("Capturing current state completed\n");
     fflush(stdout);
-
-    //bitstream_save("partial_bitstreams/test.bin", &test_bit);
 
     // set it to a different value (just because)
     prblock_set(slot, 3, 0x00DD0000);
@@ -687,26 +721,11 @@ int main(int argc, char *argv[])
     prblock_reconfigure(slot, SUB);
     prblock_test(slot, SUB);
 
-    printf("Sending THREAD_EXIT_CMD\n");
+    printf("Restoring last state\n");
     fflush(stdout);
 
     // restore captured module
-    // send thread exit command
-    mbox_put(&mb_in[slot],THREAD_EXIT_CMD);
-    usleep(100);
-    reconos_slot_reset(slot, 1);
-
-    //sleep(1);
-    printf("Performing restore now...\n");
-    fflush(stdout);
-
-    bitstream_restore(&test_bit);
-
-    printf("Restore done\n");
-    fflush(stdout);
-
-    // reset hardware thread
-    reconos_slot_reset(slot, 0);
+    prblock_restore(slot, &test_bit);
 
     printf("reset done\n");
     fflush(stdout);
@@ -759,20 +778,13 @@ int main(int argc, char *argv[])
 
   //----------------------------------------------------------------------------
   case MODE_TEST2:
-    prblock_reconfigure(slot, ADD);
-    prblock_mem_set(slot, 0xFFFFFFFF);
-    bitstream_capture(&pr_bit[slot][ADD], &test_bit);
-    bitstream_save("partial_bitstreams/test.bin", &test_bit);
-    prblock_mem_set(slot, 0xABCDABCD);
+    printf("NOTHING HERE\n");
 
     break;
 
   //----------------------------------------------------------------------------
   case MODE_TEST3:
-    bitstream_open("partial_bitstreams/test.bin", &test_bit);
-
-    hw_icap_write(test_bit.block, test_bit.length * 4);
-    prblock_mem_get(slot, 0xFFFFFFFF);
+    printf("NOTHING HERE\n");
 
     break;
 
@@ -955,6 +967,9 @@ int main(int argc, char *argv[])
   case MODE_TEST_SWAP:
     slot = HWT_DPR2;
 
+    //--------------------------------------------------------------------------
+    // Prepare LFSR module for capturing
+    //--------------------------------------------------------------------------
     printf("Configure LFSR module\n");
     fflush(stdout);
     // ensure that we are in a valid state first
@@ -978,6 +993,9 @@ int main(int argc, char *argv[])
     fflush(stdout);
 
 
+    //--------------------------------------------------------------------------
+    // Prepare MUL module for capturing
+    //--------------------------------------------------------------------------
     printf("Configure MUL module\n");
     fflush(stdout);
 
@@ -999,7 +1017,13 @@ int main(int argc, char *argv[])
     fflush(stdout);
 
 
+    //--------------------------------------------------------------------------
+    // Now enter the main loop and swap those modules
+    //--------------------------------------------------------------------------
     for(cnt = 0; cnt < g_arguments.max_cnt; cnt++) {
+      //------------------------------------------------------------------------
+      // LFSR
+      //------------------------------------------------------------------------
       printf("LFSR: Restoring captured PR block\n");
       fflush(stdout);
 
@@ -1032,7 +1056,9 @@ int main(int argc, char *argv[])
 
       prblock_capture(slot, LFSR, &bit_lfsr);
 
+      //------------------------------------------------------------------------
       // MUL
+      //------------------------------------------------------------------------
       prblock_restore(slot, &bit_mul);
 
       printf("MUL: Restore done\n");

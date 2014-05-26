@@ -27,18 +27,21 @@ int bitstream_open(const char* path, struct pr_bitstream_t* stream)
 {
   int retval = 0;
 
-  FILE* fp = fopen(path, "r");
-  if(fp == NULL) {
+  int fd = open(path, O_RDONLY);
+  if(fd == -1) {
     printf("bitstream_open: Could not open file %s\n", path);
 
     goto FAIL;
   }
 
   // determine file size
-  fseek(fp, 0L, SEEK_END);
-  stream->length = ftell(fp);
+  stream->length = lseek(fd, 0L, SEEK_END);
+  if(stream->length == -1) {
+    printf("bitstream_open: Could not determine file size\n");
+    goto FAIL;
+  }
 
-  fseek(fp, 0L, SEEK_SET);
+  lseek(fd, 0L, SEEK_SET);
 
   if((stream->length & 0x3) != 0) {
     printf("bitstream_open: File size is not a multiple of 4 bytes\n");
@@ -58,7 +61,7 @@ int bitstream_open(const char* path, struct pr_bitstream_t* stream)
   }
 
   // read whole file in one command
-  if( fread(stream->block, sizeof(uint32_t), stream->length, fp) != stream->length) {
+  if( read(fd, stream->block, sizeof(uint32_t) * stream->length) != (stream->length * sizeof(uint32_t))) {
     printf("bitstream_open: Something went wrong while reading from file\n");
 
     free(stream->block);
@@ -73,6 +76,9 @@ int bitstream_open(const char* path, struct pr_bitstream_t* stream)
     if( stream->block[i] == 0xAA995566 ) {
       // we have found the synchronization sequence
       retval = 1;
+
+      // flush the cache to ensure that valid data lies in the main memory
+      reconos_cache_flush();
       break;
     }
   }
@@ -84,7 +90,7 @@ int bitstream_open(const char* path, struct pr_bitstream_t* stream)
   }
 
 FAIL:
-  fclose(fp);
+  close(fd);
 
   return retval;
 }
@@ -228,14 +234,12 @@ int bitstream_capture(struct pr_bitstream_t* stream_in, struct pr_bitstream_t* s
     return 0;
   }
 
-  // DEBUG CODE
-  printf("The following frames have been found in the bitstream:\n");
-  for(i = 0; i < numFrames; i++) {
-    printf("FAR: 0x%08X, Size: %d, Offset: %d\n", arrFrames[i].far, arrFrames[i].words, arrFrames[i].offset);
-  }
+  //// DEBUG CODE
+  //printf("The following frames have been found in the bitstream:\n");
+  //for(i = 0; i < numFrames; i++) {
+  //  printf("FAR: 0x%08X, Size: %d, Offset: %d\n", arrFrames[i].far, arrFrames[i].words, arrFrames[i].offset);
+  //}
 
-
-  fflush(stdout);
 
   //----------------------------------------------------------------------------
   // write CFG_CLB to FPGA
@@ -278,7 +282,7 @@ int bitstream_capture(struct pr_bitstream_t* stream_in, struct pr_bitstream_t* s
     if((readFrames[i].far & 0xFFE00000) != 0x00200000)
       continue;
 
-    printf("FAR 0x%08X points to RAM region, trying to clean it up\n", readFrames[i].far);
+    // printf("FAR 0x%08X points to RAM region, trying to clean it up\n", readFrames[i].far);
     uint32_t* mem = stream_out->block + readFrames[i].offset;
 
     unsigned int k, j;

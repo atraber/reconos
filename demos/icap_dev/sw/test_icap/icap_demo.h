@@ -13,6 +13,7 @@
 #define MUL  0
 #define LFSR 1
 
+#define DO_MEMTEST
 #define PRBLOCK_MEM_SIZE  2048
 
 #define THREAD_EXIT_CMD 0xFFFFFFFF

@@ -23,6 +23,10 @@
 int hw_icap_write(uint32_t* addr, unsigned int size)
 {
 	int ret;
+  if(((unsigned int)addr % 4) != 0 || (size % 4) != 0) {
+    printf("hw_icap_write: Addr or size not word aligned! Addr %08X, Size %08X\n", (unsigned int)addr, size);
+    return 0;
+  }
 
   // send address of bitfile in main memory to hwt
 	mbox_put(&mb_in[HWT_ICAP], (unsigned int)addr);
@@ -48,6 +52,10 @@ int hw_icap_write(uint32_t* addr, unsigned int size)
 int hw_icap_read(uint32_t* addr, unsigned int size)
 {
 	int ret;
+  if(((unsigned int)addr % 4) != 0 || (size % 4) != 0) {
+    printf("hw_icap_read: Addr or size not word aligned! Addr %08X, Size %08X\n", (unsigned int)addr, size);
+    return 0;
+  }
 
   // send address of bitfile in main memory to hwt
 	mbox_put(&mb_in[HWT_ICAP], (unsigned int)addr);
@@ -424,6 +432,7 @@ uint32_t g_icap_read_multiple[] = {
 // Read multiple frames in one command. This is useful for capturing a bitstream,
 // as hopefully the hardware is stopped during readback. This has to be tested though
 //------------------------------------------------------------------------------
+uint32_t temp_mem[82];
 int hw_icap_read_capture(struct pr_frame_t* frames, unsigned int num, uint32_t* block)
 {
   int ret;
@@ -463,33 +472,18 @@ int hw_icap_read_capture(struct pr_frame_t* frames, unsigned int num, uint32_t* 
       }
     }
 
+    // save the first 82 words, as we need them later
+    memcpy(temp_mem, block + frames[i].offset - 82, 82 * sizeof(uint32_t));
 
-    // allocate a new buffer for readback. We cannot use the buffer which we are given here
-    // as readback contains 82 useless words which would overwrite useful data in the given buffer.
-    uint32_t* mem = (uint32_t*)malloc(real_size * sizeof(uint32_t));
-    if(mem == NULL) {
-      printf("Could not allocate buffer\n");
-      return 0;
-    }
-
-    memset(mem, 0xAB, real_size * sizeof(uint32_t));
-
-    // we need to flush the cache here as otherwise we get a part of old data and a part of new data
-    reconos_cache_flush();
-
-
-    ret = hw_icap_read(mem, real_size * sizeof(uint32_t));
+    ret = hw_icap_read(block + frames[i].offset - 82, real_size * sizeof(uint32_t));
     if(ret == 0) {
       printf("hw_icap_read_capture: Reading from ICAP has failed\n");
-      free(mem);
       return 0;
     }
 
 
     // the first 82 words are rubish, because they are from the pad frame and a dummy word
-    memcpy(block + frames[i].offset, mem + 82, (frames[i].words) * 4);
-
-    free(mem);
+    memcpy(block + frames[i].offset - 82, temp_mem, 82 * sizeof(uint32_t));
   }
 
   // we have finished reading, desync the ICAP interface
@@ -498,6 +492,9 @@ int hw_icap_read_capture(struct pr_frame_t* frames, unsigned int num, uint32_t* 
     printf("hw_icap_read_capture: Writing first command sequence to ICAP has failed\n");
     return 0;
   }
+
+  // we need to flush the cache here as otherwise we get a part of old data and a part of new data
+  reconos_cache_flush();
 
   return 1;
 }
