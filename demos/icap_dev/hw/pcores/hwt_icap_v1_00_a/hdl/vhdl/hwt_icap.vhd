@@ -1,3 +1,61 @@
+-------------------------------------------------------------------------------
+-- Title      : HWT_ICAP
+-- Project    : 
+-------------------------------------------------------------------------------
+-- File       : hwt_icap.vhd
+-- Author     : atraber  <atraber@student.ethz.ch>
+-- Company    : Computer Engineering and Networks Laboratory, ETH Zurich
+-- Created    : 2014-05-23
+-- Last update: 2014-05-23
+-- Platform   : Xilinx ISIM (simulation), Xilinx (synthesis)
+-- Standard   : VHDL'87
+-------------------------------------------------------------------------------
+-- Description: This is a hardware thread for the ICAP interface. It supports
+-- three different modes: Writing to ICAP, Reading from ICAP, and asserting GSR for
+-- one cycle.
+--
+-- All reads and writes from the ICAP interface need buffers that have an
+-- address that is 32 bit aligned. Also the readback size must be a multiple of
+-- 32 bit.
+--
+-- Writing to ICAP can be done as follows:
+-- 1. Send a msg containing the address of the bitstream in memory to the hardware
+--    thread
+-- 2. Send a msg containing the size of the bitstream (in bytes) to the hardware
+--    thread
+-- 3. The hardware thread now writes the bitstream to the ICAP interface
+-- 4. The hardware thread sends a finished or error message to the CPU.
+--    If a CRC error was detected, the CRC register will be reset by the
+--    hardware thread.
+--
+-- Reading from ICAP can be done as follows:
+-- 1. Send a msg containg the address of the buffer used for readback to the
+--    hardware thread
+-- 2. Send a msg containing the amount of data (in bytes) you would like to
+--    read from ICAP, perform a logical OR it with 0x00000001. This tells the
+--    hardware thread that it should read instead of write.
+--    WARNING: The ICAP interface uses 82 dummy words before the real data,
+--    so if you would like to read 100 words from ICAP, you must actually read
+--    182 reads and throw away the first 82 words.
+--    WARNING2: If you read back more words than you told the ICAP interface
+--    with the last command, this thread will hang and never finish. Make sure
+--    that you always read exactly the amount you specified!
+-- 3. The hardware thread now reads from the ICAP interface and moves the data
+--    to memory
+-- 4. The hardware thread sends a finished msg to the CPU
+--
+-- To perform GSR, you must do the following:
+-- 1. Send a msg with the content 0x00000001 to the hardware thread.
+-- 2. The hardware thread now asserts GSR for one cycle
+-- 3. The hardware thread sends a finished msg to the CPU
+-------------------------------------------------------------------------------
+-- Copyright (c) 2014 Computer Engineering and Networks Laboratory, ETH Zurich
+-------------------------------------------------------------------------------
+-- Revisions  :
+-- Date        Version  Author  Description
+-- 2014-05-23  1.0      atraber	Created
+-------------------------------------------------------------------------------
+
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.std_logic_arith.all;

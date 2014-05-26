@@ -15,6 +15,7 @@ entity clock_enable is
 end entity;
 
 architecture implementation of clock_enable is
+  signal ClkEnRegxSP : std_logic := '1';
 begin
 
 --  BUFR_inst : BUFR
@@ -43,10 +44,19 @@ begin
       )
     port map (
       O  => clk_out,                    -- 1-bit The output of the BUFH
-      CE => clk_en,  -- 1-bit Enables propagation of signal from I to O. When low, sets output to 0.
+      CE => ClkEnRegxSP,  -- 1-bit Enables propagation of signal from I to O. When low, sets output to 0.
       I  => clk                         -- 1-bit The input to the BUFH
       );
 
+  -----------------------------------------------------------------------------
+  -- Register
+  -----------------------------------------------------------------------------
+  clkEnReg : process (clk)
+  begin  -- process clkEnReg
+    if clk'event and clk = '1' then     -- rising clock edge
+      ClkEnRegxSP <= clk_en;
+    end if;
+  end process clkEnReg;
 
 
 end architecture;

@@ -63,6 +63,7 @@
       <VARIABLE ID="chipscope_ila_0" ROW_INDEX="35"/>
       <VARIABLE ID="chipscope_icon_0" ROW_INDEX="34"/>
       <VARIABLE ID="clock_enable_0" ROW_INDEX="36"/>
+      <VARIABLE ID="clock_enable_1" ROW_INDEX="43"/>
     </SEQUENCES>
   </SET>
 
@@ -108,7 +109,7 @@
   </SET>
 
   <SET CLASS="PROJECT" DISPLAYMODE="TREE" VIEW_ID="PORT">
-    <HEADERS HSCROLL="0" VSCROLL="357">
+    <HEADERS HSCROLL="0" VSCROLL="375">
       <VARIABLE COL_INDEX="0" COL_WIDTH="301" IS_VISIBLE="TRUE" VIEWDISP="Name" VIEWTYPE="HEADER"/>
       <VARIABLE COL_INDEX="1" COL_WIDTH="305" IS_VISIBLE="TRUE" VIEWDISP="Connected Port" VIEWTYPE="HEADER"/>
       <VARIABLE COL_INDEX="2" IS_VISIBLE="FALSE" VIEWDISP="Net" VIEWTYPE="HEADER"/>
@@ -124,27 +125,31 @@
       <VARIABLE COL_INDEX="11" COL_WIDTH="258" IS_VISIBLE="TRUE" VIEWDISP="Differential Polarity" VIEWTYPE="HEADER"/>
     </HEADERS>
     <SPLITTERS COLLAPSIBLE="1" HANDLEWIDTH="4" MARKER="255" ORIENTATION="1" RESIZE="1" SIZES="94,630,200" VERSION="0"/>
+    <SET ID="hwt_pr_block_0" IS_EXPANDED="TRUE"/>
     <SET ID="hwt_pr_block_1" IS_EXPANDED="TRUE"/>
     <SET ID="clock_enable_0" IS_EXPANDED="TRUE"/>
+    <SET ID="clock_enable_1" IS_EXPANDED="TRUE"/>
     <STATUS>
-      <SELECTIONS/>
+      <SELECTIONS>
+        <VARIABLE ID="Clk_out" PARENT="clock_enable_1"/>
+      </SELECTIONS>
     </STATUS>
     <SEQUENCES IS_DEF_SEQUENCES="TRUE">
       <VARIABLE ID="ExternalPorts" ROW_INDEX="0"/>
-      <VARIABLE ID="hwt_pr_block_0" ROW_INDEX="26"/>
+      <VARIABLE ID="hwt_pr_block_0" IS_EXPANDED="TRUE" ROW_INDEX="26"/>
       <VARIABLE ID="hwt_pr_block_1" IS_EXPANDED="TRUE" ROW_INDEX="25"/>
       <VARIABLE ID="hwt_icap_0" ROW_INDEX="24"/>
       <VARIABLE ID="mb_plb" ROW_INDEX="11"/>
       <VARIABLE ID="RS232_Uart_1" ROW_INDEX="34"/>
       <VARIABLE ID="DDR3_SDRAM" ROW_INDEX="13"/>
-      <VARIABLE ID="FLASH_CE_inverter" ROW_INDEX="42"/>
-      <VARIABLE ID="PCIe_Diff_Clk" ROW_INDEX="40"/>
-      <VARIABLE ID="clock_generator_0" ROW_INDEX="38"/>
+      <VARIABLE ID="FLASH_CE_inverter" ROW_INDEX="43"/>
+      <VARIABLE ID="PCIe_Diff_Clk" ROW_INDEX="41"/>
+      <VARIABLE ID="clock_generator_0" ROW_INDEX="39"/>
       <VARIABLE ID="mdm_0" ROW_INDEX="14"/>
-      <VARIABLE ID="proc_sys_reset_0" ROW_INDEX="43"/>
+      <VARIABLE ID="proc_sys_reset_0" ROW_INDEX="44"/>
       <VARIABLE ID="xps_intc_0" ROW_INDEX="15"/>
       <VARIABLE ID="Ethernet_MAC" ROW_INDEX="29"/>
-      <VARIABLE ID="AND_Gate" ROW_INDEX="41"/>
+      <VARIABLE ID="AND_Gate" ROW_INDEX="42"/>
       <VARIABLE ID="xps_timer_0" ROW_INDEX="33"/>
       <VARIABLE ID="fsl_v20_0a" ROW_INDEX="1"/>
       <VARIABLE ID="fsl_v20_0b" ROW_INDEX="2"/>
@@ -167,13 +172,14 @@
       <VARIABLE ID="mmu_0" ROW_INDEX="27"/>
       <VARIABLE ID="xps_mem_0" ROW_INDEX="31"/>
       <VARIABLE ID="proc_control_0" ROW_INDEX="28"/>
-      <VARIABLE ID="gnd2int_0" ROW_INDEX="39"/>
+      <VARIABLE ID="gnd2int_0" ROW_INDEX="40"/>
       <VARIABLE ID="xps_sysace_0" ROW_INDEX="32"/>
       <VARIABLE ID="xps_hwicap_0" ROW_INDEX="30"/>
       <VARIABLE ID="microblaze_0" ROW_INDEX="12"/>
       <VARIABLE ID="chipscope_ila_0" ROW_INDEX="36"/>
       <VARIABLE ID="chipscope_icon_0" ROW_INDEX="35"/>
       <VARIABLE ID="clock_enable_0" IS_EXPANDED="TRUE" ROW_INDEX="37"/>
+      <VARIABLE ID="clock_enable_1" IS_EXPANDED="TRUE" ROW_INDEX="38"/>
     </SEQUENCES>
   </SET>
 

@@ -61,7 +61,7 @@ BEGIN hwt_pr_block
  BUS_INTERFACE SFIFO32 = fifo32_1b_sfifo32
  BUS_INTERFACE MFIFO32 = fifo32_1a_mfifo32
  PORT Rst = proc_control_0_reset1
- PORT Clk = clk_100_0000MHzMMCM0
+ PORT Clk = clock_enable_1_Clk_out
 END
 
 BEGIN hwt_pr_app
@@ -525,6 +525,7 @@ BEGIN proc_control
  PORT retry = proc_control_0_retry
  PORT reconos_reset = proc_control_0_reconos_reset
  PORT resetA = proc_control_0_resetA
+ PORT reset9 = proc_control_0_reset9
 END
 
 BEGIN gnd2int
@@ -643,5 +644,13 @@ BEGIN clock_enable
  PORT Clk = clk_100_0000MHzMMCM0
  PORT Clk_en = proc_control_0_resetA
  PORT Clk_out = clock_enable_0_Clk_out
+END
+
+BEGIN clock_enable
+ PARAMETER INSTANCE = clock_enable_1
+ PARAMETER HW_VER = 1.00.a
+ PORT Clk = clk_100_0000MHzMMCM0
+ PORT Clk_en = proc_control_0_reset9
+ PORT Clk_out = clock_enable_1_Clk_out
 END
 
