@@ -148,6 +148,9 @@ int prblock_mem_set(int slot, uint32_t value)
   for(i = 0; i < PRBLOCK_MEM_SIZE; i++)
     mem[i] = value;
 
+  // flush the cache to ensure that valid data lies in the main memory
+  reconos_cache_flush();
+
 	mbox_put(&mb_in[slot], ((unsigned int)mem) | 0xC0000000);
 
   // copy has finished
@@ -413,6 +416,10 @@ int prblock_reconfigure(int slot, int thread_id)
 
   printf("Reconfiguration done in %lu us, resetting hardware thread\n", t_check);
 
+  // perform GSR to reset everything to a known state
+  // This would actually be done by the bitstream itself, but sadly GRESTORE does not work
+  hw_icap_gsr();
+
 	// reset hardware thread
   clock_enable(slot, 1);
   reconos_slot_reset(slot,0);
@@ -426,6 +433,7 @@ int prblock_reconfigure(int slot, int thread_id)
 void prblock_capture(int slot, int thread_id, struct pr_bitstream_t* stream)
 {
   clock_enable(slot, 0);
+  usleep(100);
   bitstream_capture(&pr_bit[slot][thread_id], stream);
   clock_enable(slot, 1);
 }
@@ -454,6 +462,9 @@ void prblock_restore(int slot, struct pr_bitstream_t* stream)
 
   // start clock
   clock_enable(slot, 1);
+
+  // wait some time to ensure that clock is really started
+  usleep(100);
 }
 
 
@@ -1053,6 +1064,8 @@ int main(int argc, char *argv[])
     // Now enter the main loop and swap those modules
     //--------------------------------------------------------------------------
     for(cnt = 0; cnt < g_arguments.max_cnt; cnt++) {
+      printf("Swap Round %d\n", cnt + 1);
+
       //------------------------------------------------------------------------
       // LFSR
       //------------------------------------------------------------------------

@@ -6,7 +6,7 @@
 -- Author     : atraber  <atraber@student.ethz.ch>
 -- Company    : Computer Engineering and Networks Laboratory, ETH Zurich
 -- Created    : 2014-05-23
--- Last update: 2014-05-23
+-- Last update: 2014-05-27
 -- Platform   : Xilinx ISIM (simulation), Xilinx (synthesis)
 -- Standard   : VHDL'87
 -------------------------------------------------------------------------------
@@ -91,20 +91,6 @@ entity hwt_icap is
     FIFO32_M_Rem  : in  std_logic_vector(15 downto 0);
     FIFO32_S_Rd   : out std_logic;
     FIFO32_M_Wr   : out std_logic;
-
-    -- Debug
-    DebugStatus   : out std_logic_vector(0 to 7);
-    DebugBusy     : out std_logic;
-    DebugReadICAP : out std_logic;
-    DebugReadCalc : out std_logic;
-    DebugPutMem   : out std_logic;
-    DebugIdle     : out std_logic;
-    DebugFinished : out std_logic;
-    DebugGetSize  : out std_logic;
-    DebugCEB      : out std_logic;
-    DebugWEB      : out std_logic;
-    DebugRamWE    : out std_logic;
-    DebugOut      : out std_logic_vector(0 to 31);
 
     -- HWT reset and clock
     clk : in std_logic;
@@ -654,29 +640,6 @@ begin
 
   -- ICAP Ram Input
   ICAPRamInxD <= ICAPDataOutRegxDP;
-
-  -----------------------------------------------------------------------------
-  -- DEBUG
-  -----------------------------------------------------------------------------
-
-  DebugStatus   <= ICAPDataOutxD(24 to 31);
-  DebugOut      <= ICAPDataOutxD(0 to 31);
-  DebugBusy     <= ICAPBusyxS;
-  DebugReadICAP <= '1' when state = STATE_READ_ICAP
-                   else '0';
-  DebugReadCalc <= '1' when state = STATE_READ_CALC
-                   else '0';
-  DebugPutMem <= '1' when state = STATE_PUT_MEM
-                 else '0';
-  DebugIdle <= '1' when state = STATE_GET_BITSTREAM_ADDR
-               else '0';
-  DebugGetSize <= '1' when state = STATE_GET_BITSTREAM_SIZE
-                  else '0';
-  DebugFinished <= '1' when state = STATE_FINISHED
-                   else '0';
-  DebugCEB   <= ICAPCExSB;
-  DebugWEB   <= ICAPWExSB;
-  DebugRamWE <= ICAPRamWExS;
 
 end architecture;
 

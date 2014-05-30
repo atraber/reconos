@@ -266,7 +266,6 @@ int bitstream_capture(struct pr_bitstream_t* stream_in, struct pr_bitstream_t* s
     numReadFrames++;
   }
 
-printf("Before read_capture\n");    fflush(stdout);
   hw_icap_read_capture(readFrames, numReadFrames, stream_out->block);
 
   // try to set bit 0x00020000 to zero in block ram regions, where needed
@@ -274,7 +273,7 @@ printf("Before read_capture\n");    fflush(stdout);
   // that when this bit is set, new ram content is not accepted
   for(i = 0; i < numReadFrames; i++) {
     if((readFrames[i].far & 0xFFE00000) != 0x00200000)
-      continue;
+      continue; // not a block RAM
 
     // printf("FAR 0x%08X points to RAM region, trying to clean it up\n", readFrames[i].far);
     uint32_t* mem = stream_out->block + readFrames[i].offset;

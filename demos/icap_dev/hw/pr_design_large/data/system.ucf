@@ -492,9 +492,67 @@ AREA_GROUP "pblock_hwt_pr_block_1" RANGE=RAMB18_X0Y80:RAMB18_X3Y95;
 AREA_GROUP "pblock_hwt_pr_block_1" RANGE=RAMB36_X0Y40:RAMB36_X3Y47;
 AREA_GROUP "pblock_hwt_pr_block_1" RESET_AFTER_RECONFIG=TRUE;
 
+# small region, in the middle of DDR3 stuff
+#INST "hwt_pr_block_0" AREA_GROUP = "pblock_hwt_pr_block_0";
+#AREA_GROUP "pblock_hwt_pr_block_0" RANGE=SLICE_X104Y120:SLICE_X121Y159;
+#AREA_GROUP "pblock_hwt_pr_block_0" RANGE=DSP48_X5Y48:DSP48_X5Y63;
+#AREA_GROUP "pblock_hwt_pr_block_0" RANGE=RAMB18_X5Y48:RAMB18_X5Y63;
+#AREA_GROUP "pblock_hwt_pr_block_0" RANGE=RAMB36_X5Y24:RAMB36_X5Y31;
+#AREA_GROUP "pblock_hwt_pr_block_0" RESET_AFTER_RECONFIG=TRUE;
+
+# another large region, bottom left corner
+#INST "hwt_pr_block_0" AREA_GROUP = "pblock_hwt_pr_block_0";
+#AREA_GROUP "pblock_hwt_pr_block_0" RANGE=SLICE_X8Y0:SLICE_X59Y39;
+#AREA_GROUP "pblock_hwt_pr_block_0" RANGE=DSP48_X0Y0:DSP48_X3Y15;
+#AREA_GROUP "pblock_hwt_pr_block_0" RANGE=RAMB18_X0Y0:RAMB18_X3Y15;
+#AREA_GROUP "pblock_hwt_pr_block_0" RANGE=RAMB36_X0Y0:RAMB36_X3Y7;
+#AREA_GROUP "pblock_hwt_pr_block_0" RESET_AFTER_RECONFIG=TRUE;
+
+# very small region, bottom left corner
+# INST "hwt_pr_block_0" AREA_GROUP = "pblock_hwt_pr_block_0";
+# AREA_GROUP "pblock_hwt_pr_block_0" RANGE=SLICE_X36Y0:SLICE_X43Y39;
+# AREA_GROUP "pblock_hwt_pr_block_0" RANGE=DSP48_X2Y0:DSP48_X2Y15;
+# AREA_GROUP "pblock_hwt_pr_block_0" RANGE=RAMB18_X2Y0:RAMB18_X2Y15;
+# AREA_GROUP "pblock_hwt_pr_block_0" RANGE=RAMB36_X2Y0:RAMB36_X2Y7;
+# AREA_GROUP "pblock_hwt_pr_block_0" RESET_AFTER_RECONFIG=TRUE;
+
 INST "hwt_pr_block_0" AREA_GROUP = "pblock_hwt_pr_block_0";
 AREA_GROUP "pblock_hwt_pr_block_0" RANGE=SLICE_X104Y120:SLICE_X121Y159;
 AREA_GROUP "pblock_hwt_pr_block_0" RANGE=DSP48_X5Y48:DSP48_X5Y63;
 AREA_GROUP "pblock_hwt_pr_block_0" RANGE=RAMB18_X5Y48:RAMB18_X5Y63;
 AREA_GROUP "pblock_hwt_pr_block_0" RANGE=RAMB36_X5Y24:RAMB36_X5Y31;
 AREA_GROUP "pblock_hwt_pr_block_0" RESET_AFTER_RECONFIG=TRUE;
+
+##############################################################################
+# Lock BUFGCE
+# Not sure if those are really needed, but the design did not work for some
+# mappings of BUFGCTRL
+##############################################################################
+# Commented because: otherwise this is not routable...
+# INST "clock_generator_0/clock_generator_0/MMCM0_CLKOUT0_BUFG_INST" LOC = BUFGCTRL_X0Y1;  # clk_100_0000MHzMMCM0
+INST "clock_generator_0/clock_generator_0/MMCM0_CLKOUT1_BUFG_INST" LOC = BUFGCTRL_X0Y2;  # clk_200_0000MHzMMCM0
+INST "clock_generator_0/clock_generator_0/MMCM0_CLKOUT4_BUFG_INST" LOC = BUFGCTRL_X0Y0;  # clk_80_ICAP
+INST "xps_sysace_0_SysACE_CLK_pin_BUFGP/BUFG"                      LOC = BUFGCTRL_X0Y4;  # xps_sysace_0_SysACE_CLK_pin_BUFGP
+INST "mdm_0/mdm_0/BUFG_DRCK"                                       LOC = BUFGCTRL_X0Y31; # mdm_0_MBDEBUG_0_Dbg_Clk
+INST "clock_generator_0/clock_generator_0/MMCM0_CLKOUT2_BUFG_INST" LOC = BUFGCTRL_X0Y3;  # clk_400_0000MHzMMCM0
+INST "xps_hwicap_0/xps_hwicap_0/HWICAP_CTRL_I/gate_bufgce"         LOC = BUFGCTRL_X0Y15; # xps_hwicap_0/xps_hwicap_0/HWICAP_CTRL_I/gate_clk
+
+
+##############################################################################
+# Ethernet Core
+##############################################################################
+NET "fpga_0_Ethernet_MAC_PHY_rx_clk_pin" PERIOD = 40 ns HIGH 14 ns;
+NET "fpga_0_Ethernet_MAC_PHY_tx_clk_pin" PERIOD = 40 ns HIGH 14 ns;
+OFFSET = OUT 10 ns AFTER "fpga_0_Ethernet_MAC_PHY_tx_clk_pin" ;
+OFFSET = IN 6 ns BEFORE "fpga_0_Ethernet_MAC_PHY_rx_clk_pin" ;
+NET "fpga_0_Ethernet_MAC_PHY_rx_data_pin<3>" IOBDELAY = NONE;
+NET "fpga_0_Ethernet_MAC_PHY_rx_data_pin<2>" IOBDELAY = NONE;
+NET "fpga_0_Ethernet_MAC_PHY_rx_data_pin<1>" IOBDELAY = NONE;
+NET "fpga_0_Ethernet_MAC_PHY_rx_data_pin<0>" IOBDELAY = NONE;
+NET "fpga_0_Ethernet_MAC_PHY_dv_pin" IOBDELAY = NONE;
+NET "fpga_0_Ethernet_MAC_PHY_rx_er_pin" IOBDELAY = NONE;
+NET "fpga_0_Ethernet_MAC_PHY_crs_pin" IOBDELAY = NONE;
+NET "fpga_0_Ethernet_MAC_PHY_col_pin" IOBDELAY = NONE;
+
+NET "fpga_0_Ethernet_MAC_PHY_tx_clk_pin" MAXSKEW = 6.0 ns;
+NET "fpga_0_Ethernet_MAC_PHY_rx_clk_pin" MAXSKEW = 6.0 ns;
