@@ -96,6 +96,15 @@ FAIL:
 }
 
 
+//------------------------------------------------------------------------------
+// Free allocated memory
+//------------------------------------------------------------------------------
+void bitstream_close(struct pr_bitstream_t* stream)
+{
+  free(stream->block);
+}
+
+
 
 #define MAX_PR_FRAMES 64
 
@@ -233,6 +242,11 @@ int bitstream_capture_prepare(struct pr_bitstream_t* stream_in, struct pr_captur
     printf("Did not find any configuration frames in the bitstream\n");
     return 0;
   }
+
+  stream_out->frames = (struct pr_frame_t*) malloc( numFrames * sizeof(struct pr_frame_t));
+  memcpy(stream_out->frames, arrFrames, numFrames * sizeof(struct pr_frame_t));
+
+  stream_out->nFrames = numFrames;
 
   return 1;
 }

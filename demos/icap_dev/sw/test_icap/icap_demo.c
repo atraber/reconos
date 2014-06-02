@@ -444,7 +444,18 @@ void prblock_capture(int slot, struct pr_capture_t* stream)
   usleep(100);
   bitstream_capture_exec(stream);
   clock_enable(slot, 1);
+  usleep(100);
 }
+
+//------------------------------------------------------------------------------
+// Free allocated memory
+//------------------------------------------------------------------------------
+void prblock_capture_free(struct pr_capture_t* stream)
+{
+  free(stream->block);
+  free(stream->frames);
+}
+
 
 //------------------------------------------------------------------------------
 // restore a previously captured PR block
@@ -796,6 +807,8 @@ int main(int argc, char *argv[])
 
     prblock_test(slot, ADD);
 
+    prblock_capture_free(&capture_add);
+
     break;
 
   //----------------------------------------------------------------------------
@@ -924,6 +937,8 @@ int main(int argc, char *argv[])
       printf("### Result is CORRECT\n");
     }
 
+    prblock_capture_free(&capture_mul);
+
     break;
 
   //----------------------------------------------------------------------------
@@ -1003,6 +1018,8 @@ int main(int argc, char *argv[])
     } else {
       printf("### LFSR correct: %X\n", lfsr_value);
     }
+
+    prblock_capture_free(&capture_lfsr);
 
     break;
 
@@ -1108,7 +1125,7 @@ int main(int argc, char *argv[])
       //------------------------------------------------------------------------
       // MUL
       //------------------------------------------------------------------------
-      prblock_restore(slot, &capture_lfsr);
+      prblock_restore(slot, &capture_mul);
 
       printf("MUL: Restore done\n");
       fflush(stdout);
@@ -1140,8 +1157,11 @@ int main(int argc, char *argv[])
       prblock_set(slot, 1, opB);
       prblock_set(slot, 3, 0x00000001); // start multiplier
 
-      prblock_capture(slot, &capture_lfsr);
+      prblock_capture(slot, &capture_mul);
     }
+
+    prblock_capture_free(&capture_lfsr);
+    prblock_capture_free(&capture_mul);
 
     break;
 
@@ -1150,8 +1170,16 @@ int main(int argc, char *argv[])
     printf("No argument supplied, doing nothing\n");
     break;
   }
-
   //----------------------------------------------------------------------------
+
+  bitstream_close(&pr_bit[HWT_DPR][ADD]);
+  bitstream_close(&pr_bit[HWT_DPR][SUB]);
+
+  if(NUM_SLOTS > 2) {
+    bitstream_close(&pr_bit[HWT_DPR2][MUL]);
+    bitstream_close(&pr_bit[HWT_DPR2][LFSR]);
+  }
+
   printf("Exiting now\n");
 
 	return 0;

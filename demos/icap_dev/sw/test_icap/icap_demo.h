@@ -45,6 +45,7 @@ struct pr_capture_t {
 extern struct pr_bitstream_t pr_bit[NUM_SLOTS][2]; // the first one will not be used as it is not a reconfigurable module
 
 int bitstream_open(const char* path, struct pr_bitstream_t* stream);
+void bitstream_close(struct pr_bitstream_t* stream);
 int bitstream_save(const char* path, struct pr_bitstream_t* stream);
 int bitstream_capture_prepare(struct pr_bitstream_t* stream_in, struct pr_capture_t* stream_out);
 int bitstream_capture_exec(struct pr_capture_t* stream);
