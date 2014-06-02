@@ -92,9 +92,9 @@ int linux_icap_load(int slot, int thread_id)
       ret = system("cat partial_bitstreams/partial_sub.bin > /dev/icap0");
   } else {
     if(thread_id == ADD)
-      ret = system("cat partial_bitstreams/partial_add2.bin > /dev/icap0");
+      ret = system("cat partial_bitstreams/partial_mul.bin > /dev/icap0");
     else if(thread_id == SUB)
-      ret = system("cat partial_bitstreams/partial_sub2.bin > /dev/icap0");
+      ret = system("cat partial_bitstreams/partial_lfsr.bin > /dev/icap0");
   }
 
   return ret;
@@ -428,20 +428,28 @@ int prblock_reconfigure(int slot, int thread_id)
 }
 
 //------------------------------------------------------------------------------
+// Prepare a bitstream for capturing
+//------------------------------------------------------------------------------
+void prblock_capture_prepare(int slot, int thread_id, struct pr_capture_t* stream)
+{
+  bitstream_capture_prepare(&pr_bit[slot][thread_id], stream);
+}
+
+//------------------------------------------------------------------------------
 // capture a prblock
 //------------------------------------------------------------------------------
-void prblock_capture(int slot, int thread_id, struct pr_bitstream_t* stream)
+void prblock_capture(int slot, struct pr_capture_t* stream)
 {
   clock_enable(slot, 0);
   usleep(100);
-  bitstream_capture(&pr_bit[slot][thread_id], stream);
+  bitstream_capture_exec(stream);
   clock_enable(slot, 1);
 }
 
 //------------------------------------------------------------------------------
 // restore a previously captured PR block
 //------------------------------------------------------------------------------
-void prblock_restore(int slot, struct pr_bitstream_t* stream)
+void prblock_restore(int slot, struct pr_capture_t* stream)
 {
   // reset hardware thread, also disables FSLs
   // this is needed as otherwise invalid stuff gets written into the FIFOs and FSLs
@@ -449,7 +457,6 @@ void prblock_restore(int slot, struct pr_bitstream_t* stream)
 
   // stop clock
   clock_enable(slot, 0);
-
 
   bitstream_restore(stream);
 
@@ -599,7 +606,7 @@ int main(int argc, char *argv[])
 
   //----------------------------------------------------------------------------
   int slot = g_arguments.slot;
-  struct pr_bitstream_t test_bit, bit_mul, bit_lfsr;
+  struct pr_capture_t capture_add, capture_mul, capture_lfsr;
   const unsigned int opA = 0x112300AB;
   const unsigned int opB = 0x00A0B0C0;
   const unsigned int lfsr_num = 4;
@@ -739,7 +746,8 @@ int main(int argc, char *argv[])
 
 
     // capture bitstream
-    prblock_capture(slot, ADD, &test_bit);
+    prblock_capture_prepare(slot, ADD, &capture_add);
+    prblock_capture(slot, &capture_add);
 
     printf("Capturing current state completed\n");
     fflush(stdout);
@@ -769,7 +777,7 @@ int main(int argc, char *argv[])
     fflush(stdout);
 
     // restore captured module
-    prblock_restore(slot, &test_bit);
+    prblock_restore(slot, &capture_add);
 
     printf("reset done\n");
     fflush(stdout);
@@ -861,16 +869,9 @@ int main(int argc, char *argv[])
 
 
     // capture bitstream
-    printf("Capturing current state\n");
-    fflush(stdout);
-    struct pr_bitstream_t test_bit;
+    prblock_capture_prepare(slot, MUL, &capture_mul);
+    prblock_capture(slot, &capture_mul);
 
-    bitstream_capture(&pr_bit[slot][MUL], &test_bit);
-
-    printf("Capturing current state completed\n");
-    fflush(stdout);
-
-    // bitstream_save("partial_bitstreams/test.bin", &test_bit);
 
     // set it to a different value (just because)
     // this destroys the currently running multiplier result
@@ -898,7 +899,7 @@ int main(int argc, char *argv[])
     fflush(stdout);
 
     // restore captured module
-    prblock_restore(slot, &test_bit);
+    prblock_restore(slot, &capture_mul);
 
     printf("Restore done\n");
     fflush(stdout);
@@ -947,7 +948,8 @@ int main(int argc, char *argv[])
 
 
     // capture bitstream
-    prblock_capture(slot, LFSR, &test_bit);
+    prblock_capture_prepare(slot, LFSR, &capture_lfsr);
+    prblock_capture(slot, &capture_lfsr);
 
     printf("Capturing current state completed\n");
     fflush(stdout);
@@ -976,7 +978,7 @@ int main(int argc, char *argv[])
     fflush(stdout);
 
     // restore captured module
-    prblock_restore(slot, &test_bit);
+    prblock_restore(slot, &capture_lfsr);
 
     printf("Restore done\n");
     fflush(stdout);
@@ -1030,7 +1032,8 @@ int main(int argc, char *argv[])
 
 
     // capture bitstream
-    prblock_capture(slot, LFSR, &bit_lfsr);
+    prblock_capture_prepare(slot, LFSR, &capture_lfsr);
+    prblock_capture(slot, &capture_lfsr);
 
     printf("Capturing current state completed\n");
     fflush(stdout);
@@ -1054,7 +1057,8 @@ int main(int argc, char *argv[])
     prblock_set(slot, 3, 0x00000001); // start multiplier
 
     // capture bitstream
-    prblock_capture(slot, MUL, &bit_mul);
+    prblock_capture_prepare(slot, MUL, &capture_mul);
+    prblock_capture(slot, &capture_mul);
 
     printf("Capturing current state completed\n");
     fflush(stdout);
@@ -1073,7 +1077,7 @@ int main(int argc, char *argv[])
       fflush(stdout);
 
       // restore captured module
-      prblock_restore(slot, &bit_lfsr);
+      prblock_restore(slot, &capture_lfsr);
 
       printf("LFSR: Restore done\n");
       fflush(stdout);
@@ -1099,12 +1103,12 @@ int main(int argc, char *argv[])
         printf("### LFSR: correct: %X\n", lfsr_value);
       }
 
-      prblock_capture(slot, LFSR, &bit_lfsr);
+      prblock_capture(slot, &capture_lfsr);
 
       //------------------------------------------------------------------------
       // MUL
       //------------------------------------------------------------------------
-      prblock_restore(slot, &bit_mul);
+      prblock_restore(slot, &capture_lfsr);
 
       printf("MUL: Restore done\n");
       fflush(stdout);
@@ -1136,7 +1140,7 @@ int main(int argc, char *argv[])
       prblock_set(slot, 1, opB);
       prblock_set(slot, 3, 0x00000001); // start multiplier
 
-      prblock_capture(slot, MUL, &bit_mul);
+      prblock_capture(slot, &capture_lfsr);
     }
 
     break;

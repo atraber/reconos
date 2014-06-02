@@ -35,12 +35,20 @@ struct pr_frame_t {
   uint32_t words; // in words
 };
 
+struct pr_capture_t {
+  uint32_t* block;
+  unsigned int length; // in 32 bit words
+  struct pr_frame_t* frames;
+  unsigned int nFrames;
+};
+
 extern struct pr_bitstream_t pr_bit[NUM_SLOTS][2]; // the first one will not be used as it is not a reconfigurable module
 
 int bitstream_open(const char* path, struct pr_bitstream_t* stream);
 int bitstream_save(const char* path, struct pr_bitstream_t* stream);
-int bitstream_capture(struct pr_bitstream_t* stream_in, struct pr_bitstream_t* stream_out);
-int bitstream_restore(struct pr_bitstream_t* stream);
+int bitstream_capture_prepare(struct pr_bitstream_t* stream_in, struct pr_capture_t* stream_out);
+int bitstream_capture_exec(struct pr_capture_t* stream);
+int bitstream_restore(struct pr_capture_t* stream);
 
 
 int hw_icap_write(uint32_t* addr, unsigned int size);

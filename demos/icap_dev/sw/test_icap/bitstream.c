@@ -103,9 +103,11 @@ FAIL:
 // Capture the current state of the FPGA. The original partial bitstream which
 // was used to program the FPGA must be given here as the necessary information
 // for capturing is extracted from it.
-// The captured state is saved in stream_out
+// All information needed for state capturing is then stored inside stream_out
+// The function bitstream_capture_exec can then be used to actually capture the
+// current state
 //------------------------------------------------------------------------------
-int bitstream_capture(struct pr_bitstream_t* stream_in, struct pr_bitstream_t* stream_out)
+int bitstream_capture_prepare(struct pr_bitstream_t* stream_in, struct pr_capture_t* stream_out)
 {
   // copy input stream as we override it with the current values in the FPGA
   stream_out->length = stream_in->length;
@@ -113,7 +115,7 @@ int bitstream_capture(struct pr_bitstream_t* stream_in, struct pr_bitstream_t* s
   memcpy(stream_out->block, stream_in->block, stream_out->length * sizeof(uint32_t));
 
   if(stream_out->block == NULL) {
-    printf("bitstream_capture: Could not allocate memory\n");
+    printf("bitstream_capture_prepare: Could not allocate memory\n");
     return 0;
   }
 
@@ -232,56 +234,50 @@ int bitstream_capture(struct pr_bitstream_t* stream_in, struct pr_bitstream_t* s
     return 0;
   }
 
-  //// DEBUG CODE
-  //printf("The following frames have been found in the bitstream:\n");
-  //for(i = 0; i < numFrames; i++) {
-  //  printf("FAR: 0x%08X, Size: %d, Offset: %d\n", arrFrames[i].far, arrFrames[i].words, arrFrames[i].offset);
-  //}
+  return 1;
+}
 
+
+int bitstream_capture_exec(struct pr_capture_t* stream)
+{
+  if(stream->nFrames == 0) {
+    printf("bitstream_capture_exec: Did not find any reconfiguration frames in the bitstream\n");
+    return 0;
+  }
 
   //----------------------------------------------------------------------------
   // write CFG_CLB to FPGA
   //----------------------------------------------------------------------------
 
   // first check if we have a CFG_CLB section, should be the first one in the blocks array
-  if(arrFrames[0].far != 0x00400000) {
+  if(stream->frames[0].far != 0x00400000) {
     printf("Did not find CFG_CLB block in bitstream\n");
     return 0;
   }
 
-  hw_icap_write_frame(arrFrames[0].far, stream_out->block + arrFrames[0].offset, arrFrames[0].words);
+  hw_icap_write_frame(stream->frames[0].far, stream->block + stream->frames[0].offset, stream->frames[0].words);
 
   //----------------------------------------------------------------------------
   // readback of data, also doing gcapture in the process
   //----------------------------------------------------------------------------
 
-  struct pr_frame_t readFrames[MAX_PR_FRAMES];
-  unsigned int numReadFrames = 0;
-
-  // the first frame is ignored as this is the CFG_CLB frame which we have just wrote to the FPGA
-  for(i = 1; i < numFrames; i++) {
-    readFrames[numReadFrames].far = arrFrames[i].far;
-    readFrames[numReadFrames].words = arrFrames[i].words;
-    readFrames[numReadFrames].offset = arrFrames[i].offset;
-    numReadFrames++;
-  }
-
-  hw_icap_read_capture(readFrames, numReadFrames, stream_out->block);
+  hw_icap_read_capture(stream->frames + 1, stream->nFrames - 1, stream->block);
 
   // try to set bit 0x00020000 to zero in block ram regions, where needed
   // Don't know if this is correct, this is just guessing based on the observation
   // that when this bit is set, new ram content is not accepted
-  for(i = 0; i < numReadFrames; i++) {
-    if((readFrames[i].far & 0xFFE00000) != 0x00200000)
+  unsigned int i;
+  for(i = 1; i < stream->nFrames; i++) {
+    if((stream->frames[i].far & 0xFFE00000) != 0x00200000)
       continue; // not a block RAM
 
     // printf("FAR 0x%08X points to RAM region, trying to clean it up\n", readFrames[i].far);
-    uint32_t* mem = stream_out->block + readFrames[i].offset;
+    uint32_t* mem = stream->block + stream->frames[i].offset;
 
     unsigned int k, j;
     for(k = 0;; k++) {
       j = 4 + k * 10 + ((k+4) / 8);
-      if(j >= readFrames[i].words)
+      if(j >= stream->frames[i].words)
         break;
 
       mem[j] &= ~0x00020000;
@@ -332,7 +328,7 @@ FAIL:
 // state (e.g.  in RAM?). To avoid this the clock in the reconfigurable region
 // has to be stopped.
 //------------------------------------------------------------------------------
-int bitstream_restore(struct pr_bitstream_t* stream)
+int bitstream_restore(struct pr_capture_t* stream)
 {
   hw_icap_write(stream->block, stream->length * 4);
 
