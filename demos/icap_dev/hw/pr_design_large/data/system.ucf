@@ -530,12 +530,12 @@ AREA_GROUP "pblock_hwt_pr_block_0" RESET_AFTER_RECONFIG=TRUE;
 ##############################################################################
 # Commented because: otherwise this is not routable...
 # INST "clock_generator_0/clock_generator_0/MMCM0_CLKOUT0_BUFG_INST" LOC = BUFGCTRL_X0Y1;  # clk_100_0000MHzMMCM0
-INST "clock_generator_0/clock_generator_0/MMCM0_CLKOUT1_BUFG_INST" LOC = BUFGCTRL_X0Y2;  # clk_200_0000MHzMMCM0
-INST "clock_generator_0/clock_generator_0/MMCM0_CLKOUT4_BUFG_INST" LOC = BUFGCTRL_X0Y0;  # clk_80_ICAP
-INST "xps_sysace_0_SysACE_CLK_pin_BUFGP/BUFG"                      LOC = BUFGCTRL_X0Y4;  # xps_sysace_0_SysACE_CLK_pin_BUFGP
-INST "mdm_0/mdm_0/BUFG_DRCK"                                       LOC = BUFGCTRL_X0Y31; # mdm_0_MBDEBUG_0_Dbg_Clk
-INST "clock_generator_0/clock_generator_0/MMCM0_CLKOUT2_BUFG_INST" LOC = BUFGCTRL_X0Y3;  # clk_400_0000MHzMMCM0
-INST "xps_hwicap_0/xps_hwicap_0/HWICAP_CTRL_I/gate_bufgce"         LOC = BUFGCTRL_X0Y15; # xps_hwicap_0/xps_hwicap_0/HWICAP_CTRL_I/gate_clk
+#INST "clock_generator_0/clock_generator_0/MMCM0_CLKOUT1_BUFG_INST" LOC = BUFGCTRL_X0Y2;  # clk_200_0000MHzMMCM0
+#INST "clock_generator_0/clock_generator_0/MMCM0_CLKOUT4_BUFG_INST" LOC = BUFGCTRL_X0Y0;  # clk_80_ICAP
+#INST "xps_sysace_0_SysACE_CLK_pin_BUFGP/BUFG"                      LOC = BUFGCTRL_X0Y4;  # xps_sysace_0_SysACE_CLK_pin_BUFGP
+#INST "mdm_0/mdm_0/BUFG_DRCK"                                       LOC = BUFGCTRL_X0Y31; # mdm_0_MBDEBUG_0_Dbg_Clk
+#INST "clock_generator_0/clock_generator_0/MMCM0_CLKOUT2_BUFG_INST" LOC = BUFGCTRL_X0Y3;  # clk_400_0000MHzMMCM0
+#INST "xps_hwicap_0/xps_hwicap_0/HWICAP_CTRL_I/gate_bufgce"         LOC = BUFGCTRL_X0Y15; # xps_hwicap_0/xps_hwicap_0/HWICAP_CTRL_I/gate_clk
 
 
 ##############################################################################
