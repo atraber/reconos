@@ -423,6 +423,7 @@ int prblock_reconfigure(int slot, int thread_id)
 	// reset hardware thread
   clock_enable(slot, 1);
   reconos_slot_reset(slot,0);
+  usleep(100);
 
 	return ret;
 }
@@ -1120,12 +1121,27 @@ int main(int argc, char *argv[])
         printf("### LFSR: correct: %X\n", lfsr_value);
       }
 
+
+
+      // start timer
+      fflush(stdout);
+      timing_t t_start, t_stop;
+      us_t t_check;
+      t_start = gettime();
+	
+
       prblock_capture(slot, &capture_lfsr);
 
       //------------------------------------------------------------------------
       // MUL
       //------------------------------------------------------------------------
       prblock_restore(slot, &capture_mul);
+
+      // measure time
+      t_stop = gettime();
+      t_check = calc_timediff_us(t_start, t_stop);
+      printf("Capture and restore done in %lu us\n", t_check);
+
 
       printf("MUL: Restore done\n");
       fflush(stdout);
