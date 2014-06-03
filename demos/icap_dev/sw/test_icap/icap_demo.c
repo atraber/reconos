@@ -416,10 +416,6 @@ int prblock_reconfigure(int slot, int thread_id)
 
   printf("Reconfiguration done in %lu us, resetting hardware thread\n", t_check);
 
-  // perform GSR to reset everything to a known state
-  // This would actually be done by the bitstream itself, but sadly GRESTORE does not work
-  hw_icap_gsr();
-
 	// reset hardware thread
   clock_enable(slot, 1);
   reconos_slot_reset(slot,0);
