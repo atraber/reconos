@@ -6,7 +6,7 @@
 -- Author     : atraber  <atraber@student.ethz.ch>
 -- Company    : Computer Engineering and Networks Laboratory, ETH Zurich
 -- Created    : 2014-04-04
--- Last update: 2014-04-15
+-- Last update: 2014-06-03
 -- Platform   : Xilinx ISIM (simulation), Xilinx (synthesis)
 -- Standard   : VHDL'87
 -------------------------------------------------------------------------------
@@ -77,7 +77,7 @@ architecture behavioral of ICAPWrapper is
   -- files
   -----------------------------------------------------------------------------
   file file_check : text open read_mode is "./partial_check.hex";  -- open the file for reading
-  file file_read  : text open read_mode is "./partial_read.hex";  -- open the file for reading
+  file file_read  : text open read_mode is "./partial_stim.hex";  -- open the file for reading
 
   -----------------------------------------------------------------------------
   -- functions
