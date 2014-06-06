@@ -840,13 +840,74 @@ int main(int argc, char *argv[])
 
   //----------------------------------------------------------------------------
   case MODE_TEST2:
-    printf("NOTHING HERE\n");
+    slot = HWT_DPR;
+
+    // ensure that we are in a valid state first
+    prblock_reconfigure(slot, ADD);
+    prblock_test(slot, ADD);
+    prblock_set(slot, 3, 0);
+
+
+    // capture bitstream
+    prblock_capture_prepare(slot, ADD, &capture_add);
+
+    hw_icap_gcapture();
+
+    uint32_t* first_ff = (uint32_t*)malloc(capture_add.frames[1].words * sizeof(uint32_t));
+    uint32_t* second_ff = (uint32_t*)malloc(capture_add.frames[1].words * sizeof(uint32_t));
+
+    hw_icap_read_frame(capture_add.frames[1].far, capture_add.frames[1].words, first_ff);
+
+    prblock_set(slot, 3, 1);
+    hw_icap_gcapture();
+
+    hw_icap_read_frame(capture_add.frames[1].far, capture_add.frames[1].words, second_ff);
+
+    for(i = 0; i < capture_add.frames[1].words; i++) {
+      if(first_ff[i] != second_ff[i])
+        printf("Different %08X vs. %08X\n", first_ff[i], second_ff[i]);
+    }
+
+    printf("Done\n");
+
 
     break;
 
   //----------------------------------------------------------------------------
   case MODE_TEST3:
-    printf("NOTHING HERE\n");
+    slot = HWT_DPR;
+
+    // ensure that we are in a valid state first
+    prblock_reconfigure(slot, ADD);
+    prblock_test(slot, ADD);
+    prblock_set(slot, 3, 0);
+
+
+    // capture bitstream
+    prblock_capture_prepare(slot, ADD, &capture_add);
+
+    hw_icap_gcapture();
+
+    first_ff = (uint32_t*)malloc(capture_add.frames[1].words * sizeof(uint32_t));
+    second_ff = (uint32_t*)malloc(capture_add.frames[1].words * sizeof(uint32_t));
+
+    hw_icap_read_frame(capture_add.frames[1].far, capture_add.frames[1].words, first_ff);
+
+    // ensure that CFG_CLB is overwritten
+    prblock_reconfigure(HWT_DPR2, LFSR);
+    prblock_test(HWT_DPR2, LFSR);
+
+    prblock_set(slot, 3, 1);
+    hw_icap_gcapture();
+
+    hw_icap_read_frame(capture_add.frames[1].far, capture_add.frames[1].words, second_ff);
+
+    for(i = 0; i < capture_add.frames[1].words; i++) {
+      if(first_ff[i] != second_ff[i])
+        printf("Different %08X vs. %08X\n", first_ff[i], second_ff[i]);
+    }
+
+    printf("Done\n");
 
     break;
 
