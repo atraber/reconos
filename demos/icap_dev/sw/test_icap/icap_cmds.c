@@ -13,6 +13,7 @@
 // ReconOS
 #include "reconos.h"
 #include "mbox.h"
+#include "timing.h"
 
 #include "icap_demo.h"
 
@@ -264,11 +265,26 @@ int hw_icap_read_frame(uint32_t far, uint32_t size, uint32_t* dst)
   // we need to flush the cache here as otherwise we get a part of old data and a part of new data
   reconos_cache_flush();
 
+
+  // start timer
+  usleep(100);
+  fflush(stdout);
+  timing_t t_start, t_stop;
+  us_t t_check;
+  t_start = gettime();
+  // end start
+
   ret = hw_icap_read(mem, real_size * sizeof(uint32_t));
   if(ret == 0) {
     printf("hw_icap_read_frame: Reading from ICAP has failed\n");
     return 0;
   }
+
+  // measure time
+  t_stop = gettime();
+  t_check = calc_timediff_us(t_start, t_stop);
+  printf("Readback of FAR 0x%08X, %d words done in %lu us\n", far, size, t_check);
+  // end measure
 
   ret = hw_icap_write(g_icap_read_cmd2, sizeof g_icap_read_cmd2);
   if(ret == 0) {

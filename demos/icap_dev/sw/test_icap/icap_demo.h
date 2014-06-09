@@ -96,6 +96,8 @@ int sw_icap_grestore();
 #define MODE_TEST_LFSR  13
 #define MODE_WRITE_LFSR 14
 #define MODE_TEST_SWAP  15
+#define MODE_TEST4      16
+#define MODE_READBACK_SPEED      17
 
 struct cmd_arguments_t {
   unsigned int reconf_mode;

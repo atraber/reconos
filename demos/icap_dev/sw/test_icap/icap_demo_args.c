@@ -27,6 +27,8 @@ static struct argp_option options[] = {
   {"test_add",   't',  0,      0, "Capture add, poison it and restore it" },
   {"test2",      6000, "slot", OPTION_ARG_OPTIONAL, "Playground.. can be anything here" },
   {"test3",      6003, "slot", OPTION_ARG_OPTIONAL, "Playground.. can be anything here" },
+  {"test4",      6008, "slot", OPTION_ARG_OPTIONAL, "Playground.. can be anything here" },
+  {"readback_speed", 6009, "slot", OPTION_ARG_OPTIONAL, "Checks readback speed" },
   {"test_mul",   6004, 0,      0, "Capture mul, poison it and restore it" },
   {"test_lfsr",  6005, 0,      0, "Capture lfsr, poison it and restore it" },
   {"test_swap",  6006, "nr",   OPTION_ARG_OPTIONAL, "Continuously capture the state of MUL, load LFSR, restore MUL, restore LFSR, ..." },
@@ -111,6 +113,20 @@ parse_opt (int key, char *arg, struct argp_state *state)
 
   case 6003:
     arguments->mode = MODE_TEST3;
+
+    if(arg)
+      arguments->slot = atoi(arg);
+    break;
+
+  case 6008:
+    arguments->mode = MODE_TEST4;
+
+    if(arg)
+      arguments->slot = atoi(arg);
+    break;
+
+  case 6009:
+    arguments->mode = MODE_READBACK_SPEED;
 
     if(arg)
       arguments->slot = atoi(arg);

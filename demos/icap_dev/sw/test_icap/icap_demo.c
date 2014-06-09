@@ -437,11 +437,23 @@ void prblock_capture_prepare(int slot, int thread_id, struct pr_capture_t* strea
 //------------------------------------------------------------------------------
 void prblock_capture(int slot, struct pr_capture_t* stream)
 {
+  // disable clock
   clock_enable(slot, 0);
-  usleep(100);
+
+  // wait some time to ensure that clock is really started
+  // since the control is given to Linux this delays execution quite a bit and
+  // destroys measurements
+  //usleep(100);
+
   bitstream_capture_exec(stream);
+
+  // enable clock
   clock_enable(slot, 1);
-  usleep(100);
+
+  // wait some time to ensure that clock is really started
+  // since the control is given to Linux this delays execution quite a bit and
+  // destroys measurements
+  //usleep(100);
 }
 
 //------------------------------------------------------------------------------
@@ -466,20 +478,26 @@ void prblock_restore(int slot, struct pr_capture_t* stream)
   // stop clock
   clock_enable(slot, 0);
 
-  bitstream_restore(stream);
+  // bitstream_restore would also do a grestore which we do manually afterwards
+  //bitstream_restore(stream);
+  hw_icap_write(stream->block, stream->length * 4);
 
   // start hardware thread again, releasing reset
   reconos_slot_reset(slot, 0);
 
   // now restore the previous information
   // This part would be timing critical if the clock was not stopped
-  hw_icap_grestore();
+  // grestore does not work anyway, so just use GSR
+  // hw_icap_grestore();
+  hw_icap_gsr();
 
   // start clock
   clock_enable(slot, 1);
 
   // wait some time to ensure that clock is really started
-  usleep(100);
+  // since the control is given to Linux this delays execution quite a bit and
+  // destroys measurements
+  //usleep(100);
 }
 
 
@@ -874,6 +892,9 @@ int main(int argc, char *argv[])
     break;
 
   //----------------------------------------------------------------------------
+  // Together with TEST2 this tests if gcapture operates only on the region
+  // selected by CFG_CLB. It does.
+  //----------------------------------------------------------------------------
   case MODE_TEST3:
     slot = HWT_DPR;
 
@@ -910,6 +931,76 @@ int main(int argc, char *argv[])
     printf("Done\n");
 
     break;
+
+  //----------------------------------------------------------------------------
+  // Tests if block RAM needs GCAPTURE
+  // Apparently it does not
+  //----------------------------------------------------------------------------
+  case MODE_TEST4:
+    slot = HWT_DPR;
+
+    // ensure that we are in a valid state first
+    prblock_reconfigure(slot, ADD);
+    prblock_test(slot, ADD);
+    prblock_set(slot, 3, 0);
+    prblock_mem_set(slot, 0x00000000);
+
+
+    // capture bitstream
+    prblock_capture_prepare(slot, ADD, &capture_add);
+
+    hw_icap_gcapture();
+
+    first_ff = (uint32_t*)malloc(capture_add.frames[2].words * sizeof(uint32_t));
+    second_ff = (uint32_t*)malloc(capture_add.frames[2].words * sizeof(uint32_t));
+
+    hw_icap_read_frame(capture_add.frames[2].far, capture_add.frames[2].words, first_ff);
+
+    prblock_mem_set(slot, 0x00000001);
+    //hw_icap_gcapture();
+
+    hw_icap_read_frame(capture_add.frames[2].far, capture_add.frames[2].words, second_ff);
+
+    for(i = 0; i < capture_add.frames[2].words; i++) {
+      if(first_ff[i] != second_ff[i])
+        printf("Different %08X vs. %08X\n", first_ff[i], second_ff[i]);
+    }
+
+    printf("Done\n");
+
+    break;
+
+  //----------------------------------------------------------------------------
+  // Tests if block RAM needs GCAPTURE
+  // Apparently it does not
+  //----------------------------------------------------------------------------
+  case MODE_READBACK_SPEED:
+    slot = HWT_DPR;
+
+    // ensure that we are in a valid state first
+    prblock_reconfigure(slot, ADD);
+    prblock_test(slot, ADD);
+
+
+    // capture bitstream
+    prblock_capture_prepare(slot, ADD, &capture_add);
+
+    hw_icap_gcapture();
+
+
+    for(i = 1; i < capture_add.nFrames; i++) {
+      uint32_t* mem = (uint32_t*)malloc(capture_add.frames[i].words * sizeof(uint32_t));
+
+      // do readback
+      hw_icap_read_frame(capture_add.frames[i].far, capture_add.frames[i].words, mem);
+
+      free(mem);
+    }
+
+    printf("Done\n");
+
+    break;
+
 
   //----------------------------------------------------------------------------
   // Load RM, set some values, capture it
@@ -1182,12 +1273,14 @@ int main(int argc, char *argv[])
 
       // start timer
       fflush(stdout);
-      timing_t t_start, t_stop;
-      us_t t_check;
+      timing_t t_start, t_capture, t_stop;
+      us_t t_caprest, t_cap, t_rest;
       t_start = gettime();
 	
 
       prblock_capture(slot, &capture_lfsr);
+
+      t_capture = gettime();
 
       //------------------------------------------------------------------------
       // MUL
@@ -1196,8 +1289,10 @@ int main(int argc, char *argv[])
 
       // measure time
       t_stop = gettime();
-      t_check = calc_timediff_us(t_start, t_stop);
-      printf("Capture and restore done in %lu us\n", t_check);
+      t_cap = calc_timediff_us(t_start, t_capture);
+      t_caprest = calc_timediff_us(t_start, t_stop);
+      t_rest = calc_timediff_us(t_capture, t_stop);
+      printf("Capture and restore done in %6lu us, capture done in %6lu us, restore done in %6lu us\n", t_caprest, t_cap, t_rest);
 
 
       printf("MUL: Restore done\n");
